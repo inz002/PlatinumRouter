@@ -19,46 +19,13 @@ const COUNTER_DEFS = {
   cooper: { label: "Cooper", icon: "🦝", max: 3, act1: 0 }
 };
 
-const PHASES = {
-  legacy_all: {
-    label: "Legacy All",
-    note: "Fallback for older split files with no phase markers.",
-    visible: ["trophies", "inari", "hotsprings", "bamboo", "haiku", "shrines", "records", "artifacts", "crickets", "hiddenaltars", "monochrome", "dirge", "cooper", "sidetales", "duels", "territories", "mythictales"]
-  },
-  any_act1: {
-    label: "Any% Act 1",
-    note: "Focus on Act 1 collectibles, records, artifacts, crickets, altars, and monochrome.",
-    visible: ["trophies", "inari", "hotsprings", "bamboo", "haiku", "shrines", "records", "artifacts", "crickets", "hiddenaltars", "monochrome"]
-  },
-  any_act2: {
-    label: "Any% Act 2",
-    note: "Act 2 keeps the collectible focus and adds Dirge.",
-    visible: ["trophies", "inari", "hotsprings", "bamboo", "haiku", "shrines", "records", "artifacts", "crickets", "hiddenaltars", "monochrome", "dirge"]
-  }
-};
-
-const DEFAULT_SPLITS = [
-  { id: "prologue", label: "Prologue", note: "", phaseId: "any_act1", isPhaseStart: true, auto: { trophies: 1, haiku: 1 } },
-  { id: "yuna", label: "Yuna", note: "", phaseId: "", isPhaseStart: false, auto: { inari: 1, records: 1, artifacts: 1 } },
-  { id: "ishikawa", label: "Ishikawa", note: "", phaseId: "", isPhaseStart: false, auto: { inari: 3, hotsprings: 2, bamboo: 1, shrines: 1, records: 1, artifacts: 1 } },
-  { id: "masako", label: "Masako", note: "", phaseId: "", isPhaseStart: false, auto: { hotsprings: 1, shrines: 1 } },
-  { id: "taka", label: "Taka", note: "", phaseId: "", isPhaseStart: false, auto: { inari: 1, hotsprings: 2, bamboo: 1 } },
-  { id: "ronin", label: "Ronin", note: "", phaseId: "", isPhaseStart: false, auto: { inari: 1, haiku: 1, records: 1 } },
-  { id: "ronin2", label: "Ronin 2", note: "", phaseId: "", isPhaseStart: false, auto: { inari: 1 } },
-  { id: "komatsu", label: "Komatsu", note: "", phaseId: "", isPhaseStart: false, auto: { inari: 1, bamboo: 1, haiku: 1 } },
-  { id: "hook", label: "Hook", note: "", phaseId: "", isPhaseStart: false, auto: {} },
-  { id: "act1finale", label: "Act 1 Finale", note: "", phaseId: "any_act2", isPhaseStart: true, auto: { trophies: 1 } },
-  { id: "act2", label: "Act 2", note: "", phaseId: "", isPhaseStart: false, auto: {} }
-];
-
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 const formatMs = (ms) => {
   const s = Math.max(0, Math.floor(ms / 1000));
   return `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 };
-const normalizeSplit = (s) => ({ id: "", label: "", note: "", phaseId: "", isPhaseStart: false, auto: {}, ...s });
-const normalizeSplits = (splits) => (Array.isArray(splits) && splits.length ? splits : DEFAULT_SPLITS).map(normalizeSplit);
+
 const buildDefaultCounters = () => {
   const out = {};
   Object.entries(COUNTER_DEFS).forEach(([k, v]) => {
@@ -67,7 +34,21 @@ const buildDefaultCounters = () => {
   return out;
 };
 
-let SPLITS = normalizeSplits(DEFAULT_SPLITS);
+const normalizeSplit = (s) => ({
+  id: "",
+  label: "",
+  note: "",
+  phaseId: "",
+  isPhaseStart: false,
+  auto: {},
+  ...s,
+});
+
+const normalizeSplits = (splits, fallback = []) =>
+  (Array.isArray(splits) && splits.length ? splits : fallback).map(normalizeSplit);
+
+let PHASES = {};
+let SPLITS = [];
 
 const state = {
   elapsedMs: 0,
@@ -75,11 +56,16 @@ const state = {
   counters: buildDefaultCounters(),
   history: [],
   currentSplitIndex: 0,
-  settings: { difficulty: "Lethal", act1TargetMinutes: 180, showSettings: false },
-  miscChecks: { dirge: false },
-  startTs: null,
+  settings: {
+    difficulty: "Lethal",
+    act1TargetMinutes: 180,
+    showSettings: false,
+  },
+  remoteCode: "",
   offsetMs: 0,
-  intervalId: null
+  startTs: null,
+  intervalId: null,
+  miscChecks: { dirge: false },
 };
 
 const els = {
@@ -112,22 +98,26 @@ const els = {
   activePhaseName: document.getElementById("activePhaseName"),
   activePhaseNote: document.getElementById("activePhaseNote"),
   visibleObjectives: document.getElementById("visibleObjectives"),
-  dirgeCheckbox: document.getElementById("dirgeCheckbox")
+  dirgeCheckbox: document.getElementById("dirgeCheckbox"),
 };
 
 function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({
-    elapsedMs: state.elapsedMs,
-    counters: state.counters,
-    history: state.history,
-    currentSplitIndex: state.currentSplitIndex,
-    settings: state.settings,
-    splits: SPLITS,
-    miscChecks: state.miscChecks
-  }));
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      elapsedMs: state.elapsedMs,
+      counters: state.counters,
+      history: state.history,
+      currentSplitIndex: state.currentSplitIndex,
+      settings: state.settings,
+      remoteCode: state.remoteCode,
+      splits: SPLITS,
+      miscChecks: state.miscChecks,
+    })
+  );
 }
 
-function load() {
+function loadLocalState() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return;
   try {
@@ -137,11 +127,19 @@ function load() {
     state.counters = parsed.counters || buildDefaultCounters();
     state.history = parsed.history || [];
     state.currentSplitIndex = parsed.currentSplitIndex || 0;
-    state.settings = { difficulty: "Lethal", act1TargetMinutes: 180, showSettings: false, ...(parsed.settings || {}) };
+    state.settings = {
+      difficulty: "Lethal",
+      act1TargetMinutes: 180,
+      showSettings: false,
+      ...(parsed.settings || {}),
+    };
+    state.remoteCode = parsed.remoteCode || "";
     state.miscChecks = { dirge: false, ...(parsed.miscChecks || {}) };
-    SPLITS = normalizeSplits(parsed.splits);
+    if (parsed.splits?.length) {
+      SPLITS = normalizeSplits(parsed.splits, SPLITS);
+    }
   } catch (e) {
-    console.error(e);
+    console.error("Failed to load local state", e);
   }
 }
 
@@ -153,33 +151,49 @@ function getActivePhaseId() {
   let active = "legacy_all";
   for (let i = 0; i <= state.currentSplitIndex && i < SPLITS.length; i += 1) {
     const split = SPLITS[i];
-    if (split.isPhaseStart && split.phaseId && PHASES[split.phaseId]) active = split.phaseId;
+    if (split?.isPhaseStart && split.phaseId && PHASES[split.phaseId]) active = split.phaseId;
   }
   return active;
 }
 
 function computeOverallPercent() {
-  const total = Object.keys(COUNTER_DEFS).reduce((sum, key) => sum + state.counters[key].value, 0) + (state.miscChecks.dirge ? 1 : 0);
-  const max = Object.keys(COUNTER_DEFS).reduce((sum, key) => sum + COUNTER_DEFS[key].max, 0) + 1;
-  return Math.round((total / max) * 100);
+  const total =
+    Object.keys(COUNTER_DEFS).reduce((sum, key) => sum + state.counters[key].value, 0) +
+    (state.miscChecks.dirge ? 1 : 0);
+  const max =
+    Object.keys(COUNTER_DEFS).reduce((sum, key) => sum + COUNTER_DEFS[key].max, 0) + 1;
+  return max ? Math.round((total / max) * 100) : 0;
 }
 
 function computeAct1Percent() {
   const keys = Object.keys(COUNTER_DEFS).filter((key) => COUNTER_DEFS[key].act1 > 0);
-  const done = keys.reduce((sum, key) => sum + Math.min(state.counters[key].value, COUNTER_DEFS[key].act1), 0);
+  const done = keys.reduce(
+    (sum, key) => sum + Math.min(state.counters[key].value, COUNTER_DEFS[key].act1),
+    0
+  );
   const max = keys.reduce((sum, key) => sum + COUNTER_DEFS[key].act1, 0);
-  return Math.round((done / max) * 100);
+  return max ? Math.round((done / max) * 100) : 0;
+}
+
+function applyAutoProgress(counters, deltaMap, direction) {
+  const next = clone(counters);
+  Object.entries(deltaMap || {}).forEach(([key, value]) => {
+    next[key].value = clamp(next[key].value + value * direction, 0, next[key].max);
+  });
+  return next;
 }
 
 function renderVisibleObjectives() {
   const phase = PHASES[getActivePhaseId()] || PHASES.legacy_all;
-  els.activePhaseName.textContent = phase.label;
-  els.activePhaseNote.textContent = phase.note;
+  els.activePhaseName.textContent = phase?.label || "Legacy All";
+  els.activePhaseNote.textContent = phase?.note || "No phase note.";
   els.visibleObjectives.innerHTML = "";
-  phase.visible.forEach((key) => {
+
+  (phase?.visible || []).forEach((key) => {
     const chip = document.createElement("div");
     chip.className = "miniChip";
-    chip.textContent = key === "dirge" ? "🎵 Dirge" : `${COUNTER_DEFS[key].icon} ${COUNTER_DEFS[key].label}`;
+    chip.textContent =
+      key === "dirge" ? "🎵 Dirge" : `${COUNTER_DEFS[key]?.icon || "?"} ${COUNTER_DEFS[key]?.label || key}`;
     els.visibleObjectives.appendChild(chip);
   });
 }
@@ -202,11 +216,16 @@ function renderCounters() {
     `;
     els.progressGrid.appendChild(card);
   });
+
   els.progressGrid.querySelectorAll("button[data-key]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const key = btn.dataset.key;
       const diff = Number(btn.dataset.diff);
-      state.counters[key].value = clamp(state.counters[key].value + diff, 0, state.counters[key].max);
+      state.counters[key].value = clamp(
+        state.counters[key].value + diff,
+        0,
+        state.counters[key].max
+      );
       render();
       save();
     });
@@ -216,14 +235,24 @@ function renderCounters() {
 function renderSplits() {
   els.splitButtons.innerHTML = "";
   els.queuePill.textContent = `${SPLITS.length} total splits`;
+
   SPLITS.forEach((split, i) => {
     const done = i < state.currentSplitIndex;
     const active = i === state.currentSplitIndex;
     const btn = document.createElement("button");
     btn.className = `split ${done ? "done" : ""} ${active ? "active" : ""}`;
     btn.disabled = !active;
-    const marker = split.isPhaseStart && split.phaseId && PHASES[split.phaseId] ? ` | ▶ ${PHASES[split.phaseId].label}` : "";
-    const autoSummary = Object.entries(split.auto || {}).map(([k, v]) => `${COUNTER_DEFS[k]?.icon || "?"}${v}`).join(" · ") || "No auto progress";
+
+    const marker =
+      split.isPhaseStart && split.phaseId && PHASES[split.phaseId]
+        ? ` | ▶ ${PHASES[split.phaseId].label}`
+        : "";
+
+    const autoSummary =
+      Object.entries(split.auto || {})
+        .map(([k, v]) => `${COUNTER_DEFS[k]?.icon || "?"}${v}`)
+        .join(" · ") || "No auto progress";
+
     btn.innerHTML = `<div>${done ? "✅" : active ? "▶️" : "•"}</div><div><div>${split.label}</div><div class="splitSub">${autoSummary}${marker}</div></div><div>›</div>`;
     btn.addEventListener("click", () => goSplit(i));
     els.splitButtons.appendChild(btn);
@@ -233,6 +262,7 @@ function renderSplits() {
 function renderHistory() {
   els.historySaved.textContent = `${state.history.length} saved`;
   els.historyList.innerHTML = "";
+
   if (!state.history.length) {
     const row = document.createElement("div");
     row.className = "historyRow";
@@ -240,6 +270,7 @@ function renderHistory() {
     els.historyList.appendChild(row);
     return;
   }
+
   state.history.forEach((r) => {
     const row = document.createElement("div");
     row.className = "historyRow";
@@ -250,20 +281,32 @@ function renderHistory() {
 
 function render() {
   normalizeSplitIndex();
-  const current = SPLITS[state.currentSplitIndex] || SPLITS[SPLITS.length - 1];
+  const current = SPLITS[state.currentSplitIndex] || SPLITS[SPLITS.length - 1] || { label: "No splits", note: "" };
   const overall = computeOverallPercent();
   const act1 = computeAct1Percent();
-  const quota = ["inari", "hotsprings", "bamboo", "haiku", "shrines"].map((key) => `${Math.min(state.counters[key].value, COUNTER_DEFS[key].act1)}/${COUNTER_DEFS[key].act1} ${COUNTER_DEFS[key].icon}`).join(" · ");
+  const quota = ["inari", "hotsprings", "bamboo", "haiku", "shrines"]
+    .map((key) => `${Math.min(state.counters[key].value, COUNTER_DEFS[key].act1)}/${COUNTER_DEFS[key].act1} ${COUNTER_DEFS[key].icon}`)
+    .join(" · ");
   const diff = state.elapsedMs - state.settings.act1TargetMinutes * 60 * 1000;
-  const pace = state.elapsedMs === 0 ? "On fresh air" : Math.abs(diff) < 60000 ? "On pace" : diff < 0 ? `${formatMs(Math.abs(diff))} ahead` : `${formatMs(diff)} behind`;
+  const pace =
+    state.elapsedMs === 0
+      ? "On fresh air"
+      : Math.abs(diff) < 60000
+      ? "On pace"
+      : diff < 0
+      ? `${formatMs(Math.abs(diff))} ahead`
+      : `${formatMs(diff)} behind`;
 
   els.difficultyBadge.textContent = state.settings.difficulty;
   els.difficultyBadge.className = `badge ${state.settings.difficulty === "Lethal" ? "lethal" : "easy"}`;
+  els.dirgeCheckbox.checked = !!state.miscChecks.dirge;
+  els.currentObjectiveText.textContent = current.note?.trim() || "No note for this split yet.";
   els.timer.textContent = formatMs(state.elapsedMs);
   els.startPauseBtn.textContent = state.running ? "⏸ Pause" : "▶ Start";
   els.undoBtn.disabled = !state.history.length;
+  els.advanceCurrentBtn.disabled = !SPLITS.length;
   els.currentSplitLabel.textContent = current.label;
-  els.historyCount.textContent = `${state.history.length} splits logged`;
+  els.historyCount.textContent = `${state.history.length} split${state.history.length === 1 ? "" : "s"} logged`;
   els.overallPercent.textContent = `${overall}%`;
   els.overallBar.style.width = `${overall}%`;
   els.act1SummaryValue.textContent = `${act1}%`;
@@ -276,8 +319,6 @@ function render() {
   els.pacePill.textContent = pace;
   els.modePill.textContent = state.settings.difficulty;
   els.act1QuotaText.textContent = quota;
-  els.dirgeCheckbox.checked = !!state.miscChecks.dirge;
-  els.currentObjectiveText.textContent = current.note?.trim() || "No note for this split yet.";
 
   renderVisibleObjectives();
   renderCounters();
@@ -309,15 +350,17 @@ function goSplit(index) {
   const split = SPLITS[index];
   const last = state.history.length ? state.history[state.history.length - 1].cumulativeMs : 0;
   const segmentMs = Math.max(0, state.elapsedMs - last);
-  Object.entries(split.auto || {}).forEach(([key, value]) => {
-    state.counters[key].value = clamp(state.counters[key].value + value, 0, state.counters[key].max);
-  });
+
+  state.counters = applyAutoProgress(state.counters, split.auto, 1);
   state.history.push({
     splitIndex: index,
     label: split.label,
     cumulativeMs: state.elapsedMs,
-    segmentMs
+    segmentMs,
+    autoApplied: split.auto,
+    at: new Date().toISOString(),
   });
+
   state.currentSplitIndex = clamp(state.currentSplitIndex + 1, 0, SPLITS.length - 1);
   render();
   save();
@@ -326,13 +369,40 @@ function goSplit(index) {
 function undoSplit() {
   if (!state.history.length) return;
   const removed = state.history.pop();
-  const split = SPLITS[removed.splitIndex];
-  Object.entries(split.auto || {}).forEach(([key, value]) => {
-    state.counters[key].value = clamp(state.counters[key].value - value, 0, state.counters[key].max);
-  });
+  state.counters = applyAutoProgress(state.counters, removed.autoApplied, -1);
   state.currentSplitIndex = removed.splitIndex;
   render();
   save();
+}
+
+function resetRun() {
+  if (state.intervalId) clearInterval(state.intervalId);
+  state.elapsedMs = 0;
+  state.running = false;
+  state.offsetMs = 0;
+  state.startTs = null;
+  state.intervalId = null;
+  state.counters = buildDefaultCounters();
+  state.history = [];
+  state.currentSplitIndex = 0;
+  render();
+  save();
+}
+
+async function init() {
+  const [phasesRes, splitsRes] = await Promise.all([
+    fetch("./data/ghost-of-tsushima/phases.json"),
+    fetch("./data/ghost-of-tsushima/default-splits.json"),
+  ]);
+
+  const phasesJson = await phasesRes.json();
+  const splitsJson = await splitsRes.json();
+
+  PHASES = phasesJson.phases || {};
+  SPLITS = normalizeSplits(splitsJson.splits || []);
+
+  loadLocalState();
+  render();
 }
 
 els.startPauseBtn.addEventListener("click", toggleTimer);
@@ -358,25 +428,9 @@ els.dirgeCheckbox.addEventListener("change", (e) => {
   render();
   save();
 });
-els.resetBtn.addEventListener("click", () => {
-  if (state.intervalId) clearInterval(state.intervalId);
-  state.elapsedMs = 0;
-  state.running = false;
-  state.offsetMs = 0;
-  state.startTs = null;
-  state.intervalId = null;
-  state.counters = buildDefaultCounters();
-  state.history = [];
-  state.currentSplitIndex = 0;
-  state.settings = { ...state.settings, difficulty: "Lethal", act1TargetMinutes: 180, showSettings: false };
-  state.miscChecks = { dirge: false };
-  SPLITS = normalizeSplits(DEFAULT_SPLITS);
-  render();
-  save();
-});
+els.resetBtn.addEventListener("click", resetRun);
 
-load();
-render();
-  </script>
-</body>
-</html>
+init().catch((err) => {
+  console.error("Init failed", err);
+  alert("Failed to load phases/splits JSON.");
+});
