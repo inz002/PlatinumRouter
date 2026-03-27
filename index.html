@@ -1,153 +1,706 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PlatinumRouter</title>
-  <link rel="stylesheet" href="./styles.css" />
-</head>
-<body>
-  <div class="app">
-    <header class="top">
-      <div>
-        <div class="eyebrow">Run Control Overlay</div>
-        <h1 id="runTitle" class="title">Ghost of Tsushima Platinum Lethal</h1>
-        <div class="subtitle">Route planner and overlay controller.</div>
+import { useEffect, useMemo, useRef, useState } from "react";
+
+const STORAGE_KEY = "got_platinum_overlay_v6";
+
+const COUNTER_DEFS = {
+  trophies: { label: "Trophies", icon: "🏆", max: 52, color: "#facc15", act1: 0 },
+  inari: { label: "Inari Shrines", icon: "🦊", max: 49, color: "#f97316", act1: 22 },
+  hotsprings: { label: "Hot Springs", icon: "🍑", max: 18, color: "#fb7185", act1: 9 },
+  bamboo: { label: "Bamboo Strikes", icon: "🎍", max: 16, color: "#84cc16", act1: 6 },
+  haiku: { label: "Haiku", icon: "🎼", max: 19, color: "#22d3ee", act1: 8 },
+  records: { label: "Records", icon: "📜", max: 20, color: "#a8a29e", act1: 0 },
+  artifacts: { label: "Artifacts", icon: "🛡️", max: 20, color: "#818cf8", act1: 0 },
+  shrines: { label: "Shinto Shrines", icon: "⛩️", max: 16, color: "#c084fc", act1: 7 },
+  crickets: { label: "Crickets", icon: "🦗", max: 5, color: "#a3e635", act1: 0 },
+  hiddenaltars: { label: "Hidden Altars", icon: "🙏", max: 10, color: "#f59e0b", act1: 0 },
+  duels: { label: "Duels", icon: "⚔️", max: 25, color: "#f87171", act1: 0 },
+  territories: { label: "Mongol Territories", icon: "🏕️", max: 56, color: "#fb923c", act1: 0 },
+  mythictales: { label: "Mythic Tales", icon: "📘", max: 7, color: "#60a5fa", act1: 0 },
+  sidetales: { label: "Side Tales", icon: "📝", max: 61, color: "#34d399", act1: 0 },
+  monochrome: { label: "Monochrome", icon: "🎨", max: 2, color: "#e5e7eb", act1: 0 },
+  cooper: { label: "Cooper", icon: "🦝", max: 3, color: "#c4b5fd", act1: 0 },
+};
+
+const PHASES = {
+  legacy_all: {
+    label: "Legacy All",
+    note: "Fallback for older split files with no phase markers.",
+    visible: ["trophies", "inari", "hotsprings", "bamboo", "haiku", "shrines", "records", "artifacts", "crickets", "hiddenaltars", "monochrome", "dirge", "cooper", "sidetales", "duels", "territories", "mythictales"],
+  },
+  any_act1: {
+    label: "Any% Act 1",
+    note: "Focus on Act 1 collectibles, records, artifacts, crickets, altars, and monochrome.",
+    visible: ["trophies", "inari", "hotsprings", "bamboo", "haiku", "shrines", "records", "artifacts", "crickets", "hiddenaltars", "monochrome"],
+  },
+  any_act2: {
+    label: "Any% Act 2",
+    note: "Act 2 keeps the collectible focus and adds Dirge.",
+    visible: ["trophies", "inari", "hotsprings", "bamboo", "haiku", "shrines", "records", "artifacts", "crickets", "hiddenaltars", "monochrome", "dirge"],
+  },
+  any_act3: {
+    label: "Any% Act 3",
+    note: "Act 3 keeps collectible focus and swaps to Cooper.",
+    visible: ["trophies", "inari", "hotsprings", "bamboo", "haiku", "shrines", "records", "artifacts", "crickets", "hiddenaltars", "cooper"],
+  },
+  ngp_act1: { label: "NG+ Act 1", note: "Focus on side tales, duels, camps, and mythic tales.", visible: ["trophies", "sidetales", "duels", "territories", "mythictales"] },
+  ngp_act2: { label: "NG+ Act 2", note: "Continue NG+ cleanup through Act 2.", visible: ["trophies", "sidetales", "duels", "territories", "mythictales"] },
+  ngp_act3: { label: "NG+ Act 3", note: "Final NG+ cleanup focus.", visible: ["trophies", "sidetales", "duels", "territories", "mythictales"] },
+};
+
+const DEFAULT_SPLITS = [
+  { id: "prologue", label: "Prologue", note: "", phaseId: "any_act1", isPhaseStart: true, auto: { trophies: 1, haiku: 1 } },
+  { id: "yuna", label: "Yuna", note: "", phaseId: "", isPhaseStart: false, auto: { inari: 1, records: 1, artifacts: 1 } },
+  { id: "ishikawa", label: "Ishikawa", note: "", phaseId: "", isPhaseStart: false, auto: { inari: 3, hotsprings: 2, bamboo: 1, shrines: 1, records: 1, artifacts: 1 } },
+  { id: "masako", label: "Masako", note: "", phaseId: "", isPhaseStart: false, auto: { hotsprings: 1, shrines: 1 } },
+  { id: "taka", label: "Taka", note: "", phaseId: "", isPhaseStart: false, auto: { inari: 1, hotsprings: 2, bamboo: 1 } },
+  { id: "ronin", label: "Ronin", note: "", phaseId: "", isPhaseStart: false, auto: { inari: 1, haiku: 1, records: 1 } },
+  { id: "ronin2", label: "Ronin 2", note: "", phaseId: "", isPhaseStart: false, auto: { inari: 1 } },
+  { id: "komatsu", label: "Komatsu", note: "", phaseId: "", isPhaseStart: false, auto: { inari: 1, bamboo: 1, haiku: 1 } },
+  { id: "hook", label: "Hook", note: "", phaseId: "", isPhaseStart: false, auto: {} },
+  { id: "act1finale", label: "Act 1 Finale", note: "", phaseId: "any_act2", isPhaseStart: true, auto: { trophies: 1 } },
+  { id: "act2", label: "Act 2", note: "", phaseId: "", isPhaseStart: false, auto: {} },
+];
+
+const ACT1_KEYS = ["inari", "hotsprings", "bamboo", "haiku", "shrines"];
+
+const clone = (obj) => JSON.parse(JSON.stringify(obj));
+const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
+const formatMs = (ms) => {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
+};
+const normalizeSplit = (split) => ({ id: "", label: "", note: "", phaseId: "", isPhaseStart: false, auto: {}, ...split });
+const normalizeSplits = (splits) => (Array.isArray(splits) && splits.length ? splits : DEFAULT_SPLITS).map(normalizeSplit);
+const buildCounters = () => Object.fromEntries(Object.entries(COUNTER_DEFS).map(([key, def]) => [key, { ...def, value: 0, manualDelta: 0 }]));
+
+function exportJson(data, filenamePrefix = "ghost-of-tsushima-overlay") {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${filenamePrefix}-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function Button({ children, onClick, kind = "secondary", disabled = false, className = "", type = "button" }) {
+  const styles = {
+    primary: "border-emerald-400/30 bg-emerald-400 text-black hover:bg-emerald-300",
+    danger: "border-red-400/30 bg-red-500/10 text-red-100 hover:bg-red-500/20",
+    secondary: "border-white/15 bg-white/5 text-white hover:bg-white/10",
+  };
+  return (
+    <button
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${styles[kind]} ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Panel({ children, className = "" }) {
+  return <div className={`rounded-3xl border border-white/10 bg-black/35 shadow-2xl backdrop-blur-xl ${className}`}>{children}</div>;
+}
+
+function CounterCard({ counter, onChange }) {
+  const percent = Math.round((counter.value / counter.max) * 100);
+  return (
+    <div className="grid min-h-[108px] grid-cols-[40px_1fr_40px] overflow-hidden rounded-2xl border border-white/10 bg-black/35 shadow-lg backdrop-blur-sm">
+      <button onClick={() => onChange(counter.value - 1)} className="bg-white/5 text-xl font-bold text-white transition hover:bg-white/10">−</button>
+      <div className="flex flex-col items-center justify-center px-2 py-3 text-center">
+        <div className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/80">{counter.label}</div>
+        <div className="my-1 text-3xl leading-none">{counter.icon}</div>
+        <div className="text-lg font-black text-white">{counter.value}/{counter.max}</div>
+        <div className="mt-1 text-[11px] text-white/55">{percent}%</div>
       </div>
-      <div id="difficultyBadge" class="badge lethal">Lethal</div>
-    </header>
+      <button onClick={() => onChange(counter.value + 1)} className="bg-white/5 text-xl font-bold text-white transition hover:bg-white/10">+</button>
+    </div>
+  );
+}
 
-    <main class="layout">
-      <section class="stack">
-        <div class="panel">
-          <div class="timerBox">
-            <div class="timerLabel">⏱️ Run Timer</div>
-            <div id="timer" class="timer">00:00:00</div>
-            <div class="row center mt12">
-              <button id="startPauseBtn" class="btn primary">▶ Start</button>
-              <button id="undoBtn" class="btn">↶ Undo</button>
-            </div>
+function SplitQueue({ splits, currentSplitIndex, history, onAdvance, onUndo }) {
+  return (
+    <Panel>
+      <div className="p-5 pb-0">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold">Split Queue</h2>
+            <p className="mt-1 text-sm text-white/60">Only the active split is clickable.</p>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={onUndo} disabled={!history.length}>↶ Undo</Button>
           </div>
         </div>
-
-        <div class="panel">
-          <div class="card">
-            <div class="eyebrow">Current Split</div>
-            <div id="currentSplitLabel" class="mid mt6">Prologue</div>
-            <div class="row mt8">
-              <div id="historyCount" class="pill">0 splits logged</div>
-              <div id="modePill" class="pill">Lethal</div>
-            </div>
-            <button id="advanceCurrentBtn" class="btn primary full mt12">▶ Complete Current Split</button>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="compact">
-            <div class="card">
-              <div class="eyebrow">Overall</div>
-              <div id="overallPercent" class="big">0%</div>
-              <div class="bar"><span id="overallBar" style="width:0%"></span></div>
-            </div>
-
-            <div class="card">
-              <div class="eyebrow">Act 1</div>
-              <div id="act1SummaryValue" class="big">0%</div>
-              <div class="bar"><span id="act1SummaryBar" class="barBlue" style="width:0%"></span></div>
-            </div>
-
-            <div class="card">
-              <div class="eyebrow">Pace</div>
-              <div id="pacePill" class="mid mt6">On fresh air</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <button id="settingsToggle" class="btn full">⚙ Show Settings</button>
-          <div id="settingsPanel" class="settings">
-            <div class="fields">
-              <div class="field">
-                <label for="difficultySelect">Difficulty</label>
-                <select id="difficultySelect">
-                  <option value="Lethal">Lethal</option>
-                  <option value="Easy">Easy</option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="act1TargetMinutes">Act 1 target minutes</label>
-                <input id="act1TargetMinutes" type="number" value="180" />
-              </div>
-
-              <div class="row">
-                <button id="resetBtn" class="btn danger">↺ Reset</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="stack">
-        <div class="goalsQueue">
-          <div class="panel">
-            <div class="mainTop">
-              <div class="card">
-                <div class="eyebrow">Act 1 Quota</div>
-                <div id="act1QuotaText" class="mid mt8">0/22 🦊 · 0/9 🍑 · 0/6 🎍 · 0/8 🎼 · 0/7 ⛩️</div>
-              </div>
-
-              <div class="card">
-                <div class="eyebrow">Misc Checklist</div>
-                <label class="row mt10 start">
-                  <input id="dirgeCheckbox" type="checkbox" />
-                  <span>🎵 Dirge of the Fallen</span>
-                </label>
-              </div>
-            </div>
-
-            <div class="phaseBox">
-              <div class="eyebrow">Active Objective Set</div>
-              <div id="activePhaseName" class="mid mt6">Legacy All</div>
-              <div id="activePhaseNote" class="objectiveText">Fallback for older split files with no phase markers.</div>
-              <div id="visibleObjectives" class="visibleList"></div>
-            </div>
-
-            <div class="objectiveNote">
-              <div class="eyebrow">Current Objective Note</div>
-              <div id="currentObjectiveText" class="objectiveText">No note for this split yet.</div>
-            </div>
-
-            <div class="eyebrow mt10">Tracked Totals</div>
-            <div id="progressGrid" class="progressGrid"></div>
-          </div>
-
-          <div class="panel">
-            <div class="row between mb10">
-              <div>
-                <div class="mid">Split Queue</div>
-                <div class="subtitle">Only current split is clickable.</div>
-              </div>
-              <div id="queuePill" class="pill">0 total splits</div>
-            </div>
-
-            <div class="queueWrap">
-              <div id="splitButtons" class="splitList"></div>
-
-              <div class="card">
-                <div class="row between">
-                  <div class="eyebrow">Split History</div>
-                  <div id="historySaved" class="subtitle">0 saved</div>
+      </div>
+      <div className="space-y-4 p-5">
+        <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
+          {splits.map((split, index) => {
+            const done = index < currentSplitIndex;
+            const active = index === currentSplitIndex;
+            const marker = split.isPhaseStart && split.phaseId && PHASES[split.phaseId] ? ` | ▶ ${PHASES[split.phaseId].label}` : "";
+            const autoSummary = Object.entries(split.auto || {}).map(([k, v]) => `${COUNTER_DEFS[k]?.icon || "?"}${v}`).join(" · ") || "No auto progress";
+            return (
+              <button
+                key={split.id || `${split.label}-${index}`}
+                disabled={!active}
+                onClick={() => onAdvance(index)}
+                className={`rounded-2xl border px-4 py-3 text-left transition ${active ? "border-blue-400/30 bg-blue-500 text-white" : done ? "border-emerald-400/20 bg-emerald-500/15 text-emerald-50" : "border-white/10 bg-white/5 text-white/70"}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-semibold">{done ? "✅ " : active ? "▶️ " : "• "}{split.label}</div>
+                    <div className="mt-1 text-xs opacity-75">{autoSummary}{marker}</div>
+                  </div>
+                  <span>›</span>
                 </div>
-                <div id="historyList" class="history mt8"></div>
-              </div>
-            </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="overflow-hidden rounded-2xl border border-white/10">
+          <div className="grid grid-cols-[1.2fr_1fr_1fr] bg-white/5 px-4 py-3 text-xs uppercase tracking-[0.2em] text-white/55">
+            <div>Split</div>
+            <div>Cumulative</div>
+            <div>Segment</div>
+          </div>
+          <div className="max-h-[320px] overflow-auto">
+            {!history.length ? (
+              <div className="px-4 py-6 text-sm text-white/55">No split history yet.</div>
+            ) : (
+              history.map((entry) => (
+                <div key={`${entry.label}-${entry.at}`} className="grid grid-cols-[1.2fr_1fr_1fr] border-t border-white/5 px-4 py-3 text-sm">
+                  <div>{entry.label}</div>
+                  <div className="font-mono text-emerald-400">{formatMs(entry.cumulativeMs)}</div>
+                  <div className="font-mono text-white/80">{formatMs(entry.segmentMs)}</div>
+                </div>
+              ))
+            )}
           </div>
         </div>
-      </section>
-    </main>
-  </div>
+      </div>
+    </Panel>
+  );
+}
 
-  <script src="./controller.js"></script>
-</body>
-</html>
+function SplitEditorModal({
+  open,
+  onClose,
+  splits,
+  setSplits,
+  onSave,
+  onReset,
+  onExport,
+}) {
+  if (!open) return null;
+
+  const setSplit = (index, patch) => {
+    setSplits((prev) => prev.map((split, i) => (i === index ? { ...split, ...patch } : split)));
+  };
+
+  const setAuto = (index, key, value) => {
+    setSplits((prev) => prev.map((split, i) => {
+      if (i !== index) return split;
+      const next = { ...(split.auto || {}) };
+      const normalized = clamp(Number(value || 0), 0, COUNTER_DEFS[key].max);
+      if (!normalized) delete next[key];
+      else next[key] = normalized;
+      return { ...split, auto: next };
+    }));
+  };
+
+  const move = (index, dir) => {
+    setSplits((prev) => {
+      const target = index + dir;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = clone(prev);
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const insertAfter = (index) => {
+    setSplits((prev) => {
+      const label = `New Split ${index + 2}`;
+      const idBase = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `split-${index + 2}`;
+      let id = idBase;
+      let n = 2;
+      const existing = new Set(prev.map((item) => item.id));
+      while (existing.has(id)) {
+        id = `${idBase}-${n}`;
+        n += 1;
+      }
+      const next = clone(prev);
+      next.splice(index + 1, 0, normalizeSplit({ id, label }));
+      return next;
+    });
+  };
+
+  const addSplit = () => {
+    setSplits((prev) => {
+      const label = `New Split ${prev.length + 1}`;
+      const id = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      return [...prev, normalizeSplit({ id, label })];
+    });
+  };
+
+  const removeSplit = (index) => {
+    setSplits((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
+  };
+
+  const phaseOptions = Object.entries(PHASES).filter(([id]) => id !== "legacy_all");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div className="max-h-[92vh] w-full max-w-7xl overflow-auto rounded-3xl border border-white/10 bg-[#0b1020] shadow-2xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-white/10 bg-[#0b1020]/95 p-4 backdrop-blur">
+          <div>
+            <h2 className="text-2xl font-bold">Split Editor</h2>
+            <p className="mt-1 text-sm text-white/60">Edit labels, notes, phase markers, and auto-progress values.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={addSplit}>＋ Add Split</Button>
+            <Button onClick={onExport}>⬇ Export Splits</Button>
+            <Button onClick={onReset}>Reset</Button>
+            <Button onClick={onClose}>Close</Button>
+            <Button kind="primary" onClick={onSave}>Save Split Setup</Button>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-4">
+          {splits.map((split, index) => (
+            <div key={`${split.id}-${index}`} className="grid gap-3 rounded-3xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="text-xs uppercase tracking-[0.2em] text-white/55">Split {index + 1}</div>
+                <div className="flex flex-wrap gap-2">
+                  <Button className="px-3 py-2" disabled={index === 0} onClick={() => move(index, -1)}>↑</Button>
+                  <Button className="px-3 py-2" disabled={index === splits.length - 1} onClick={() => move(index, 1)}>↓</Button>
+                  <Button className="px-3 py-2" onClick={() => insertAfter(index)}>＋</Button>
+                  <Button kind="danger" className="px-3 py-2" disabled={splits.length <= 1} onClick={() => removeSplit(index)}>Remove</Button>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-[240px_1fr]">
+                <div className="grid gap-2">
+                  <label className="text-xs uppercase tracking-[0.16em] text-white/55">Split label</label>
+                  <input value={split.label} onChange={(e) => setSplit(index, { label: e.target.value })} className="rounded-2xl border border-white/10 bg-black/30 px-4 py-2 text-white outline-none" />
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-xs uppercase tracking-[0.16em] text-white/55">Split id</label>
+                  <input value={split.id} disabled className="rounded-2xl border border-white/10 bg-black/20 px-4 py-2 text-white/55 outline-none" />
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-xs uppercase tracking-[0.16em] text-white/55">Objective note</label>
+                <textarea value={split.note || ""} onChange={(e) => setSplit(index, { note: e.target.value })} className="min-h-[84px] rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none" />
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-2">
+                  <label className="text-xs uppercase tracking-[0.16em] text-white/55">Phase start marker</label>
+                  <select value={split.phaseId || ""} onChange={(e) => setSplit(index, { phaseId: e.target.value })} className="rounded-2xl border border-white/10 bg-black/30 px-4 py-2 text-white outline-none">
+                    <option value="">No phase change</option>
+                    {phaseOptions.map(([id, phase]) => <option key={id} value={id}>{phase.label}</option>)}
+                  </select>
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-xs uppercase tracking-[0.16em] text-white/55">Apply phase marker here</label>
+                  <select value={split.isPhaseStart ? "true" : "false"} onChange={(e) => setSplit(index, { isPhaseStart: e.target.value === "true" })} className="rounded-2xl border border-white/10 bg-black/30 px-4 py-2 text-white outline-none">
+                    <option value="false">No</option>
+                    <option value="true">Yes</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {Object.entries(COUNTER_DEFS).map(([key, def]) => (
+                  <div key={key} className="grid gap-2 rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <label className="text-xs uppercase tracking-[0.14em] text-white/55">{def.icon} {def.label}</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={def.max}
+                      value={split.auto?.[key] || 0}
+                      onChange={(e) => setAuto(index, key, e.target.value)}
+                      className="rounded-2xl border border-white/10 bg-black/30 px-4 py-2 text-white outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function GhostOfTsushimaOverlay() {
+  const [difficulty, setDifficulty] = useState("Lethal");
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+  const [counters, setCounters] = useState(buildCounters);
+  const [splits, setSplits] = useState(normalizeSplits(DEFAULT_SPLITS));
+  const [currentSplitIndex, setCurrentSplitIndex] = useState(0);
+  const [history, setHistory] = useState([]);
+  const [plannedAct1Minutes, setPlannedAct1Minutes] = useState(180);
+  const [activeTab, setActiveTab] = useState("progress");
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorDraft, setEditorDraft] = useState(normalizeSplits(DEFAULT_SPLITS));
+  const [miscChecks, setMiscChecks] = useState({ dirge: false });
+
+  const startedAtRef = useRef(null);
+  const offsetMsRef = useRef(0);
+
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      setElapsedMs(parsed.elapsedMs || 0);
+      setCurrentSplitIndex(parsed.currentSplitIndex || 0);
+      setHistory(parsed.history || []);
+      setCounters(parsed.counters || buildCounters());
+      setDifficulty(parsed.difficulty || "Lethal");
+      setSplits(normalizeSplits(parsed.splits || DEFAULT_SPLITS));
+      setMiscChecks({ dirge: false, ...(parsed.miscChecks || {}) });
+      offsetMsRef.current = parsed.elapsedMs || 0;
+    } catch (e) {
+      console.error("Overlay load failed", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ elapsedMs, currentSplitIndex, history, counters, difficulty, splits, miscChecks }));
+  }, [elapsedMs, currentSplitIndex, history, counters, difficulty, splits, miscChecks]);
+
+  useEffect(() => {
+    if (!isRunning) return;
+    startedAtRef.current = Date.now() - offsetMsRef.current;
+    const id = window.setInterval(() => {
+      if (startedAtRef.current) setElapsedMs(Date.now() - startedAtRef.current);
+    }, 250);
+    return () => window.clearInterval(id);
+  }, [isRunning]);
+
+  const activeSplit = splits[currentSplitIndex] || splits[splits.length - 1] || normalizeSplit({ label: "No split" });
+
+  const overallPercent = useMemo(() => {
+    const total = Object.keys(COUNTER_DEFS).reduce((sum, key) => sum + counters[key].value, 0) + (miscChecks.dirge ? 1 : 0);
+    const max = Object.keys(COUNTER_DEFS).reduce((sum, key) => sum + COUNTER_DEFS[key].max, 0) + 1;
+    return max ? Math.round((total / max) * 100) : 0;
+  }, [counters, miscChecks]);
+
+  const act1Percent = useMemo(() => {
+    const totalDone = ACT1_KEYS.reduce((sum, key) => sum + Math.min(counters[key].value, COUNTER_DEFS[key].act1), 0);
+    const totalMax = ACT1_KEYS.reduce((sum, key) => sum + COUNTER_DEFS[key].act1, 0);
+    return totalMax ? Math.round((totalDone / totalMax) * 100) : 0;
+  }, [counters]);
+
+  const act1QuotaText = ACT1_KEYS.map((key) => `${Math.min(counters[key].value, COUNTER_DEFS[key].act1)}/${COUNTER_DEFS[key].act1} ${COUNTER_DEFS[key].icon}`).join(" · ");
+
+  const runPace = useMemo(() => {
+    const plannedMs = plannedAct1Minutes * 60 * 1000;
+    if (elapsedMs === 0) return "On fresh air";
+    const diff = elapsedMs - plannedMs;
+    if (Math.abs(diff) < 60000) return "On pace";
+    return diff < 0 ? `${formatMs(Math.abs(diff))} ahead` : `${formatMs(diff)} behind`;
+  }, [elapsedMs, plannedAct1Minutes]);
+
+  const activePhaseId = useMemo(() => {
+    let active = "legacy_all";
+    for (let i = 0; i <= currentSplitIndex && i < splits.length; i += 1) {
+      const split = splits[i];
+      if (split?.isPhaseStart && split.phaseId && PHASES[split.phaseId]) active = split.phaseId;
+    }
+    return active;
+  }, [splits, currentSplitIndex]);
+
+  const activePhase = PHASES[activePhaseId] || PHASES.legacy_all;
+
+  const updateCounter = (key, next) => {
+    setCounters((prev) => ({ ...prev, [key]: { ...prev[key], value: clamp(next, 0, prev[key].max), manualDelta: prev[key].manualDelta + (clamp(next, 0, prev[key].max) - prev[key].value) } }));
+  };
+
+  const toggleTimer = () => {
+    if (isRunning) {
+      offsetMsRef.current = elapsedMs;
+      setIsRunning(false);
+      return;
+    }
+    offsetMsRef.current = elapsedMs;
+    setIsRunning(true);
+  };
+
+  const resetRun = () => {
+    setIsRunning(false);
+    setElapsedMs(0);
+    offsetMsRef.current = 0;
+    startedAtRef.current = null;
+    setCurrentSplitIndex(0);
+    setHistory([]);
+    setCounters(buildCounters());
+    setDifficulty("Lethal");
+    setMiscChecks({ dirge: false });
+    setActiveTab("progress");
+  };
+
+  const advanceSplit = (index) => {
+    if (index !== currentSplitIndex) return;
+    const split = splits[index];
+    const lastCumulative = history.length ? history[history.length - 1].cumulativeMs : 0;
+    const segmentMs = Math.max(0, elapsedMs - lastCumulative);
+    setCounters((prev) => {
+      const next = clone(prev);
+      Object.entries(split.auto || {}).forEach(([key, value]) => {
+        next[key].value = clamp(next[key].value + value, 0, next[key].max);
+      });
+      return next;
+    });
+    setHistory((prev) => [...prev, { splitIndex: index, label: split.label, cumulativeMs: elapsedMs, segmentMs, autoApplied: split.auto || {}, at: new Date().toISOString() }]);
+    setCurrentSplitIndex((prev) => clamp(prev + 1, 0, splits.length - 1));
+  };
+
+  const undoLastSplit = () => {
+    setHistory((prev) => {
+      if (!prev.length) return prev;
+      const next = [...prev];
+      const removed = next.pop();
+      setCounters((currentCounters) => {
+        const reverted = clone(currentCounters);
+        Object.entries(removed.autoApplied || {}).forEach(([key, value]) => {
+          reverted[key].value = clamp(reverted[key].value - value, 0, reverted[key].max);
+        });
+        return reverted;
+      });
+      setCurrentSplitIndex(removed.splitIndex);
+      return next;
+    });
+  };
+
+  const handleImport = (file, type = "times") => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result));
+        if (type === "times") {
+          setElapsedMs(parsed.elapsedMs || 0);
+          offsetMsRef.current = parsed.elapsedMs || 0;
+          setCurrentSplitIndex(parsed.currentSplitIndex || 0);
+          setHistory(parsed.history || []);
+          setCounters(parsed.counters || buildCounters());
+          setDifficulty(parsed.difficulty || "Lethal");
+          setMiscChecks({ dirge: false, ...(parsed.miscChecks || {}) });
+          setIsRunning(false);
+          return;
+        }
+        const imported = Array.isArray(parsed) ? parsed : parsed.splits;
+        if (!Array.isArray(imported) || !imported.length) throw new Error("Invalid splits payload");
+        setSplits(normalizeSplits(imported));
+        setCurrentSplitIndex(0);
+        setHistory([]);
+      } catch (e) {
+        console.error(e);
+        alert(`Could not import ${type} JSON.`);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const openEditor = () => {
+    setEditorDraft(normalizeSplits(splits));
+    setEditorOpen(true);
+  };
+
+  const saveEditor = () => {
+    setSplits(normalizeSplits(editorDraft));
+    setCurrentSplitIndex((prev) => clamp(prev, 0, Math.max(0, editorDraft.length - 1)));
+    setEditorOpen(false);
+  };
+
+  const tabButton = (id, label) => (
+    <button onClick={() => setActiveTab(id)} className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${activeTab === id ? "bg-white text-black" : "bg-black/30 text-white hover:bg-white/10"}`}>
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.16),_transparent_35%),linear-gradient(135deg,#0b1020,#121826_45%,#0d1324)] p-6 text-white">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
+        <Panel className="overflow-hidden">
+          <div className="border-b border-white/10 p-5 pb-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Ghost of Tsushima Platinum</h1>
+                <p className="mt-1 text-sm text-white/65">Live route overlay with splits, phases, quotas, and persistent run data.</p>
+              </div>
+              <span className={`rounded-full px-3 py-1 text-sm ${difficulty === "Lethal" ? "bg-red-500/90" : "bg-emerald-500/90"}`}>{difficulty}</span>
+            </div>
+          </div>
+
+          <div className="space-y-5 p-5">
+            <div className="rounded-3xl border border-emerald-400/30 bg-emerald-500/10 p-5 text-center shadow-lg shadow-emerald-900/20">
+              <div className="mb-2 flex items-center justify-center gap-2 text-emerald-300">
+                <span>⏱️</span>
+                <span className="text-sm uppercase tracking-[0.25em]">Run Timer</span>
+              </div>
+              <div className="font-mono text-5xl font-black tracking-tight text-emerald-400">{formatMs(elapsedMs)}</div>
+              <div className="mt-3 flex items-center justify-center gap-2">
+                <Button kind="primary" onClick={toggleTimer}>{isRunning ? "⏸ Pause" : "▶ Start"}</Button>
+                <Button onClick={undoLastSplit} disabled={!history.length}>↶ Undo</Button>
+                <Button onClick={resetRun}>↺ Reset</Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="mb-1 text-xs uppercase tracking-[0.2em] text-white/55">Overall</div>
+                <div className="text-3xl font-bold">{overallPercent}%</div>
+                <div className="mt-3 h-2 rounded-full bg-white/10"><div className="h-2 rounded-full bg-emerald-400" style={{ width: `${overallPercent}%` }} /></div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="mb-1 text-xs uppercase tracking-[0.2em] text-white/55">Current Split</div>
+                <div className="text-xl font-bold">{activeSplit.label}</div>
+                <div className="mt-2 text-sm text-white/60">{history.length} split{history.length === 1 ? "" : "s"} logged</div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="mb-2 text-xs uppercase tracking-[0.2em] text-white/55">Active Objective Set</div>
+              <div className="text-lg font-bold">{activePhase.label}</div>
+              <div className="mt-2 text-sm text-white/70">{activePhase.note}</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {activePhase.visible.map((key) => (
+                  <span key={key} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/80">
+                    {key === "dirge" ? "🎵 Dirge" : `${COUNTER_DEFS[key]?.icon || "?"} ${COUNTER_DEFS[key]?.label || key}`}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-white/65">Difficulty</div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm ${difficulty === "Easy" ? "text-white" : "text-white/40"}`}>Easy</span>
+                  <button onClick={() => setDifficulty((prev) => (prev === "Lethal" ? "Easy" : "Lethal"))} className={`relative h-7 w-14 rounded-full transition ${difficulty === "Lethal" ? "bg-red-500" : "bg-emerald-500"}`}>
+                    <span className={`absolute top-1 h-5 w-5 rounded-full bg-white transition ${difficulty === "Lethal" ? "left-8" : "left-1"}`} />
+                  </button>
+                  <span className={`text-sm ${difficulty === "Lethal" ? "text-white" : "text-white/40"}`}>Lethal</span>
+                </div>
+              </div>
+              <label className="mt-3 flex items-center gap-3 text-sm text-white/75">
+                <input type="checkbox" checked={miscChecks.dirge} onChange={(e) => setMiscChecks({ dirge: e.target.checked })} />
+                🎵 Dirge of the Fallen
+              </label>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Button onClick={() => exportJson({ elapsedMs, currentSplitIndex, history, counters, difficulty, splits, miscChecks }, "ghost-of-tsushima-times")}>⬇ Export Times</Button>
+              <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10">
+                ⬆ Import Times
+                <input type="file" accept="application/json" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleImport(file, "times"); }} />
+              </label>
+            </div>
+          </div>
+        </Panel>
+
+        <div className="space-y-6">
+          <div className="grid w-full grid-cols-4 gap-2 rounded-2xl bg-black/30 p-2">
+            {tabButton("progress", "Progress")}
+            {tabButton("splits", "Splits")}
+            {tabButton("act1", "Act 1")}
+            {tabButton("tools", "Tools")}
+          </div>
+
+          {activeTab === "progress" && (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {Object.entries(counters).map(([key, counter]) => (
+                <CounterCard key={key} counter={counter} onChange={(next) => updateCounter(key, next)} />
+              ))}
+            </div>
+          )}
+
+          {activeTab === "splits" && (
+            <SplitQueue splits={splits} currentSplitIndex={currentSplitIndex} history={history} onAdvance={advanceSplit} onUndo={undoLastSplit} />
+          )}
+
+          {activeTab === "act1" && (
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+              <Panel>
+                <div className="p-5 pb-0"><h2 className="text-xl font-bold">Act 1 quota tracker</h2></div>
+                <div className="space-y-4 p-5">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-2 flex items-center justify-between"><span className="text-sm uppercase tracking-[0.2em] text-white/55">Act 1 completion</span><span className="text-2xl font-bold">{act1Percent}%</span></div>
+                    <div className="h-3 rounded-full bg-white/10"><div className="h-3 rounded-full bg-blue-400" style={{ width: `${act1Percent}%` }} /></div>
+                    <div className="mt-3 text-sm text-white/70">{act1QuotaText}</div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div className="mb-3 text-white">Planned Act 1 time</div>
+                      <input type="number" value={plannedAct1Minutes} onChange={(e) => setPlannedAct1Minutes(Number(e.target.value || 0))} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-2 text-white outline-none" />
+                      <div className="mt-3 text-sm text-white/65">Used for a quick ahead/behind pace check while testing route drafts.</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div className="mb-3 text-white">Pace read</div>
+                      <div className="text-2xl font-bold">{runPace}</div>
+                      <div className="mt-3 text-sm text-white/65">This is rough by design. Final math should come after Act 1 route timings are locked.</div>
+                    </div>
+                  </div>
+                </div>
+              </Panel>
+
+              <Panel>
+                <div className="p-5 pb-0"><h2 className="text-xl font-bold">Current split note</h2></div>
+                <div className="space-y-3 p-5 text-sm text-white/75">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 whitespace-pre-wrap">{activeSplit.note || "No note for this split yet."}</div>
+                </div>
+              </Panel>
+            </div>
+          )}
+
+          {activeTab === "tools" && (
+            <Panel>
+              <div className="p-5 pb-0"><h2 className="text-xl font-bold">Split tools</h2></div>
+              <div className="grid gap-4 p-5 text-sm text-white/75 md:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="mb-3 font-semibold text-white">Split editor</div>
+                  <div className="mb-4">Edit split names, notes, auto-progress, and phase transitions in one place.</div>
+                  <Button onClick={openEditor}>🧩 Open Split Editor</Button>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="mb-3 font-semibold text-white">Import / export splits</div>
+                  <div className="mb-4">Keep presets and backups separate from run time exports.</div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={() => exportJson({ splits }, "ghost-of-tsushima-splits")}>⬇ Export Splits</Button>
+                    <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10">
+                      ⬆ Import Splits
+                      <input type="file" accept="application/json" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleImport(file, "splits"); }} />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </Panel>
+          )}
+        </div>
+      </div>
+
+      <SplitEditorModal
+        open={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        splits={editorDraft}
+        setSplits={setEditorDraft}
+        onSave={saveEditor}
+        onReset={() => setEditorDraft(normalizeSplits(DEFAULT_SPLITS))}
+        onExport={() => exportJson({ splits: editorDraft }, "ghost-of-tsushima-split-backup")}
+      />
+    </div>
+  );
+}
