@@ -1,54 +1,19 @@
-const STORAGE_KEY = "got_platinum_overlay_html_v6";
-
-const COUNTER_DEFS = {
-  trophies: { label: "Trophies", icon: "🏆", max: 52, act1: 0 },
-  inari: { label: "Inari Shrines", icon: "🦊", max: 49, act1: 22 },
-  hotsprings: { label: "Hot Springs", icon: "🍑", max: 18, act1: 9 },
-  bamboo: { label: "Bamboo", icon: "🎍", max: 16, act1: 6 },
-  haiku: { label: "Haiku", icon: "🎼", max: 19, act1: 8 },
-  records: { label: "Records", icon: "📜", max: 20, act1: 0 },
-  artifacts: { label: "Artifacts", icon: "🛡️", max: 20, act1: 0 },
-  shrines: { label: "Shinto Shrines", icon: "⛩️", max: 16, act1: 7 },
-  crickets: { label: "Crickets", icon: "🦗", max: 5, act1: 0 },
-  hiddenaltars: { label: "Hidden Altars", icon: "🙏", max: 10, act1: 0 },
-  duels: { label: "Duels", icon: "⚔️", max: 25, act1: 0 },
-  territories: { label: "Mongol Territories", icon: "🏕️", max: 56, act1: 0 },
-  mythictales: { label: "Mythic Tales", icon: "📘", max: 7, act1: 0 },
-  sidetales: { label: "Side Tales", icon: "📝", max: 61, act1: 0 },
-  monochrome: { label: "Monochrome", icon: "🎨", max: 2, act1: 0 },
-  cooper: { label: "Cooper", icon: "🦝", max: 3, act1: 0 }
-};
-
-const clone = (obj) => JSON.parse(JSON.stringify(obj));
-const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
-const formatMs = (ms) => {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  return `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-};
-
-const buildDefaultCounters = () => {
-  const out = {};
-  Object.entries(COUNTER_DEFS).forEach(([k, v]) => {
-    out[k] = { ...v, value: 0, manualDelta: 0 };
-  });
-  return out;
-};
-
-const normalizeSplit = (s) => ({
-  id: "",
-  label: "",
-  note: "",
-  phaseId: "",
-  isPhaseStart: false,
-  auto: {},
-  ...s,
-});
-
-const normalizeSplits = (splits, fallback = []) =>
-  (Array.isArray(splits) && splits.length ? splits : fallback).map(normalizeSplit);
-
-let PHASES = {};
-let SPLITS = [];
+import {
+  STORAGE_KEY,
+  COUNTER_DEFS,
+  PHASES,
+  buildDefaultCounters,
+  normalizeSplits,
+  computeOverallPercent,
+  computeAct1Percent,
+  getAct1QuotaText,
+  getActivePhaseId,
+  applyAutoProgress,
+  clamp,
+  formatMs,
+  exportJson
+} from "./data.js";
+import { createSplitEditor } from "./split-editor.js";
 
 const state = {
   elapsedMs: 0,
@@ -59,14 +24,16 @@ const state = {
   settings: {
     difficulty: "Lethal",
     act1TargetMinutes: 180,
-    showSettings: false,
+    showSettings: false
   },
   remoteCode: "",
   offsetMs: 0,
   startTs: null,
   intervalId: null,
-  miscChecks: { dirge: false },
+  miscChecks: { dirge: false }
 };
+
+let SPLITS = [];
 
 const els = {
   difficultyBadge: document.getElementById("difficultyBadge"),
@@ -84,6 +51,12 @@ const els = {
   settingsPanel: document.getElementById("settingsPanel"),
   difficultySelect: document.getElementById("difficultySelect"),
   act1TargetMinutes: document.getElementById("act1TargetMinutes"),
+  remoteCode: document.getElementById("remoteCode"),
+  openSplitEditorBtn: document.getElementById("openSplitEditorBtn"),
+  exportTimesBtn: document.getElementById("exportTimesBtn"),
+  importTimesInput: document.getElementById("importTimesInput"),
+  exportSplitsBtn: document.getElementById("exportSplitsBtn"),
+  importSplitsInput: document.getElementById("importSplitsInput"),
   resetBtn: document.getElementById("resetBtn"),
   runTitle: document.getElementById("runTitle"),
   pacePill: document.getElementById("pacePill"),
@@ -98,8 +71,18 @@ const els = {
   activePhaseName: document.getElementById("activePhaseName"),
   activePhaseNote: document.getElementById("activePhaseNote"),
   visibleObjectives: document.getElementById("visibleObjectives"),
-  dirgeCheckbox: document.getElementById("dirgeCheckbox"),
+  splitEditorOverlay: document.getElementById("splitEditorOverlay"),
+  splitEditorGrid: document.getElementById("splitEditorGrid"),
+  addSplitEditorBtn: document.getElementById("addSplitEditorBtn"),
+  downloadSplitBackupBtn: document.getElementById("downloadSplitBackupBtn"),
+  copySplitBackupBtn: document.getElementById("copySplitBackupBtn"),
+  resetSplitEditorBtn: document.getElementById("resetSplitEditorBtn"),
+  closeSplitEditorBtn: document.getElementById("closeSplitEditorBtn"),
+  saveSplitEditorBtn: document.getElementById("saveSplitEditorBtn"),
+  dirgeCheckbox: document.getElementById("dirgeCheckbox")
 };
+
+let splitEditor = null;
 
 function save() {
   localStorage.setItem(
@@ -112,7 +95,7 @@ function save() {
       settings: state.settings,
       remoteCode: state.remoteCode,
       splits: SPLITS,
-      miscChecks: state.miscChecks,
+      miscChecks: state.miscChecks
     })
   );
 }
@@ -131,7 +114,7 @@ function loadLocalState() {
       difficulty: "Lethal",
       act1TargetMinutes: 180,
       showSettings: false,
-      ...(parsed.settings || {}),
+      ...(parsed.settings || {})
     };
     state.remoteCode = parsed.remoteCode || "";
     state.miscChecks = { dirge: false, ...(parsed.miscChecks || {}) };
@@ -147,53 +130,18 @@ function normalizeSplitIndex() {
   state.currentSplitIndex = clamp(state.currentSplitIndex, 0, Math.max(0, SPLITS.length - 1));
 }
 
-function getActivePhaseId() {
-  let active = "legacy_all";
-  for (let i = 0; i <= state.currentSplitIndex && i < SPLITS.length; i += 1) {
-    const split = SPLITS[i];
-    if (split?.isPhaseStart && split.phaseId && PHASES[split.phaseId]) active = split.phaseId;
-  }
-  return active;
-}
-
-function computeOverallPercent() {
-  const total =
-    Object.keys(COUNTER_DEFS).reduce((sum, key) => sum + state.counters[key].value, 0) +
-    (state.miscChecks.dirge ? 1 : 0);
-  const max =
-    Object.keys(COUNTER_DEFS).reduce((sum, key) => sum + COUNTER_DEFS[key].max, 0) + 1;
-  return max ? Math.round((total / max) * 100) : 0;
-}
-
-function computeAct1Percent() {
-  const keys = Object.keys(COUNTER_DEFS).filter((key) => COUNTER_DEFS[key].act1 > 0);
-  const done = keys.reduce(
-    (sum, key) => sum + Math.min(state.counters[key].value, COUNTER_DEFS[key].act1),
-    0
-  );
-  const max = keys.reduce((sum, key) => sum + COUNTER_DEFS[key].act1, 0);
-  return max ? Math.round((done / max) * 100) : 0;
-}
-
-function applyAutoProgress(counters, deltaMap, direction) {
-  const next = clone(counters);
-  Object.entries(deltaMap || {}).forEach(([key, value]) => {
-    next[key].value = clamp(next[key].value + value * direction, 0, next[key].max);
-  });
-  return next;
-}
-
-function renderVisibleObjectives() {
-  const phase = PHASES[getActivePhaseId()] || PHASES.legacy_all;
-  els.activePhaseName.textContent = phase?.label || "Legacy All";
-  els.activePhaseNote.textContent = phase?.note || "No phase note.";
+function renderVisibleObjectives(phaseId) {
+  const phase = PHASES[phaseId] || PHASES.legacy_all;
+  els.activePhaseName.textContent = phase.label;
+  els.activePhaseNote.textContent = phase.note || "No phase note.";
   els.visibleObjectives.innerHTML = "";
 
-  (phase?.visible || []).forEach((key) => {
+  phase.visible.forEach((key) => {
     const chip = document.createElement("div");
     chip.className = "miniChip";
-    chip.textContent =
-      key === "dirge" ? "🎵 Dirge" : `${COUNTER_DEFS[key]?.icon || "?"} ${COUNTER_DEFS[key]?.label || key}`;
+    if (key === "dirge") chip.textContent = "🎵 Dirge";
+    else if (COUNTER_DEFS[key]) chip.textContent = `${COUNTER_DEFS[key].icon} ${COUNTER_DEFS[key].label}`;
+    else return;
     els.visibleObjectives.appendChild(chip);
   });
 }
@@ -205,14 +153,15 @@ function renderCounters() {
     const card = document.createElement("div");
     card.className = "counter";
     card.innerHTML = `
-      <div class="counterSide"><button data-key="${key}" data-diff="-1">−</button></div>
+      <div class="counterSide"><button data-key="${key}" data-diff="-1" aria-label="Decrease ${counter.label}">−</button></div>
       <div class="counterCenter">
         <div class="counterLabel">${counter.label}</div>
         <div class="counterIcon">${counter.icon}</div>
         <div class="counterAmt">${counter.value}/${counter.max}</div>
         <div class="counterPct">${percent}%</div>
+        ${counter.manualDelta !== 0 ? `<span class="manual">${counter.manualDelta > 0 ? "+" : ""}${counter.manualDelta} manual</span>` : ""}
       </div>
-      <div class="counterSide"><button data-key="${key}" data-diff="1">+</button></div>
+      <div class="counterSide"><button data-key="${key}" data-diff="1" aria-label="Increase ${counter.label}">+</button></div>
     `;
     els.progressGrid.appendChild(card);
   });
@@ -221,11 +170,8 @@ function renderCounters() {
     btn.addEventListener("click", () => {
       const key = btn.dataset.key;
       const diff = Number(btn.dataset.diff);
-      state.counters[key].value = clamp(
-        state.counters[key].value + diff,
-        0,
-        state.counters[key].max
-      );
+      state.counters[key].value = clamp(state.counters[key].value + diff, 0, state.counters[key].max);
+      state.counters[key].manualDelta += diff;
       render();
       save();
     });
@@ -253,7 +199,15 @@ function renderSplits() {
         .map(([k, v]) => `${COUNTER_DEFS[k]?.icon || "?"}${v}`)
         .join(" · ") || "No auto progress";
 
-    btn.innerHTML = `<div>${done ? "✅" : active ? "▶️" : "•"}</div><div><div>${split.label}</div><div class="splitSub">${autoSummary}${marker}</div></div><div>›</div>`;
+    btn.innerHTML = `
+      <div>${done ? "✅" : active ? "▶️" : "•"}</div>
+      <div>
+        <div>${split.label}</div>
+        <div class="splitSub">${autoSummary}${marker}</div>
+      </div>
+      <div>›</div>
+    `;
+
     btn.addEventListener("click", () => goSplit(i));
     els.splitButtons.appendChild(btn);
   });
@@ -271,22 +225,27 @@ function renderHistory() {
     return;
   }
 
-  state.history.forEach((r) => {
+  state.history.forEach((entry) => {
     const row = document.createElement("div");
     row.className = "historyRow";
-    row.innerHTML = `<div>${r.label}</div><div class="mono green">${formatMs(r.cumulativeMs)}</div><div class="mono">${formatMs(r.segmentMs)}</div>`;
+    row.innerHTML = `
+      <div>${entry.label}</div>
+      <div class="mono green">${formatMs(entry.cumulativeMs)}</div>
+      <div class="mono">${formatMs(entry.segmentMs)}</div>
+    `;
     els.historyList.appendChild(row);
   });
 }
 
 function render() {
   normalizeSplitIndex();
-  const current = SPLITS[state.currentSplitIndex] || SPLITS[SPLITS.length - 1] || { label: "No splits", note: "" };
-  const overall = computeOverallPercent();
-  const act1 = computeAct1Percent();
-  const quota = ["inari", "hotsprings", "bamboo", "haiku", "shrines"]
-    .map((key) => `${Math.min(state.counters[key].value, COUNTER_DEFS[key].act1)}/${COUNTER_DEFS[key].act1} ${COUNTER_DEFS[key].icon}`)
-    .join(" · ");
+
+  const current =
+    SPLITS[state.currentSplitIndex] || SPLITS[SPLITS.length - 1] || { label: "No splits", note: "" };
+
+  const overall = computeOverallPercent(state.counters, state.miscChecks);
+  const act1 = computeAct1Percent(state.counters);
+  const quota = getAct1QuotaText(state.counters);
   const diff = state.elapsedMs - state.settings.act1TargetMinutes * 60 * 1000;
   const pace =
     state.elapsedMs === 0
@@ -296,6 +255,8 @@ function render() {
       : diff < 0
       ? `${formatMs(Math.abs(diff))} ahead`
       : `${formatMs(diff)} behind`;
+
+  const phaseId = getActivePhaseId(SPLITS, state.currentSplitIndex);
 
   els.difficultyBadge.textContent = state.settings.difficulty;
   els.difficultyBadge.className = `badge ${state.settings.difficulty === "Lethal" ? "lethal" : "easy"}`;
@@ -315,12 +276,13 @@ function render() {
   els.settingsPanel.classList.toggle("open", state.settings.showSettings);
   els.difficultySelect.value = state.settings.difficulty;
   els.act1TargetMinutes.value = state.settings.act1TargetMinutes;
+  els.remoteCode.value = state.remoteCode;
   els.runTitle.textContent = `Ghost of Tsushima Platinum ${state.settings.difficulty}`;
   els.pacePill.textContent = pace;
   els.modePill.textContent = state.settings.difficulty;
   els.act1QuotaText.textContent = quota;
 
-  renderVisibleObjectives();
+  renderVisibleObjectives(phaseId);
   renderCounters();
   renderSplits();
   renderHistory();
@@ -358,7 +320,7 @@ function goSplit(index) {
     cumulativeMs: state.elapsedMs,
     segmentMs,
     autoApplied: split.auto,
-    at: new Date().toISOString(),
+    at: new Date().toISOString()
   });
 
   state.currentSplitIndex = clamp(state.currentSplitIndex + 1, 0, SPLITS.length - 1);
@@ -389,48 +351,158 @@ function resetRun() {
   save();
 }
 
+function importTimesJson(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(String(reader.result));
+      if (state.intervalId) clearInterval(state.intervalId);
+      state.elapsedMs = parsed.elapsedMs || 0;
+      state.offsetMs = state.elapsedMs;
+      state.running = false;
+      state.startTs = null;
+      state.intervalId = null;
+      state.counters = parsed.counters || buildDefaultCounters();
+      state.history = parsed.history || [];
+      state.currentSplitIndex = parsed.currentSplitIndex || 0;
+      state.miscChecks = { dirge: false, ...(parsed.miscChecks || {}) };
+      normalizeSplitIndex();
+      render();
+      save();
+    } catch {
+      alert("Could not import times JSON");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function importSplitsJson(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(String(reader.result));
+      const imported = Array.isArray(parsed) ? parsed : parsed.splits;
+      if (!Array.isArray(imported) || !imported.length) throw new Error("Invalid splits payload");
+      SPLITS = normalizeSplits(imported, SPLITS);
+      normalizeSplitIndex();
+      render();
+      save();
+    } catch {
+      alert("Could not import splits JSON");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function wireEditor() {
+  splitEditor = createSplitEditor({
+    overlayEl: els.splitEditorOverlay,
+    gridEl: els.splitEditorGrid,
+    addBtn: els.addSplitEditorBtn,
+    resetBtn: els.resetSplitEditorBtn,
+    closeBtn: els.closeSplitEditorBtn,
+    saveBtn: els.saveSplitEditorBtn,
+    downloadBtn: els.downloadSplitBackupBtn,
+    copyBtn: els.copySplitBackupBtn,
+    getSplits: () => SPLITS,
+    setSplits: (nextSplits) => {
+      SPLITS = normalizeSplits(nextSplits, SPLITS);
+    },
+    onAfterSave: () => {
+      normalizeSplitIndex();
+      render();
+      save();
+    }
+  });
+}
+
 async function init() {
   const [phasesRes, splitsRes] = await Promise.all([
     fetch("./data/ghost-of-tsushima/phases.json"),
-    fetch("./data/ghost-of-tsushima/default-splits.json"),
+    fetch("./data/ghost-of-tsushima/default-splits.json")
   ]);
 
   const phasesJson = await phasesRes.json();
   const splitsJson = await splitsRes.json();
 
-  PHASES = phasesJson.phases || {};
-  SPLITS = normalizeSplits(splitsJson.splits || []);
+  const importedPhases = phasesJson?.phases || {};
+  Object.assign(PHASES, importedPhases);
+
+  SPLITS = normalizeSplits(
+    Array.isArray(splitsJson) ? splitsJson : (splitsJson.splits || []),
+    SPLITS
+  );
 
   loadLocalState();
+  wireEditor();
+
+  els.startPauseBtn.addEventListener("click", toggleTimer);
+  els.undoBtn.addEventListener("click", undoSplit);
+  els.advanceCurrentBtn.addEventListener("click", () => goSplit(state.currentSplitIndex));
+  els.settingsToggle.addEventListener("click", () => {
+    state.settings.showSettings = !state.settings.showSettings;
+    render();
+    save();
+  });
+  els.difficultySelect.addEventListener("change", (e) => {
+    state.settings.difficulty = e.target.value;
+    render();
+    save();
+  });
+  els.act1TargetMinutes.addEventListener("input", (e) => {
+    state.settings.act1TargetMinutes = Number(e.target.value || 0);
+    render();
+    save();
+  });
+  els.remoteCode.addEventListener("input", (e) => {
+    state.remoteCode = e.target.value;
+    save();
+  });
+  els.dirgeCheckbox.addEventListener("change", (e) => {
+    state.miscChecks.dirge = e.target.checked;
+    render();
+    save();
+  });
+  els.openSplitEditorBtn.addEventListener("click", () => splitEditor.open());
+  els.exportTimesBtn.addEventListener("click", () =>
+    exportJson(
+      {
+        elapsedMs: state.elapsedMs,
+        currentSplitIndex: state.currentSplitIndex,
+        history: state.history,
+        counters: state.counters,
+        miscChecks: state.miscChecks,
+        splitNames: SPLITS.map((s) => s.label)
+      },
+      "got-times"
+    )
+  );
+  els.importTimesInput.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (file) importTimesJson(file);
+    e.target.value = "";
+  });
+  els.exportSplitsBtn.addEventListener("click", () =>
+    exportJson(
+      {
+        splits: SPLITS,
+        exportedAt: new Date().toISOString(),
+        source: "manual-split-export"
+      },
+      "got-splits"
+    )
+  );
+  els.importSplitsInput.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (file) importSplitsJson(file);
+    e.target.value = "";
+  });
+  els.resetBtn.addEventListener("click", resetRun);
+
   render();
 }
 
-els.startPauseBtn.addEventListener("click", toggleTimer);
-els.undoBtn.addEventListener("click", undoSplit);
-els.advanceCurrentBtn.addEventListener("click", () => goSplit(state.currentSplitIndex));
-els.settingsToggle.addEventListener("click", () => {
-  state.settings.showSettings = !state.settings.showSettings;
-  render();
-  save();
-});
-els.difficultySelect.addEventListener("change", (e) => {
-  state.settings.difficulty = e.target.value;
-  render();
-  save();
-});
-els.act1TargetMinutes.addEventListener("input", (e) => {
-  state.settings.act1TargetMinutes = Number(e.target.value || 0);
-  render();
-  save();
-});
-els.dirgeCheckbox.addEventListener("change", (e) => {
-  state.miscChecks.dirge = e.target.checked;
-  render();
-  save();
-});
-els.resetBtn.addEventListener("click", resetRun);
-
 init().catch((err) => {
   console.error("Init failed", err);
-  alert("Failed to load phases/splits JSON.");
+  alert("Failed to load controller JSON files.");
 });
