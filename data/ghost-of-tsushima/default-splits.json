@@ -1,115 +1,169 @@
 {
   "version": 1,
   "game": "ghost-of-tsushima",
-  "globalObjectives": ["trophies"],
-  "phases": {
-    "legacy_all": {
-      "label": "Legacy All",
-      "note": "Fallback for older split files with no phase markers.",
-      "visible": [
-        "trophies",
-        "inari",
-        "hotsprings",
-        "bamboo",
-        "haiku",
-        "shrines",
-        "records",
-        "artifacts",
-        "crickets",
-        "hiddenaltars",
-        "monochrome",
-        "dirge",
-        "cooper",
-        "sidetales",
-        "duels",
-        "territories",
-        "mythictales"
-      ]
+  "splits": [
+    {
+      "id": "prologue",
+      "label": "Prologue",
+      "note": "Block you fool, after prologue, do haiku. Photomode.",
+      "phaseId": "any_act1",
+      "isPhaseStart": true,
+      "auto": {
+        "trophies": 2,
+        "haiku": 1
+      }
     },
-    "any_act1": {
-      "label": "Any% Act 1",
-      "note": "Focus on Act 1 collectibles, records, artifacts, crickets, hidden altars, and monochrome.",
-      "visible": [
-        "trophies",
-        "inari",
-        "hotsprings",
-        "bamboo",
-        "haiku",
-        "shrines",
-        "records",
-        "artifacts",
-        "crickets",
-        "hiddenaltars",
-        "monochrome"
-      ]
+    {
+      "id": "new-split-2",
+      "label": "Golden Temple Runs",
+      "note": "Ride south to unlock Golden Summit, Hot Springs and Fox Den.\nAriake Bamboo, Forest Hot Springs, Fox, Shinto Shrine.\nFT Golden Summit Hot Springs and clear the Golden Summit Shrine.\nFT Island Haiku and ride into Kashine Forest for the Fox Den(bow at shrine for hidden altar) before touching Yuna.",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "hotsprings": 2,
+        "inari": 2,
+        "bamboo": 1,
+        "shrines": 2,
+        "hiddenaltars": 1
+      }
     },
-    "any_act2": {
-      "label": "Any% Act 2",
-      "note": "Act 2 keeps the collectible focus and adds Dirge.",
-      "visible": [
-        "trophies",
-        "inari",
-        "hotsprings",
-        "bamboo",
-        "haiku",
-        "shrines",
-        "records",
-        "artifacts",
-        "crickets",
-        "hiddenaltars",
-        "monochrome",
-        "dirge"
-      ]
+    {
+      "id": "yuna",
+      "label": "Yuna",
+      "note": "Start of the mission Hidden Altar. Get mongol scroll and artefact during mission.",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "records": 1,
+        "artifacts": 1,
+        "hiddenaltars": 1,
+        "trophies": 1
+      }
     },
-    "any_act3": {
-      "label": "Any% Act 3",
-      "note": "Act 3 keeps collectible focus and swaps to Cooper.",
-      "visible": [
-        "trophies",
-        "inari",
-        "hotsprings",
-        "bamboo",
-        "haiku",
-        "shrines",
-        "records",
-        "artifacts",
-        "crickets",
-        "hiddenaltars",
-        "cooper"
-      ]
+    {
+      "id": "new-split-4",
+      "label": "Northen Area Cleanup",
+      "note": "Inari Shrine where mission ends, Hotsprings,(Bear by the river, fighting with Bandit).\nBeach Inari shrine, between rocks, between tree and pillar.\nInari Shrine, between crevice. Left from Tree, south from small crossroad after bridge.\nFT back to Yuna Inari shrine(north from golden tree, top side waterfall) -> Haiku -> Temple run > Hidden altar(left frog statue)",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "inari": 2,
+        "hotsprings": 1,
+        "hiddenaltars": 1
+      }
     },
-    "ngp_act1": {
-      "label": "NG+ Act 1",
-      "note": "Focus on side tales, duels, mongol camps, and mythic tales.",
-      "visible": [
-        "trophies",
-        "sidetales",
-        "duels",
-        "territories",
-        "mythictales"
-      ]
+    {
+      "id": "new-split-5",
+      "label": "Komoda",
+      "note": "White Color + Bamboo\nKomoda - Bamboo, Haiku, Cricket, Fox Shrine(south from Golden Tree, between rocks)\nKashine Hills Inari Shrine - Unlock dragon shrine fast travel",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "inari": 2,
+        "monochrome": 1,
+        "bamboo": 2,
+        "haiku": 1,
+        "crickets": 1
+      }
     },
-    "ngp_act2": {
-      "label": "NG+ Act 2",
-      "note": "Continue NG+ cleanup through Act 2.",
-      "visible": [
-        "trophies",
-        "sidetales",
-        "duels",
-        "territories",
-        "mythictales"
-      ]
+    {
+      "id": "ishikawa",
+      "label": "Ishikawa",
+      "note": "Get The BOW!\nAfter mission, Hotsprings, Shinto Shrine(2x hidden altar).\nFT Back to Dojo - Hiyoshi 2 scrolls, Bamboo Strike, Hotsprings.",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "hotsprings": 2,
+        "bamboo": 1,
+        "shrines": 1,
+        "hiddenaltars": 2,
+        "records": 2
+      }
     },
-    "ngp_act3": {
-      "label": "NG+ Act 3",
-      "note": "Final NG+ cleanup focus.",
-      "visible": [
-        "trophies",
-        "sidetales",
-        "duels",
-        "territories",
-        "mythictales"
-      ]
+    {
+      "id": "masako",
+      "label": "Masako",
+      "note": "Start from Hiyoshi, ride to waterfall, inari shrine.\nSurvivor camp Inari.\nFox Shrine Golden forest, Southwest entrance to the grove from tree.\n",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "inari": 3,
+        "hiddenaltars": 1,
+        "crickets": 1
+      }
+    },
+    {
+      "id": "taka",
+      "label": "Taka",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "inari": 1,
+        "hotsprings": 2,
+        "bamboo": 1,
+        "trophies": 1
+      }
+    },
+    {
+      "id": "ronin",
+      "label": "Ronin",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "inari": 1,
+        "haiku": 1,
+        "records": 1
+      }
+    },
+    {
+      "id": "ronin2",
+      "label": "Ronin 2",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "inari": 1
+      }
+    },
+    {
+      "id": "komatsu",
+      "label": "Komatsu",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "inari": 1,
+        "bamboo": 1,
+        "haiku": 1
+      }
+    },
+    {
+      "id": "hook",
+      "label": "Hook",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {}
+    },
+    {
+      "id": "act1finale",
+      "label": "Act 1 Finale",
+      "note": "",
+      "phaseId": "any_act2",
+      "isPhaseStart": true,
+      "auto": {
+        "trophies": 1
+      }
+    },
+    {
+      "id": "act2",
+      "label": "Act 2",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {}
     }
-  }
+  ]
 }
