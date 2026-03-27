@@ -1,1 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PlatinumRouter</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div>
+        <div class="eyebrow">Run Control Overlay</div>
+        <h1 id="runTitle" class="title">Ghost of Tsushima Platinum Lethal</h1>
+        <div class="subtitle">Route planner and overlay controller.</div>
+      </div>
+      <div id="difficultyBadge" class="badge lethal">Lethal</div>
+    </header>
 
+    <main class="layout">
+      <section class="stack">
+        <div class="panel">
+          <div class="timerBox">
+            <div class="timerLabel">⏱️ Run Timer</div>
+            <div id="timer" class="timer">00:00:00</div>
+            <div class="row center mt12">
+              <button id="startPauseBtn" class="btn primary">▶ Start</button>
+              <button id="undoBtn" class="btn">↶ Undo</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="card">
+            <div class="eyebrow">Current Split</div>
+            <div id="currentSplitLabel" class="mid mt6">Prologue</div>
+            <div class="row mt8">
+              <div id="historyCount" class="pill">0 splits logged</div>
+              <div id="modePill" class="pill">Lethal</div>
+            </div>
+            <button id="advanceCurrentBtn" class="btn primary full mt12">▶ Complete Current Split</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="compact">
+            <div class="card">
+              <div class="eyebrow">Overall</div>
+              <div id="overallPercent" class="big">0%</div>
+              <div class="bar"><span id="overallBar" style="width:0%"></span></div>
+            </div>
+
+            <div class="card">
+              <div class="eyebrow">Act 1</div>
+              <div id="act1SummaryValue" class="big">0%</div>
+              <div class="bar"><span id="act1SummaryBar" class="barBlue" style="width:0%"></span></div>
+            </div>
+
+            <div class="card">
+              <div class="eyebrow">Pace</div>
+              <div id="pacePill" class="mid mt6">On fresh air</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <button id="settingsToggle" class="btn full">⚙ Show Settings</button>
+          <div id="settingsPanel" class="settings">
+            <div class="fields">
+              <div class="field">
+                <label for="difficultySelect">Difficulty</label>
+                <select id="difficultySelect">
+                  <option value="Lethal">Lethal</option>
+                  <option value="Easy">Easy</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="act1TargetMinutes">Act 1 target minutes</label>
+                <input id="act1TargetMinutes" type="number" value="180" />
+              </div>
+
+              <div class="row">
+                <button id="resetBtn" class="btn danger">↺ Reset</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="stack">
+        <div class="goalsQueue">
+          <div class="panel">
+            <div class="mainTop">
+              <div class="card">
+                <div class="eyebrow">Act 1 Quota</div>
+                <div id="act1QuotaText" class="mid mt8">0/22 🦊 · 0/9 🍑 · 0/6 🎍 · 0/8 🎼 · 0/7 ⛩️</div>
+              </div>
+
+              <div class="card">
+                <div class="eyebrow">Misc Checklist</div>
+                <label class="row mt10 start">
+                  <input id="dirgeCheckbox" type="checkbox" />
+                  <span>🎵 Dirge of the Fallen</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="phaseBox">
+              <div class="eyebrow">Active Objective Set</div>
+              <div id="activePhaseName" class="mid mt6">Legacy All</div>
+              <div id="activePhaseNote" class="objectiveText">Fallback for older split files with no phase markers.</div>
+              <div id="visibleObjectives" class="visibleList"></div>
+            </div>
+
+            <div class="objectiveNote">
+              <div class="eyebrow">Current Objective Note</div>
+              <div id="currentObjectiveText" class="objectiveText">No note for this split yet.</div>
+            </div>
+
+            <div class="eyebrow mt10">Tracked Totals</div>
+            <div id="progressGrid" class="progressGrid"></div>
+          </div>
+
+          <div class="panel">
+            <div class="row between mb10">
+              <div>
+                <div class="mid">Split Queue</div>
+                <div class="subtitle">Only current split is clickable.</div>
+              </div>
+              <div id="queuePill" class="pill">0 total splits</div>
+            </div>
+
+            <div class="queueWrap">
+              <div id="splitButtons" class="splitList"></div>
+
+              <div class="card">
+                <div class="row between">
+                  <div class="eyebrow">Split History</div>
+                  <div id="historySaved" class="subtitle">0 saved</div>
+                </div>
+                <div id="historyList" class="history mt8"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./controller.js"></script>
+</body>
+</html>
