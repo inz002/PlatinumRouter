@@ -119,6 +119,7 @@
 
   <script>
     const STORAGE_KEY = 'got_platinum_overlay_html_v6';
+    const CHANNEL_NAME = 'got_platinum_overlay_channel_v1';
 
     const COUNTER_DEFS = {
       trophies: { icon: '🏆', max: 52 },
@@ -141,4 +142,160 @@
 
     const PHASES = {
       legacy_all: { visible: ['trophies','inari','hotsprings','bamboo','haiku','shrines','records','artifacts','crickets','hiddenaltars','monochrome','dirge','cooper','sidetales','duels','territories','mythictales'] },
-      any_act1: { visible: ['trophies','inari','hotsprings','bamboo','haiku','shrines','records','artifacts','crickets','hiddenaltars','monochrome'
+      any_act1: { visible: ['trophies','inari','hotsprings','bamboo','haiku','shrines','records','artifacts','crickets','hiddenaltars','monochrome'] },
+      any_act2: { visible: ['trophies','inari','hotsprings','bamboo','haiku','shrines','records','artifacts','crickets','hiddenaltars','monochrome','dirge'] },
+      any_act3: { visible: ['trophies','inari','hotsprings','bamboo','haiku','shrines','records','artifacts','crickets','hiddenaltars','cooper'] },
+      ngp_act1: { visible: ['trophies','sidetales','duels','territories','mythictales'] },
+      ngp_act2: { visible: ['trophies','sidetales','duels','territories','mythictales'] },
+      ngp_act3: { visible: ['trophies','sidetales','duels','territories','mythictales'] }
+    };
+
+    const channel = typeof BroadcastChannel !== 'undefined'
+      ? new BroadcastChannel(CHANNEL_NAME)
+      : null;
+
+    let liveState = null;
+    let lastSerializedState = '';
+
+    function formatMs(ms) {
+      const s = Math.max(0, Math.floor((ms || 0) / 1000));
+      const h = String(Math.floor(s / 3600)).padStart(2, '0');
+      const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+      const sec = String(s % 60).padStart(2, '0');
+      return `${h}:${m}:${sec}`;
+    }
+
+    function normalizeSplit(split) {
+      return { id: '', label: '', note: '', phaseId: '', isPhaseStart: false, auto: {}, ...split };
+    }
+
+    function readStoredState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY) || '';
+        if (raw) {
+          lastSerializedState = raw;
+          return JSON.parse(raw);
+        }
+      } catch {
+        // ignore malformed state and fall back
+      }
+      return {};
+    }
+
+    function getState() {
+      return liveState || readStoredState();
+    }
+
+    function getActivePhaseId(splits, currentSplitIndex) {
+      let active = 'legacy_all';
+      for (let i = 0; i <= currentSplitIndex && i < splits.length; i += 1) {
+        const split = normalizeSplit(splits[i]);
+        if (split.isPhaseStart && split.phaseId && PHASES[split.phaseId]) active = split.phaseId;
+      }
+      return active;
+    }
+
+    function buildItems(state) {
+      const items = [];
+      const counters = state.counters || {};
+      const splits = Array.isArray(state.splits) ? state.splits : [];
+      const currentSplitIndex = Number.isFinite(state.currentSplitIndex) ? state.currentSplitIndex : 0;
+      const activePhaseId = getActivePhaseId(splits, currentSplitIndex);
+      const visible = (PHASES[activePhaseId] || PHASES.legacy_all).visible || [];
+
+      visible.forEach((key) => {
+        if (key === 'dirge') {
+          if (!state.miscChecks?.dirge) items.push({ icon: '🎵', text: 'Dirge' });
+          return;
+        }
+        const def = COUNTER_DEFS[key];
+        const counter = counters[key];
+        if (!def || !counter) return;
+        const value = Number(counter.value || 0);
+        if (value >= def.max) return;
+        items.push({ icon: def.icon, text: `${value}/${def.max}` });
+      });
+
+      return items;
+    }
+
+    function renderFromState(state) {
+      document.getElementById('timer').textContent = formatMs(state.elapsedMs || 0);
+      document.getElementById('meta').textContent = state.settings?.difficulty || 'Lethal';
+
+      const itemsEl = document.getElementById('items');
+      const items = buildItems(state);
+      itemsEl.innerHTML = '';
+
+      if (!items.length) {
+        itemsEl.innerHTML = '<div class="empty">All visible objectives complete</div>';
+        return;
+      }
+
+      items.forEach((item) => {
+        const el = document.createElement('div');
+        el.className = 'item';
+        el.innerHTML = `<span class="icon">${item.icon}</span><span class="count">${item.text}</span>`;
+        itemsEl.appendChild(el);
+      });
+    }
+
+    function render() {
+      renderFromState(getState());
+    }
+
+    function applyIncomingState(nextState) {
+      if (!nextState || typeof nextState !== 'object') return;
+      liveState = nextState;
+      try {
+        lastSerializedState = JSON.stringify(nextState);
+        localStorage.setItem(STORAGE_KEY, lastSerializedState);
+      } catch {
+        // ignore localStorage write issues
+      }
+      renderFromState(nextState);
+    }
+
+    if (channel) {
+      channel.onmessage = (event) => {
+        const message = event.data;
+        if (!message || typeof message !== 'object') return;
+
+        if (message.type === 'state' && message.payload) {
+          applyIncomingState(message.payload);
+        }
+
+        if (message.type === 'request_state') {
+          const state = getState();
+          channel.postMessage({ type: 'state', payload: state });
+        }
+      };
+    }
+
+    window.addEventListener('storage', (event) => {
+      if (event.key !== STORAGE_KEY) return;
+      liveState = readStoredState();
+      render();
+    });
+
+    setInterval(() => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY) || '';
+        if (raw !== lastSerializedState) {
+          lastSerializedState = raw;
+          liveState = raw ? JSON.parse(raw) : {};
+          render();
+        }
+      } catch {
+        // ignore parse failures during polling
+      }
+    }, 150);
+
+    render();
+
+    if (channel) {
+      channel.postMessage({ type: 'request_state' });
+    }
+  </script>
+</body>
+</html>
