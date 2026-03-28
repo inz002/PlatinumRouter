@@ -3,205 +3,662 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ghost of Tsushima Controller</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <title>Ghost of Tsushima Plain Overlay</title>
+  <style>
+    :root {
+      --bg: rgba(0, 0, 0, 0.88);
+      --border: rgba(255, 255, 255, 0.12);
+      --text: #f8fafc;
+      --muted: rgba(255, 255, 255, 0.64);
+      --pill: rgba(255, 255, 255, 0.08);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--text);
+      font-family: Inter, system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    .overlay {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 48px;
+      max-height: 48px;
+      padding: 6px 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      width: fit-content;
+      max-width: 100vw;
+      overflow: hidden;
+      backdrop-filter: blur(8px);
+    }
+
+    .timer {
+      flex: 0 0 auto;
+      font-family: var(--mono);
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      white-space: nowrap;
+    }
+
+    .divider {
+      width: 1px;
+      align-self: stretch;
+      background: var(--border);
+      flex: 0 0 auto;
+    }
+
+    .items {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+    }
+
+    .items::-webkit-scrollbar {
+      display: none;
+    }
+
+    .item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 34px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: var(--pill);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .icon {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .count {
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .meta {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 10px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--pill);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .debugDock {
+      margin-top: 12px;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .btn:hover {
+      background: rgba(255,255,255,.1);
+    }
+
+    .debugPanel {
+      display: none;
+      margin-top: 10px;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.55);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      max-width: 1000px;
+    }
+
+    .debugPanel.open {
+      display: block;
+    }
+
+    .debugSection + .debugSection {
+      margin-top: 12px;
+    }
+
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: .16em;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .debugBody {
+      max-height: 320px;
+      overflow: auto;
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .debugLog {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 10px;
+      background: rgba(255,255,255,.04);
+    }
+
+    .debugLog-info {
+      border-color: rgba(97,168,255,.25);
+    }
+
+    .debugLog-warn {
+      border-color: rgba(255,196,0,.28);
+    }
+
+    .debugLog-error {
+      border-color: rgba(255,93,115,.28);
+    }
+
+    .debugLogTop {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .debugLogName,
+    .debugLogLevel {
+      font-weight: 800;
+    }
+
+    .debugLogMsg {
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .debugLogData {
+      margin: 6px 0 0;
+      padding: 8px;
+      border-radius: 10px;
+      background: rgba(0,0,0,.25);
+      font-family: var(--mono);
+      font-size: 11px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #dbeafe;
+    }
+
+    .debugStatusRow {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 10px;
+      padding: 6px 0;
+      border-top: 1px solid rgba(255,255,255,.05);
+    }
+
+    .debugStatusRow:first-child {
+      border-top: 0;
+    }
+
+    .debugStatusKey {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .debugStatusValue {
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .debugEmpty {
+      color: var(--muted);
+      font-size: 12px;
+      padding: 8px 0;
+    }
+  </style>
 </head>
 <body>
-  <div class="app">
-    <div class="top">
-      <div>
-        <div class="eyebrow">Run Control Overlay</div>
-        <div id="runTitle" class="title">Ghost of Tsushima Platinum</div>
-        <div class="subtitle">Main controller with phase-based objective visibility.</div>
-      </div>
-      <div id="difficultyBadge" class="badge lethal">Lethal</div>
+  <div class="overlay" id="overlay">
+    <div class="timer" id="timer">00:00:00</div>
+    <div class="divider"></div>
+    <div class="items" id="items">
+      <div class="empty">Waiting for controller state…</div>
+    </div>
+    <div class="divider"></div>
+    <div class="meta" id="meta">Lethal</div>
+  </div>
+
+  <div class="debugDock">
+    <div class="row">
+      <button id="debugToggle" class="btn">🐞 Show Debug</button>
+      <button id="debugClear" class="btn">Clear Logs</button>
+      <button id="debugCopy" class="btn">Copy Snapshot</button>
     </div>
 
-    <div class="layout">
-      <div class="stack">
-        <div class="panel">
-          <div class="timerBox">
-            <div class="timerLabel">⏱️ Run Timer</div>
-            <div id="timer" class="timer">00:00:00</div>
-            <div class="row" style="justify-content:center;margin-top:12px">
-              <button id="startPauseBtn" class="btn primary">▶ Start</button>
-              <button id="undoBtn" class="btn">↶ Undo</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="card">
-            <div class="eyebrow">Current Split</div>
-            <div id="currentSplitLabel" class="mid" style="margin-top:6px">No split</div>
-            <div class="row" style="margin-top:8px">
-              <div id="historyCount" class="pill">0 splits logged</div>
-              <div id="modePill" class="pill">Lethal</div>
-            </div>
-            <button id="advanceCurrentBtn" class="btn primary full" style="margin-top:12px">
-              ▶ Complete Current Split
-            </button>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="compact">
-            <div class="card">
-              <div class="eyebrow">Overall</div>
-              <div id="overallPercent" class="big">0%</div>
-              <div class="bar"><span id="overallBar" style="width:0%"></span></div>
-            </div>
-            <div class="card">
-              <div class="eyebrow">Act 1</div>
-              <div id="act1SummaryValue" class="big">0%</div>
-              <div class="bar">
-                <span id="act1SummaryBar" style="width:0%;background:var(--blue)"></span>
-              </div>
-            </div>
-            <div class="card">
-              <div class="eyebrow">Pace</div>
-              <div id="pacePill" class="mid" style="margin-top:6px">On fresh air</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <button id="settingsToggle" class="btn full">⚙ Show Settings</button>
-
-          <div id="settingsPanel" class="settings">
-            <div class="fields">
-              <div class="field">
-                <label for="difficultySelect">Difficulty</label>
-                <select id="difficultySelect">
-                  <option value="Lethal">Lethal</option>
-                  <option value="Easy">Easy</option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="act1TargetMinutes">Act 1 target minutes</label>
-                <input id="act1TargetMinutes" type="number" value="180" />
-              </div>
-
-              <div class="field">
-                <label for="remoteCode">Remote control code</label>
-                <input id="remoteCode" type="text" placeholder="Optional remote room code" />
-              </div>
-
-              <div class="row">
-                <button id="openSplitEditorBtn" class="btn">🧩 Split Editor</button>
-                <button id="exportTimesBtn" class="btn">⬇ Times</button>
-                <label class="btn">
-                  ⬆ Times
-                  <input id="importTimesInput" type="file" accept="application/json" hidden />
-                </label>
-                <button id="exportSplitsBtn" class="btn">⬇ Splits</button>
-                <label class="btn">
-                  ⬆ Splits
-                  <input id="importSplitsInput" type="file" accept="application/json" hidden />
-                </label>
-                <button id="resetBtn" class="btn danger">↺ Reset</button>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div id="debugPanel" class="debugPanel">
+      <div class="debugSection">
+        <div class="eyebrow">Status</div>
+        <div id="debugStatus"></div>
       </div>
-
-      <div class="stack">
-        <div class="goalsQueue">
-          <div class="panel">
-            <div class="mainTop">
-              <div class="card">
-                <div class="eyebrow">Act 1 Quota</div>
-                <div id="act1QuotaText" class="mid" style="margin-top:8px">
-                  0/22 🦊 · 0/9 🍑 · 0/6 🎍 · 0/8 🎼 · 0/7 ⛩️
-                </div>
-              </div>
-
-              <div class="card">
-                <div class="eyebrow">Misc Checklist</div>
-                <label class="row" style="margin-top:10px;justify-content:flex-start;gap:8px;cursor:pointer">
-                  <input id="dirgeCheckbox" type="checkbox" />
-                  <span>🎵 Dirge of the Fallen</span>
-                </label>
-                <div class="subtitle" style="margin-top:10px;color:white">
-                  Monochrome and Cooper are tracked as counters. Dirge is a one-time checkbox.
-                </div>
-              </div>
-            </div>
-
-            <div class="phaseBox">
-              <div class="eyebrow">Active Objective Set</div>
-              <div id="activePhaseName" class="mid" style="margin-top:6px">Legacy All</div>
-              <div id="activePhaseNote" class="objectiveText">No phase note.</div>
-              <div id="visibleObjectives" class="visibleList"></div>
-            </div>
-
-            <div class="objectiveNote">
-              <div class="eyebrow">Current Objective Note</div>
-              <div id="currentObjectiveText" class="objectiveText">No note for this split yet.</div>
-            </div>
-
-            <div class="eyebrow" style="margin-top:10px">Tracked Totals</div>
-            <div id="progressGrid" class="progressGrid"></div>
-          </div>
-
-          <div class="panel">
-            <div class="row between" style="margin-bottom:10px">
-              <div>
-                <div class="mid">Split Queue</div>
-                <div class="subtitle">Only current split is clickable.</div>
-              </div>
-              <div id="queuePill" class="pill">0 total splits</div>
-            </div>
-
-            <div class="queueWrap">
-              <div id="splitButtons" class="splitList"></div>
-
-              <div class="card">
-                <div class="row between">
-                  <div class="eyebrow">Split History</div>
-                  <div id="historySaved" class="subtitle">0 saved</div>
-                </div>
-                <div id="historyList" class="history" style="margin-top:8px"></div>
-                <div class="subtitle" style="margin-top:10px">
-                  Undo reverses the latest split and its auto-progress.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="splitEditorOverlay" class="overlay">
-      <div class="editor">
-        <div class="editorHead">
-          <div>
-            <h2 style="margin:0">Split Editor</h2>
-            <div class="subtitle">
-              Edit split names, notes, phase starts, and auto-progress values.
-            </div>
-          </div>
-          <div class="row">
-            <button id="addSplitEditorBtn" class="btn">＋ Add Split</button>
-            <button id="downloadSplitBackupBtn" class="btn">⬇ Download Split Backup</button>
-            <button id="copySplitBackupBtn" class="btn">📋 Copy Split Backup</button>
-            <button id="resetSplitEditorBtn" class="btn">Reset</button>
-            <button id="closeSplitEditorBtn" class="btn">Close</button>
-          </div>
-        </div>
-
-        <div id="splitEditorGrid" class="editorGrid"></div>
-
-        <div class="editorHead" style="border-top:1px solid var(--border);border-bottom:0;top:auto;bottom:0">
-          <div class="subtitle">Old split JSON stays compatible because phase fields are optional.</div>
-          <button id="saveSplitEditorBtn" class="btn primary">Save Split Setup</button>
-        </div>
+      <div class="debugSection">
+        <div class="eyebrow">Logs</div>
+        <div id="debugBody" class="debugBody"></div>
       </div>
     </div>
   </div>
 
-  <script type="module" src="./controller.js"></script>
+  <script>
+    const STORAGE_KEY = "platinumrouter_state_v1";
+
+    function createDebugger({
+      name = "app",
+      panelId = "debugPanel",
+      bodyId = "debugBody",
+      statusId = "debugStatus",
+      toggleId = "debugToggle",
+      clearId = "debugClear",
+      copyId = "debugCopy",
+      maxLogs = 120
+    } = {}) {
+      const panel = document.getElementById(panelId);
+      const body = document.getElementById(bodyId);
+      const statusEl = document.getElementById(statusId);
+      const toggleBtn = document.getElementById(toggleId);
+      const clearBtn = document.getElementById(clearId);
+      const copyBtn = document.getElementById(copyId);
+
+      const state = {
+        open: false,
+        logs: [],
+        status: {},
+        snapshotBuilder: null
+      };
+
+      function now() {
+        return new Date().toLocaleTimeString();
+      }
+
+      function safeStringify(value) {
+        try {
+          return JSON.stringify(value, null, 2);
+        } catch {
+          return String(value);
+        }
+      }
+
+      function renderStatus() {
+        if (!statusEl) return;
+        const entries = Object.entries(state.status);
+        if (!entries.length) {
+          statusEl.innerHTML = `<div class="debugEmpty">No status yet</div>`;
+          return;
+        }
+
+        statusEl.innerHTML = entries.map(([key, value]) => `
+          <div class="debugStatusRow">
+            <span class="debugStatusKey">${escapeHtml(key)}</span>
+            <span class="debugStatusValue">${escapeHtml(String(value))}</span>
+          </div>
+        `).join("");
+      }
+
+      function renderLogs() {
+        if (!body) return;
+        if (!state.logs.length) {
+          body.innerHTML = `<div class="debugEmpty">No logs yet</div>`;
+          return;
+        }
+
+        body.innerHTML = state.logs
+          .slice()
+          .reverse()
+          .map(entry => `
+            <div class="debugLog debugLog-${entry.level}">
+              <div class="debugLogTop">
+                <span class="debugLogName">${escapeHtml(name)}</span>
+                <span class="debugLogTime">${escapeHtml(entry.time)}</span>
+                <span class="debugLogLevel">${escapeHtml(entry.level.toUpperCase())}</span>
+              </div>
+              <div class="debugLogMsg">${escapeHtml(entry.message)}</div>
+              ${entry.data === undefined ? "" : `<pre class="debugLogData">${escapeHtml(safeStringify(entry.data))}</pre>`}
+            </div>
+          `)
+          .join("");
+      }
+
+      function render() {
+        if (!panel) return;
+        panel.classList.toggle("open", state.open);
+        renderStatus();
+        renderLogs();
+        if (toggleBtn) {
+          toggleBtn.textContent = state.open ? "🐞 Hide Debug" : "🐞 Show Debug";
+        }
+      }
+
+      function push(level, message, data) {
+        state.logs.push({
+          level,
+          message,
+          data,
+          time: now()
+        });
+
+        if (state.logs.length > maxLogs) {
+          state.logs.splice(0, state.logs.length - maxLogs);
+        }
+
+        render();
+      }
+
+      function log(message, data) {
+        push("info", message, data);
+      }
+
+      function warn(message, data) {
+        push("warn", message, data);
+      }
+
+      function error(message, data) {
+        push("error", message, data);
+      }
+
+      function setStatus(key, value) {
+        state.status[key] = value;
+        renderStatus();
+      }
+
+      function toggle() {
+        state.open = !state.open;
+        render();
+      }
+
+      function clear() {
+        state.logs = [];
+        renderLogs();
+      }
+
+      function setSnapshotBuilder(fn) {
+        state.snapshotBuilder = fn;
+      }
+
+      async function copySnapshot() {
+        if (!state.snapshotBuilder) return;
+        const snapshot = state.snapshotBuilder();
+        const text = safeStringify(snapshot);
+
+        try {
+          await navigator.clipboard.writeText(text);
+          log("Debug snapshot copied");
+        } catch {
+          warn("Clipboard blocked", snapshot);
+        }
+      }
+
+      toggleBtn?.addEventListener("click", toggle);
+      clearBtn?.addEventListener("click", clear);
+      copyBtn?.addEventListener("click", copySnapshot);
+
+      render();
+
+      return {
+        log,
+        warn,
+        error,
+        setStatus,
+        setSnapshotBuilder,
+        render
+      };
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    const debug = createDebugger({ name: "overlay" });
+    debug.log("Overlay boot start");
+    debug.setStatus("storageKey", STORAGE_KEY);
+
+    function formatMs(ms) {
+      const totalSeconds = Math.max(0, Math.floor((ms || 0) / 1000));
+      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+      const seconds = String(totalSeconds % 60).padStart(2, "0");
+      return `${hours}:${minutes}:${seconds}`;
+    }
+
+    function normalizeSplit(split) {
+      return {
+        id: "",
+        label: "",
+        note: "",
+        phaseId: "",
+        isPhaseStart: false,
+        auto: {},
+        ...split
+      };
+    }
+
+    function loadState() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        debug.setStatus("savedStatePresent", !!Object.keys(parsed).length);
+        return parsed;
+      } catch (error) {
+        debug.error("Failed to read localStorage", { message: error.message });
+        return {};
+      }
+    }
+
+    function getActivePhaseId(splits, currentSplitIndex, phases) {
+      let active = "legacy_all";
+
+      for (let i = 0; i <= currentSplitIndex && i < splits.length; i += 1) {
+        const split = normalizeSplit(splits[i]);
+        if (split.isPhaseStart && split.phaseId && phases[split.phaseId]) {
+          active = split.phaseId;
+        }
+      }
+
+      return active;
+    }
+
+    async function loadGameData(gameId = "ghost-of-tsushima") {
+      debug.log("Loading game data", { gameId });
+
+      const registryRes = await fetch("./data/games.json");
+      const registry = await registryRes.json();
+      const game = (registry.games || []).find((entry) => entry.id === gameId) || registry.games?.[0];
+
+      if (!game) {
+        throw new Error("No game config found");
+      }
+
+      const basePath = normalizePath(game.path);
+
+      const [meta, counters, phases] = await Promise.all([
+        fetchJson(`${basePath}/meta.json`),
+        fetchJson(`${basePath}/counters.json`),
+        fetchJson(`${basePath}/phases.json`)
+      ]);
+
+      debug.log("Game data loaded", {
+        game,
+        counterCount: Object.keys(counters || {}).length,
+        phaseCount: Object.keys(phases || {}).length
+      });
+
+      return { game, meta, counters, phases };
+    }
+
+    async function fetchJson(path) {
+      const response = await fetch(path);
+      if (!response.ok) {
+        throw new Error(`Failed to load ${path}`);
+      }
+      return response.json();
+    }
+
+    function normalizePath(path) {
+      if (!path) return "./data/ghost-of-tsushima";
+      if (path.startsWith("./")) return path;
+      if (path.startsWith("/")) return `.${path}`;
+      return `./${path}`;
+    }
+
+    let cachedGameData = null;
+
+    async function render() {
+      const state = loadState();
+      const gameId = state.gameId || "ghost-of-tsushima";
+
+      if (!cachedGameData || cachedGameData.game.id !== gameId) {
+        cachedGameData = await loadGameData(gameId);
+      }
+
+      const { counters: counterDefs, phases, meta } = cachedGameData;
+      const counters = state.counters || {};
+      const splits = Array.isArray(state.splits) ? state.splits : [];
+      const currentSplitIndex = Number.isFinite(state.currentSplitIndex) ? state.currentSplitIndex : 0;
+
+      debug.setStatus("gameId", gameId);
+      debug.setStatus("elapsedMs", state.elapsedMs || 0);
+      debug.setStatus("splitCount", splits.length);
+      debug.setStatus("counterCount", Object.keys(counters).length);
+      debug.setStatus("difficulty", state.settings?.difficulty || "Lethal");
+
+      const activePhaseId = getActivePhaseId(splits, currentSplitIndex, phases);
+      const activePhase = phases[activePhaseId] || phases.legacy_all || { visible: [] };
+
+      debug.setStatus("activePhaseId", activePhaseId);
+      debug.setStatus("visibleObjectives", (activePhase.visible || []).length);
+
+      document.getElementById("timer").textContent = formatMs(state.elapsedMs || 0);
+      document.getElementById("meta").textContent =
+        state.settings?.difficulty || meta?.defaultDifficulty || "Lethal";
+
+      const itemsEl = document.getElementById("items");
+      itemsEl.innerHTML = "";
+
+      const items = [];
+
+      (activePhase.visible || []).forEach((key) => {
+        if (key === "dirge") {
+          if (!state.miscChecks?.dirge) {
+            items.push({ icon: "🎵", text: "Dirge" });
+          }
+          return;
+        }
+
+        const def = counterDefs[key];
+        const counter = counters[key];
+        if (!def || !counter) return;
+
+        const value = Number(counter.value || 0);
+        if (value >= def.max) return;
+
+        items.push({
+          icon: def.icon,
+          text: `${value}/${def.max}`
+        });
+      });
+
+      if (!items.length) {
+        itemsEl.innerHTML = '<div class="empty">All visible objectives complete</div>';
+        debug.log("Overlay rendered empty objective list");
+        return;
+      }
+
+      items.forEach((item) => {
+        const el = document.createElement("div");
+        el.className = "item";
+        el.innerHTML = `<span class="icon">${item.icon}</span><span class="count">${item.text}</span>`;
+        itemsEl.appendChild(el);
+      });
+
+      debug.log("Overlay rendered items", {
+        itemCount: items.length,
+        activePhaseId
+      });
+    }
+
+    debug.setSnapshotBuilder(() => ({
+      cachedGameData,
+      saved: loadState()
+    }));
+
+    window.addEventListener("storage", () => {
+      render().catch((error) => {
+        debug.error("Overlay render failed on storage event", {
+          message: error.message,
+          stack: error.stack
+        });
+        console.error(error);
+      });
+    });
+
+    setInterval(() => {
+      render().catch((error) => {
+        debug.error("Overlay render failed on interval", {
+          message: error.message,
+          stack: error.stack
+        });
+        console.error(error);
+      });
+    }, 500);
+
+    render().catch((error) => {
+      debug.error("Overlay initial render failed", {
+        message: error.message,
+        stack: error.stack
+      });
+      console.error(error);
+    });
+  </script>
 </body>
 </html>
