@@ -4,243 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ghost of Tsushima Controller</title>
-  <style>
-    :root {
-      --bg: #0d1324;
-      --bg2: #121826;
-      --panel: rgba(10, 14, 25, 0.88);
-      --panel2: rgba(255, 255, 255, 0.05);
-      --border: rgba(255, 255, 255, 0.12);
-      --text: #f7f8fb;
-      --muted: rgba(255, 255, 255, 0.64);
-      --green: #33d17a;
-      --blue: #61a8ff;
-      --red: #ff5d73;
-      --shadow: 0 18px 55px rgba(0, 0, 0, 0.32);
-      --r1: 24px;
-      --r2: 16px;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    }
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0;
-      padding: 0;
-      min-height: 100%;
-      background: radial-gradient(circle at top, rgba(37,99,235,.16), transparent 35%), linear-gradient(135deg, var(--bg), var(--bg2) 45%, #0b1020);
-      color: var(--text);
-      font-family: Inter, system-ui, sans-serif;
-    }
-    button, input, select, textarea { font: inherit; }
-    .app { max-width: 1520px; margin: 0 auto; padding: 14px; }
-    .top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
-    .eyebrow { text-transform: uppercase; letter-spacing: .16em; font-size: 11px; color: var(--muted); }
-    .title { font-size: 28px; font-weight: 900; }
-    .subtitle { font-size: 13px; color: var(--muted); margin-top: 4px; }
-    .badge { padding: 8px 12px; border-radius: 999px; font-weight: 800; font-size: 13px; }
-    .badge.lethal { background: rgba(255,93,115,.9); }
-    .badge.easy { background: rgba(51,209,122,.9); color: #08110a; }
-    .layout { display: grid; grid-template-columns: 350px 1fr; gap: 12px; }
-    .stack > * + * { margin-top: 12px; }
-    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r1); box-shadow: var(--shadow); padding: 14px; }
-    .card { background: var(--panel2); border: 1px solid var(--border); border-radius: var(--r2); padding: 12px; }
-    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    .between { justify-content: space-between; }
-    .btn {
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,.06);
-      color: var(--text);
-      padding: 10px 12px;
-      border-radius: 14px;
-      cursor: pointer;
-      font-weight: 700;
-    }
-    .btn:hover { background: rgba(255,255,255,.1); }
-    .btn.primary { background: var(--green); color: #07120a; border-color: rgba(51,209,122,.35); }
-    .btn.danger { background: rgba(255,93,115,.12); color: #ffd8dd; border-color: rgba(255,93,115,.35); }
-    .btn.small { padding: 7px 10px; border-radius: 10px; }
-    .btn:disabled { opacity: .45; cursor: not-allowed; }
-    .full { width: 100%; justify-content: center; }
-    .timerBox {
-      text-align: center;
-      border: 1px solid rgba(51,209,122,.28);
-      background: rgba(51,209,122,.08);
-      border-radius: 20px;
-      padding: 18px;
-    }
-    .timerLabel { color: rgba(51,209,122,.88); letter-spacing: .22em; text-transform: uppercase; font-size: 12px; }
-    .timer { font-family: var(--mono); font-size: 48px; font-weight: 900; line-height: 1; color: var(--green); margin-top: 8px; }
-    .pill { background: rgba(255,255,255,.07); border: 1px solid var(--border); border-radius: 999px; padding: 7px 10px; font-size: 12px; }
-    .big { font-size: 28px; font-weight: 900; }
-    .mid { font-size: 20px; font-weight: 900; }
-    .bar { height: 8px; background: rgba(255,255,255,.08); border-radius: 999px; overflow: hidden; margin-top: 8px; }
-    .bar > span { display: block; height: 100%; background: var(--green); }
-    .compact { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-    .goalsQueue { display: grid; grid-template-columns: 1fr 360px; gap: 12px; }
-    .mainTop { display: grid; grid-template-columns: 1fr 260px; gap: 12px; }
-    .phaseBox, .objectiveNote {
-      margin-top: 10px;
-      background: rgba(97,168,255,.09);
-      border: 1px solid rgba(97,168,255,.22);
-      border-radius: 14px;
-      padding: 10px 12px;
-    }
-    .objectiveText { font-size: 13px; line-height: 1.35; color: #eef4ff; margin-top: 6px; white-space: pre-wrap; }
-    .visibleList { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-    .miniChip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px; background: rgba(255,255,255,.05); border: 1px solid var(--border); border-radius: 999px; font-size: 12px; }
-    .progressGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
-    .counter {
-      display: grid;
-      grid-template-columns: 42px 1fr 42px;
-      align-items: stretch;
-      min-height: 102px;
-      background: var(--panel2);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      overflow: hidden;
-    }
-    .counterSide { display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.03); }
-    .counterSide button {
-      width: 100%;
-      height: 100%;
-      border: 0;
-      background: transparent;
-      color: var(--text);
-      font-size: 22px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .counterSide button:hover { background: rgba(255,255,255,.05); }
-    .counterCenter { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px 6px; text-align: center; }
-    .counterLabel { font-size: 10px; line-height: 1.1; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #eef2ff; }
-    .counterIcon { font-size: 28px; line-height: 1; margin: 6px 0 4px; }
-    .counterAmt { font-size: 18px; font-weight: 900; line-height: 1.05; }
-    .counterPct { font-size: 10px; color: var(--muted); margin-top: 4px; }
-    .manual { font-size: 9px; color: #c7d2fe; background: rgba(129,140,248,.15); border: 1px solid rgba(129,140,248,.26); padding: 2px 5px; border-radius: 999px; margin-top: 4px; }
-    .queueWrap { display: grid; grid-template-columns: 1fr; gap: 12px; }
-    .splitList { display: grid; gap: 6px; max-height: 420px; overflow: auto; }
-    .split {
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,.05);
-      color: white;
-      border-radius: 14px;
-      padding: 9px 10px;
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 8px;
-      align-items: center;
-      font-weight: 700;
-      text-align: left;
-      cursor: pointer;
-    }
-    .split:hover { background: rgba(255,255,255,.1); }
-    .split.done { background: rgba(51,209,122,.14); color: #dafce8; border-color: rgba(51,209,122,.3); }
-    .split.active { background: rgba(97,168,255,.9); color: #081220; }
-    .split:disabled { opacity: .45; cursor: not-allowed; }
-    .splitSub { font-size: 10px; opacity: .72; font-weight: 600; margin-top: 2px; }
-    .history { max-height: 340px; overflow: auto; border: 1px solid var(--border); border-radius: 14px; }
-    .historyRow { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px; padding: 9px 10px; border-top: 1px solid rgba(255,255,255,.06); font-size: 13px; }
-    .historyRow:first-child { border-top: 0; }
-    .mono { font-family: var(--mono); }
-    .green { color: var(--green); }
-    .settings { display: none; margin-top: 12px; }
-    .settings.open { display: block; }
-    .fields { display: grid; gap: 10px; }
-    .field { display: grid; gap: 5px; }
-    .field label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .14em; }
-    .field input, .field select, .field textarea {
-      width: 100%;
-      background: rgba(0,0,0,.28);
-      color: white;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 9px 11px;
-    }
-    .overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.62);
-      backdrop-filter: blur(8px);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 14px;
-      z-index: 50;
-    }
-    .overlay.open { display: flex; }
-    .editor {
-      width: min(1200px, 100%);
-      max-height: 90vh;
-      overflow: auto;
-      background: rgba(8,12,22,.96);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-    }
-    .copyModal {
-      width: min(900px, 100%);
-      background: rgba(8,12,22,.98);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-      padding: 14px;
-    }
-    .copyArea {
-      width: 100%;
-      min-height: 360px;
-      background: rgba(0,0,0,.32);
-      color: white;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-      font-family: var(--mono);
-      font-size: 12px;
-      line-height: 1.4;
-      resize: vertical;
-    }
-    .editorHead {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: center;
-      padding: 14px;
-      border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      background: rgba(8,12,22,.98);
-      z-index: 1;
-    }
-    .editorGrid { padding: 14px; display: grid; gap: 12px; }
-    .editorCard { border: 1px solid var(--border); background: var(--panel2); border-radius: 16px; padding: 12px; }
-    .editorInsert { display: flex; justify-content: center; }
-    .editorInsertBtn { min-width: 44px; height: 32px; padding: 0 12px; border-radius: 999px; }
-    .editorTop { display: grid; grid-template-columns: 220px 1fr; gap: 10px; margin-bottom: 10px; }
-    .editorCounters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-    @media (max-width: 1280px) {
-      .layout, .queueWrap, .mainTop, .goalsQueue { grid-template-columns: 1fr; }
-      .compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-    @media (max-width: 900px) {
-      .progressGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .counter { grid-template-columns: 38px 1fr 38px; min-height: 96px; }
-      .counterSide button { font-size: 20px; }
-      .counterIcon { font-size: 24px; }
-      .counterAmt { font-size: 17px; }
-      .editorTop, .editorCounters { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 760px) {
-      .app { padding: 10px; }
-      .title { font-size: 24px; }
-      .timer { font-size: 40px; }
-      .compact { grid-template-columns: 1fr; }
-    }
-  </style>
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <div class="app">
     <div class="top">
       <div>
         <div class="eyebrow">Run Control Overlay</div>
-        <div id="runTitle" class="title">Ghost of Tsushima Platinum Lethal</div>
+        <div id="runTitle" class="title">Ghost of Tsushima Platinum</div>
         <div class="subtitle">Main controller with phase-based objective visibility.</div>
       </div>
       <div id="difficultyBadge" class="badge lethal">Lethal</div>
@@ -262,36 +33,73 @@
         <div class="panel">
           <div class="card">
             <div class="eyebrow">Current Split</div>
-            <div id="currentSplitLabel" class="mid" style="margin-top:6px">Prologue</div>
+            <div id="currentSplitLabel" class="mid" style="margin-top:6px">No split</div>
             <div class="row" style="margin-top:8px">
               <div id="historyCount" class="pill">0 splits logged</div>
               <div id="modePill" class="pill">Lethal</div>
             </div>
-            <button id="advanceCurrentBtn" class="btn primary full" style="margin-top:12px">▶ Complete Current Split</button>
+            <button id="advanceCurrentBtn" class="btn primary full" style="margin-top:12px">
+              ▶ Complete Current Split
+            </button>
           </div>
         </div>
 
         <div class="panel">
           <div class="compact">
-            <div class="card"><div class="eyebrow">Overall</div><div id="overallPercent" class="big">0%</div><div class="bar"><span id="overallBar" style="width:0%"></span></div></div>
-            <div class="card"><div class="eyebrow">Act 1</div><div id="act1SummaryValue" class="big">0%</div><div class="bar"><span id="act1SummaryBar" style="width:0%;background:var(--blue)"></span></div></div>
-            <div class="card"><div class="eyebrow">Pace</div><div id="pacePill" class="mid" style="margin-top:6px">On fresh air</div></div>
+            <div class="card">
+              <div class="eyebrow">Overall</div>
+              <div id="overallPercent" class="big">0%</div>
+              <div class="bar"><span id="overallBar" style="width:0%"></span></div>
+            </div>
+            <div class="card">
+              <div class="eyebrow">Act 1</div>
+              <div id="act1SummaryValue" class="big">0%</div>
+              <div class="bar">
+                <span id="act1SummaryBar" style="width:0%;background:var(--blue)"></span>
+              </div>
+            </div>
+            <div class="card">
+              <div class="eyebrow">Pace</div>
+              <div id="pacePill" class="mid" style="margin-top:6px">On fresh air</div>
+            </div>
           </div>
         </div>
 
         <div class="panel">
           <button id="settingsToggle" class="btn full">⚙ Show Settings</button>
+
           <div id="settingsPanel" class="settings">
             <div class="fields">
-              <div class="field"><label for="difficultySelect">Difficulty</label><select id="difficultySelect"><option value="Lethal">Lethal</option><option value="Easy">Easy</option></select></div>
-              <div class="field"><label for="act1TargetMinutes">Act 1 target minutes</label><input id="act1TargetMinutes" type="number" value="180"></div>
-              <div class="field"><label for="remoteCode">Remote control code (future use)</label><input id="remoteCode" type="text" placeholder="Optional remote room code"></div>
+              <div class="field">
+                <label for="difficultySelect">Difficulty</label>
+                <select id="difficultySelect">
+                  <option value="Lethal">Lethal</option>
+                  <option value="Easy">Easy</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="act1TargetMinutes">Act 1 target minutes</label>
+                <input id="act1TargetMinutes" type="number" value="180" />
+              </div>
+
+              <div class="field">
+                <label for="remoteCode">Remote control code</label>
+                <input id="remoteCode" type="text" placeholder="Optional remote room code" />
+              </div>
+
               <div class="row">
                 <button id="openSplitEditorBtn" class="btn">🧩 Split Editor</button>
                 <button id="exportTimesBtn" class="btn">⬇ Times</button>
-                <label class="btn">⬆ Times<input id="importTimesInput" type="file" accept="application/json" hidden></label>
+                <label class="btn">
+                  ⬆ Times
+                  <input id="importTimesInput" type="file" accept="application/json" hidden />
+                </label>
                 <button id="exportSplitsBtn" class="btn">⬇ Splits</button>
-                <label class="btn">⬆ Splits<input id="importSplitsInput" type="file" accept="application/json" hidden></label>
+                <label class="btn">
+                  ⬆ Splits
+                  <input id="importSplitsInput" type="file" accept="application/json" hidden />
+                </label>
                 <button id="resetBtn" class="btn danger">↺ Reset</button>
               </div>
             </div>
@@ -305,185 +113,95 @@
             <div class="mainTop">
               <div class="card">
                 <div class="eyebrow">Act 1 Quota</div>
-                <div id="act1QuotaText" class="mid" style="margin-top:8px">0/22 🦊 · 0/9 🍑 · 0/6 🎍 · 0/8 🎼 · 0/7 ⛩️</div>
+                <div id="act1QuotaText" class="mid" style="margin-top:8px">
+                  0/22 🦊 · 0/9 🍑 · 0/6 🎍 · 0/8 🎼 · 0/7 ⛩️
+                </div>
               </div>
+
               <div class="card">
                 <div class="eyebrow">Misc Checklist</div>
-                <label class="row" style="margin-top:10px;justify-content:flex-start;gap:8px;cursor:pointer"><input id="dirgeCheckbox" type="checkbox"><span>🎵 Dirge of the Fallen</span></label>
-                <div class="subtitle" style="margin-top:10px;color:white">Monochrome and Cooper are tracked as counters. Dirge is a one-time checkbox.</div>
+                <label class="row" style="margin-top:10px;justify-content:flex-start;gap:8px;cursor:pointer">
+                  <input id="dirgeCheckbox" type="checkbox" />
+                  <span>🎵 Dirge of the Fallen</span>
+                </label>
+                <div class="subtitle" style="margin-top:10px;color:white">
+                  Monochrome and Cooper are tracked as counters. Dirge is a one-time checkbox.
+                </div>
               </div>
             </div>
+
             <div class="phaseBox">
               <div class="eyebrow">Active Objective Set</div>
               <div id="activePhaseName" class="mid" style="margin-top:6px">Legacy All</div>
-              <div id="activePhaseNote" class="objectiveText">Fallback for older split files with no phase markers.</div>
+              <div id="activePhaseNote" class="objectiveText">No phase note.</div>
               <div id="visibleObjectives" class="visibleList"></div>
             </div>
+
             <div class="objectiveNote">
               <div class="eyebrow">Current Objective Note</div>
               <div id="currentObjectiveText" class="objectiveText">No note for this split yet.</div>
             </div>
+
             <div class="eyebrow" style="margin-top:10px">Tracked Totals</div>
             <div id="progressGrid" class="progressGrid"></div>
           </div>
 
           <div class="panel">
-            <div class="row between" style="margin-bottom:10px"><div><div class="mid">Split Queue</div><div class="subtitle">Only current split is clickable.</div></div><div id="queuePill" class="pill">11 total splits</div></div>
+            <div class="row between" style="margin-bottom:10px">
+              <div>
+                <div class="mid">Split Queue</div>
+                <div class="subtitle">Only current split is clickable.</div>
+              </div>
+              <div id="queuePill" class="pill">0 total splits</div>
+            </div>
+
             <div class="queueWrap">
               <div id="splitButtons" class="splitList"></div>
+
               <div class="card">
-                <div class="row between"><div class="eyebrow">Split History</div><div id="historySaved" class="subtitle">0 saved</div></div>
+                <div class="row between">
+                  <div class="eyebrow">Split History</div>
+                  <div id="historySaved" class="subtitle">0 saved</div>
+                </div>
                 <div id="historyList" class="history" style="margin-top:8px"></div>
-                <div class="subtitle" style="margin-top:10px">Undo reverses the latest split and its auto-progress.</div>
+                <div class="subtitle" style="margin-top:10px">
+                  Undo reverses the latest split and its auto-progress.
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <div id="splitEditorOverlay" class="overlay">
-    <div class="editor">
-      <div class="editorHead">
-        <div><h2 style="margin:0">Split Editor</h2><div class="subtitle">Edit split names, notes, phase starts, and auto-progress values.</div></div>
-        <div class="row">
-          <button id="addSplitEditorBtn" class="btn">＋ Add Split</button>
-          <button id="downloadSplitBackupBtn" class="btn">⬇ Download Split Backup</button>
-          <button id="copySplitBackupBtn" class="btn">📋 Copy Split Backup</button>
-          <button id="resetSplitEditorBtn" class="btn">Reset</button>
-          <button id="closeSplitEditorBtn" class="btn">Close</button>
+    <div id="splitEditorOverlay" class="overlay">
+      <div class="editor">
+        <div class="editorHead">
+          <div>
+            <h2 style="margin:0">Split Editor</h2>
+            <div class="subtitle">
+              Edit split names, notes, phase starts, and auto-progress values.
+            </div>
+          </div>
+          <div class="row">
+            <button id="addSplitEditorBtn" class="btn">＋ Add Split</button>
+            <button id="downloadSplitBackupBtn" class="btn">⬇ Download Split Backup</button>
+            <button id="copySplitBackupBtn" class="btn">📋 Copy Split Backup</button>
+            <button id="resetSplitEditorBtn" class="btn">Reset</button>
+            <button id="closeSplitEditorBtn" class="btn">Close</button>
+          </div>
+        </div>
+
+        <div id="splitEditorGrid" class="editorGrid"></div>
+
+        <div class="editorHead" style="border-top:1px solid var(--border);border-bottom:0;top:auto;bottom:0">
+          <div class="subtitle">Old split JSON stays compatible because phase fields are optional.</div>
+          <button id="saveSplitEditorBtn" class="btn primary">Save Split Setup</button>
         </div>
       </div>
-      <div id="splitEditorGrid" class="editorGrid"></div>
-      <div class="editorHead" style="border-top:1px solid var(--border);border-bottom:0;top:auto;bottom:0">
-        <div class="subtitle">Old split JSON stays compatible because phase fields are optional.</div>
-        <button id="saveSplitEditorBtn" class="btn primary">Save Split Setup</button>
-      </div>
     </div>
   </div>
 
-  <div id="copyModalOverlay" class="overlay">
-    <div class="copyModal">
-      <div class="row between" style="margin-bottom:10px">
-        <div><div class="eyebrow">Canvas workaround</div><div class="mid">Copy JSON Backup</div><div id="copyModalSubtitle" class="subtitle">Use Copy to clipboard or manually select the JSON below.</div></div>
-        <button id="closeCopyModalBtn" class="btn">Close</button>
-      </div>
-      <textarea id="copyModalTextarea" class="copyArea" spellcheck="false"></textarea>
-      <div class="row" style="margin-top:10px"><button id="copyModalCopyBtn" class="btn primary">📋 Copy to Clipboard</button><button id="copyModalSelectBtn" class="btn">Select All</button><div id="copyModalStatus" class="subtitle"></div></div>
-    </div>
-  </div>
-
-  <script>
-    const STORAGE_KEY='got_platinum_overlay_html_v6';
-    const COUNTER_DEFS={
-      trophies:{label:'Trophies',icon:'🏆',max:52,act1:0},inari:{label:'Inari Shrines',icon:'🦊',max:49,act1:22},hotsprings:{label:'Hot Springs',icon:'🍑',max:18,act1:9},bamboo:{label:'Bamboo',icon:'🎍',max:16,act1:6},haiku:{label:'Haiku',icon:'🎼',max:19,act1:8},records:{label:'Records',icon:'📜',max:20,act1:0},artifacts:{label:'Artifacts',icon:'🛡️',max:20,act1:0},shrines:{label:'Shinto Shrines',icon:'⛩️',max:16,act1:7},crickets:{label:'Crickets',icon:'🦗',max:5,act1:0},hiddenaltars:{label:'Hidden Altars',icon:'🙏',max:10,act1:0},duels:{label:'Duels',icon:'⚔️',max:25,act1:0},territories:{label:'Mongol Territories',icon:'🏕️',max:56,act1:0},mythictales:{label:'Mythic Tales',icon:'📘',max:7,act1:0},sidetales:{label:'Side Tales',icon:'📝',max:61,act1:0},monochrome:{label:'Monochrome',icon:'🎨',max:2,act1:0},cooper:{label:'Cooper',icon:'🦝',max:3,act1:0}
-    };
-    const PHASES={
-      legacy_all:{label:'Legacy All',note:'Fallback for older split files with no phase markers.',visible:['trophies','inari','hotsprings','bamboo','haiku','shrines','records','artifacts','crickets','hiddenaltars','monochrome','dirge','cooper','sidetales','duels','territories','mythictales']},
-      any_act1:{label:'Any% Act 1',note:'Focus on Act 1 collectibles, records, artifacts, crickets, altars, and monochrome.',visible:['trophies','inari','hotsprings','bamboo','haiku','shrines','records','artifacts','crickets','hiddenaltars','monochrome']},
-      any_act2:{label:'Any% Act 2',note:'Act 2 keeps the collectible focus and adds Dirge.',visible:['trophies','inari','hotsprings','bamboo','haiku','shrines','records','artifacts','crickets','hiddenaltars','monochrome','dirge']},
-      any_act3:{label:'Any% Act 3',note:'Act 3 keeps collectible focus and swaps to Cooper.',visible:['trophies','inari','hotsprings','bamboo','haiku','shrines','records','artifacts','crickets','hiddenaltars','cooper']},
-      ngp_act1:{label:'NG+ Act 1',note:'Focus on side tales, duels, camps, and mythic tales.',visible:['trophies','sidetales','duels','territories','mythictales']},
-      ngp_act2:{label:'NG+ Act 2',note:'Continue NG+ cleanup through Act 2.',visible:['trophies','sidetales','duels','territories','mythictales']},
-      ngp_act3:{label:'NG+ Act 3',note:'Final NG+ cleanup focus.',visible:['trophies','sidetales','duels','territories','mythictales']}
-    };
-    const DEFAULT_SPLITS=[
-      {id:'prologue',label:'Prologue',note:'',phaseId:'any_act1',isPhaseStart:true,auto:{trophies:1,haiku:1}},
-      {id:'yuna',label:'Yuna',note:'',phaseId:'',isPhaseStart:false,auto:{inari:1,records:1,artifacts:1}},
-      {id:'ishikawa',label:'Ishikawa',note:'',phaseId:'',isPhaseStart:false,auto:{inari:3,hotsprings:2,bamboo:1,shrines:1,records:1,artifacts:1}},
-      {id:'masako',label:'Masako',note:'',phaseId:'',isPhaseStart:false,auto:{hotsprings:1,shrines:1}},
-      {id:'taka',label:'Taka',note:'',phaseId:'',isPhaseStart:false,auto:{inari:1,hotsprings:2,bamboo:1}},
-      {id:'ronin',label:'Ronin',note:'',phaseId:'',isPhaseStart:false,auto:{inari:1,haiku:1,records:1}},
-      {id:'ronin2',label:'Ronin 2',note:'',phaseId:'',isPhaseStart:false,auto:{inari:1}},
-      {id:'komatsu',label:'Komatsu',note:'',phaseId:'',isPhaseStart:false,auto:{inari:1,bamboo:1,haiku:1}},
-      {id:'hook',label:'Hook',note:'',phaseId:'',isPhaseStart:false,auto:{}},
-      {id:'act1finale',label:'Act 1 Finale',note:'',phaseId:'any_act2',isPhaseStart:true,auto:{trophies:1}},
-      {id:'act2',label:'Act 2',note:'',phaseId:'',isPhaseStart:false,auto:{}}
-    ];
-
-    const clone=o=>JSON.parse(JSON.stringify(o));
-    const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
-    const formatMs=ms=>{const s=Math.max(0,Math.floor(ms/1000));return `${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`};
-    const buildDefaultCounters=()=>{const out={};Object.entries(COUNTER_DEFS).forEach(([k,v])=>out[k]={...v,value:0,manualDelta:0});return out};
-    const normalizeSplit=s=>({id:'',label:'',note:'',phaseId:'',isPhaseStart:false,auto:{},...s});
-    const normalizeSplits=splits=>(Array.isArray(splits)&&splits.length?splits:DEFAULT_SPLITS).map(normalizeSplit);
-    let SPLITS=normalizeSplits(DEFAULT_SPLITS);
-    const state={elapsedMs:0,running:false,counters:buildDefaultCounters(),history:[],currentSplitIndex:0,settings:{difficulty:'Lethal',act1TargetMinutes:180,showSettings:false},remoteCode:'',offsetMs:0,startTs:null,intervalId:null,splitEditorDraft:[],miscChecks:{dirge:false}};
-    const els={difficultyBadge:document.getElementById('difficultyBadge'),timer:document.getElementById('timer'),startPauseBtn:document.getElementById('startPauseBtn'),undoBtn:document.getElementById('undoBtn'),advanceCurrentBtn:document.getElementById('advanceCurrentBtn'),overallPercent:document.getElementById('overallPercent'),overallBar:document.getElementById('overallBar'),act1SummaryValue:document.getElementById('act1SummaryValue'),act1SummaryBar:document.getElementById('act1SummaryBar'),currentSplitLabel:document.getElementById('currentSplitLabel'),historyCount:document.getElementById('historyCount'),settingsToggle:document.getElementById('settingsToggle'),settingsPanel:document.getElementById('settingsPanel'),difficultySelect:document.getElementById('difficultySelect'),act1TargetMinutes:document.getElementById('act1TargetMinutes'),remoteCode:document.getElementById('remoteCode'),openSplitEditorBtn:document.getElementById('openSplitEditorBtn'),exportTimesBtn:document.getElementById('exportTimesBtn'),importTimesInput:document.getElementById('importTimesInput'),exportSplitsBtn:document.getElementById('exportSplitsBtn'),importSplitsInput:document.getElementById('importSplitsInput'),resetBtn:document.getElementById('resetBtn'),runTitle:document.getElementById('runTitle'),pacePill:document.getElementById('pacePill'),modePill:document.getElementById('modePill'),act1QuotaText:document.getElementById('act1QuotaText'),progressGrid:document.getElementById('progressGrid'),splitButtons:document.getElementById('splitButtons'),queuePill:document.getElementById('queuePill'),historySaved:document.getElementById('historySaved'),historyList:document.getElementById('historyList'),currentObjectiveText:document.getElementById('currentObjectiveText'),activePhaseName:document.getElementById('activePhaseName'),activePhaseNote:document.getElementById('activePhaseNote'),visibleObjectives:document.getElementById('visibleObjectives'),splitEditorOverlay:document.getElementById('splitEditorOverlay'),splitEditorGrid:document.getElementById('splitEditorGrid'),addSplitEditorBtn:document.getElementById('addSplitEditorBtn'),resetSplitEditorBtn:document.getElementById('resetSplitEditorBtn'),downloadSplitBackupBtn:document.getElementById('downloadSplitBackupBtn'),copySplitBackupBtn:document.getElementById('copySplitBackupBtn'),closeSplitEditorBtn:document.getElementById('closeSplitEditorBtn'),saveSplitEditorBtn:document.getElementById('saveSplitEditorBtn'),dirgeCheckbox:document.getElementById('dirgeCheckbox'),copyModalOverlay:document.getElementById('copyModalOverlay'),copyModalTextarea:document.getElementById('copyModalTextarea'),copyModalCopyBtn:document.getElementById('copyModalCopyBtn'),copyModalSelectBtn:document.getElementById('copyModalSelectBtn'),closeCopyModalBtn:document.getElementById('closeCopyModalBtn'),copyModalSubtitle:document.getElementById('copyModalSubtitle'),copyModalStatus:document.getElementById('copyModalStatus')};
-
-    const normalizeSplitIndex=()=>{state.currentSplitIndex=clamp(state.currentSplitIndex,0,Math.max(0,SPLITS.length-1))};
-    const computeOverallPercent=c=>{const total=Object.keys(COUNTER_DEFS).reduce((sum,key)=>sum+c[key].value,0)+(state.miscChecks.dirge?1:0);const max=Object.keys(COUNTER_DEFS).reduce((sum,key)=>sum+c[key].max,0)+1;return max?Math.round((total/max)*100):0};
-    const computeAct1Percent=c=>{const keys=Object.keys(COUNTER_DEFS).filter(key=>COUNTER_DEFS[key].act1>0);const done=keys.reduce((sum,key)=>sum+Math.min(c[key].value,COUNTER_DEFS[key].act1),0);const max=keys.reduce((sum,key)=>sum+COUNTER_DEFS[key].act1,0);return max?Math.round((done/max)*100):0};
-    const applyAutoProgress=(counters,deltaMap,direction)=>{const next=clone(counters);Object.entries(deltaMap||{}).forEach(([key,value])=>{next[key].value=clamp(next[key].value+value*direction,0,next[key].max)});return next};
-    function exportJson(data){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`got-controller-${new Date().toISOString().replace(/[:.]/g,'-')}.json`;a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},200)}
-    function getSplitBackupPayload(){const useDraft=els.splitEditorOverlay.classList.contains('open')&&Array.isArray(state.splitEditorDraft)&&state.splitEditorDraft.length;return {splits:useDraft?state.splitEditorDraft:SPLITS,exportedAt:new Date().toISOString(),source:useDraft?'split-backup-draft':'split-backup'}}
-    function openCopyModal(title,data){els.copyModalSubtitle.textContent=title;els.copyModalTextarea.value=JSON.stringify(data,null,2);els.copyModalStatus.textContent='';els.copyModalOverlay.classList.add('open');els.copyModalTextarea.focus();els.copyModalTextarea.select()}
-    function closeCopyModal(){els.copyModalOverlay.classList.remove('open')}
-    async function copyModalToClipboard(){try{await navigator.clipboard.writeText(els.copyModalTextarea.value);els.copyModalStatus.textContent='Copied.'}catch{els.copyModalStatus.textContent='Clipboard blocked. Use Select All and copy manually.';els.copyModalTextarea.focus();els.copyModalTextarea.select()}}
-    function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify({elapsedMs:state.elapsedMs,counters:state.counters,history:state.history,currentSplitIndex:state.currentSplitIndex,settings:state.settings,remoteCode:state.remoteCode,splits:SPLITS,miscChecks:state.miscChecks}))}
-    function load(){const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return;try{const parsed=JSON.parse(raw);state.elapsedMs=parsed.elapsedMs||0;state.offsetMs=state.elapsedMs;state.counters=parsed.counters||buildDefaultCounters();state.history=parsed.history||[];state.currentSplitIndex=parsed.currentSplitIndex||0;state.settings={difficulty:'Lethal',act1TargetMinutes:180,showSettings:false,...(parsed.settings||{})};state.remoteCode=parsed.remoteCode||'';state.miscChecks={dirge:false,...(parsed.miscChecks||{})};SPLITS=normalizeSplits(parsed.splits||DEFAULT_SPLITS);normalizeSplitIndex()}catch(e){console.error(e)}}
-    function getActivePhaseId(){let active='legacy_all';for(let i=0;i<=state.currentSplitIndex&&i<SPLITS.length;i+=1){const split=SPLITS[i];if(split&&split.isPhaseStart&&split.phaseId&&PHASES[split.phaseId]) active=split.phaseId}return active}
-    function renderVisibleObjectives(phaseId){const phase=PHASES[phaseId]||PHASES.legacy_all;els.activePhaseName.textContent=phase.label;els.activePhaseNote.textContent=phase.note||'No phase note.';els.visibleObjectives.innerHTML='';phase.visible.forEach(key=>{const chip=document.createElement('div');chip.className='miniChip';if(key==='dirge') chip.textContent='🎵 Dirge';else if(COUNTER_DEFS[key]) chip.textContent=`${COUNTER_DEFS[key].icon} ${COUNTER_DEFS[key].label}`;else return;els.visibleObjectives.appendChild(chip)})}
-    function renderCounters(){els.progressGrid.innerHTML='';Object.entries(state.counters).forEach(([key,counter])=>{const percent=Math.round((counter.value/counter.max)*100);const card=document.createElement('div');card.className='counter';card.innerHTML=`<div class="counterSide"><button data-key="${key}" data-diff="-1" aria-label="Decrease ${counter.label}">−</button></div><div class="counterCenter"><div class="counterLabel">${counter.label}</div><div class="counterIcon">${counter.icon}</div><div class="counterAmt">${counter.value}/${counter.max}</div><div class="counterPct">${percent}%</div>${counter.manualDelta!==0?`<span class="manual">${counter.manualDelta>0?'+':''}${counter.manualDelta} manual</span>`:''}</div><div class="counterSide"><button data-key="${key}" data-diff="1" aria-label="Increase ${counter.label}">+</button></div>`;els.progressGrid.appendChild(card)});els.progressGrid.querySelectorAll('button[data-key]').forEach(btn=>btn.addEventListener('click',()=>manualAdjust(btn.dataset.key,Number(btn.dataset.diff))))}
-    function renderSplits(){els.splitButtons.innerHTML='';els.queuePill.textContent=`${SPLITS.length} total splits`;SPLITS.forEach((split,i)=>{const done=i<state.currentSplitIndex;const active=i===state.currentSplitIndex;const btn=document.createElement('button');btn.className=`split ${done?'done':''} ${active?'active':''}`;btn.disabled=!active;const autoSummary=Object.entries(split.auto||{}).map(([k,v])=>`${COUNTER_DEFS[k]?.icon||'?'}${v}`).join(' · ')||'No auto progress';const marker=split.isPhaseStart&&split.phaseId&&PHASES[split.phaseId]?` | ▶ ${PHASES[split.phaseId].label}`:'';btn.innerHTML=`<div>${done?'✅':active?'▶️':'•'}</div><div><div>${split.label}</div><div class="splitSub">${autoSummary}${marker}</div></div><div>›</div>`;btn.addEventListener('click',()=>goSplit(i));els.splitButtons.appendChild(btn)})}
-    function renderHistory(){els.historySaved.textContent=`${state.history.length} saved`;els.historyList.innerHTML='';if(!state.history.length){const row=document.createElement('div');row.className='historyRow';row.innerHTML='<div>No splits yet</div><div></div><div></div>';els.historyList.appendChild(row);return}state.history.forEach(rowData=>{const row=document.createElement('div');row.className='historyRow';row.innerHTML=`<div>${rowData.label}</div><div class="mono green">${formatMs(rowData.cumulativeMs)}</div><div class="mono">${formatMs(rowData.segmentMs)}</div>`;els.historyList.appendChild(row)})}
-    function render(){normalizeSplitIndex();const current=SPLITS[state.currentSplitIndex]||SPLITS[SPLITS.length-1];const overall=computeOverallPercent(state.counters);const act1=computeAct1Percent(state.counters);const quota=['inari','hotsprings','bamboo','haiku','shrines'].map(key=>`${Math.min(state.counters[key].value,COUNTER_DEFS[key].act1)}/${COUNTER_DEFS[key].act1} ${COUNTER_DEFS[key].icon}`).join(' · ');const diff=state.elapsedMs-state.settings.act1TargetMinutes*60*1000;const pace=state.elapsedMs===0?'On fresh air':Math.abs(diff)<60000?'On pace':diff<0?`${formatMs(Math.abs(diff))} ahead`:`${formatMs(diff)} behind`;const phaseId=getActivePhaseId();els.difficultyBadge.textContent=state.settings.difficulty;els.difficultyBadge.className=`badge ${state.settings.difficulty==='Lethal'?'lethal':'easy'}`;els.dirgeCheckbox.checked=!!state.miscChecks.dirge;els.currentObjectiveText.textContent=current&&current.note&&current.note.trim()?current.note:'No note for this split yet.';els.timer.textContent=formatMs(state.elapsedMs);els.startPauseBtn.textContent=state.running?'⏸ Pause':'▶ Start';els.undoBtn.disabled=!state.history.length;els.advanceCurrentBtn.disabled=!SPLITS.length;els.currentSplitLabel.textContent=current.label;els.historyCount.textContent=`${state.history.length} split${state.history.length===1?'':'s'} logged`;els.overallPercent.textContent=`${overall}%`;els.overallBar.style.width=`${overall}%`;els.act1SummaryValue.textContent=`${act1}%`;els.act1SummaryBar.style.width=`${act1}%`;els.settingsToggle.textContent=state.settings.showSettings?'⚙ Hide Settings':'⚙ Show Settings';els.settingsPanel.classList.toggle('open',state.settings.showSettings);els.difficultySelect.value=state.settings.difficulty;els.act1TargetMinutes.value=state.settings.act1TargetMinutes;els.remoteCode.value=state.remoteCode;els.runTitle.textContent=`Ghost of Tsushima Platinum ${state.settings.difficulty}`;els.pacePill.textContent=pace;els.modePill.textContent=state.settings.difficulty;els.act1QuotaText.textContent=quota;renderVisibleObjectives(phaseId);renderCounters();renderSplits();renderHistory()}
-    function toggleTimer(){if(state.running){state.offsetMs=state.elapsedMs;clearInterval(state.intervalId);state.intervalId=null;state.running=false}else{state.startTs=Date.now()-state.offsetMs;state.intervalId=setInterval(()=>{state.elapsedMs=Date.now()-state.startTs;render();save()},250);state.running=true}render();save()}
-    function resetRun(){if(state.intervalId) clearInterval(state.intervalId);state.elapsedMs=0;state.running=false;state.offsetMs=0;state.startTs=null;state.intervalId=null;state.counters=buildDefaultCounters();state.history=[];state.currentSplitIndex=0;render();save()}
-    function manualAdjust(key,diff){state.counters[key].value=clamp(state.counters[key].value+diff,0,state.counters[key].max);state.counters[key].manualDelta+=diff;render();save()}
-    function goSplit(index){if(index!==state.currentSplitIndex) return;const split=SPLITS[index];const last=state.history.length?state.history[state.history.length-1].cumulativeMs:0;const segmentMs=Math.max(0,state.elapsedMs-last);state.counters=applyAutoProgress(state.counters,split.auto,1);state.history.push({splitIndex:index,label:split.label,cumulativeMs:state.elapsedMs,segmentMs,autoApplied:split.auto,at:new Date().toISOString()});state.currentSplitIndex=clamp(state.currentSplitIndex+1,0,SPLITS.length-1);render();save()}
-    function undoSplit(){if(!state.history.length) return;const removed=state.history.pop();state.counters=applyAutoProgress(state.counters,removed.autoApplied,-1);state.currentSplitIndex=removed.splitIndex;render();save()}
-    function importTimesJson(file){const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(String(reader.result));if(state.intervalId) clearInterval(state.intervalId);state.elapsedMs=parsed.elapsedMs||0;state.offsetMs=state.elapsedMs;state.running=false;state.startTs=null;state.intervalId=null;state.counters=parsed.counters||buildDefaultCounters();state.history=parsed.history||[];state.currentSplitIndex=parsed.currentSplitIndex||0;state.miscChecks={dirge:false,...(parsed.miscChecks||{})};normalizeSplitIndex();render();save()}catch{alert('Could not import times JSON')}};reader.readAsText(file)}
-    function importSplitsJson(file){const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(String(reader.result));const imported=Array.isArray(parsed)?parsed:parsed.splits;if(!Array.isArray(imported)||!imported.length) throw new Error('Invalid splits payload');SPLITS=normalizeSplits(imported);normalizeSplitIndex();render();save()}catch{alert('Could not import splits JSON')}};reader.readAsText(file)}
-    function openSplitEditor(){state.splitEditorDraft=normalizeSplits(SPLITS);renderSplitEditor();els.splitEditorOverlay.classList.add('open')}
-    function closeSplitEditor(){els.splitEditorOverlay.classList.remove('open')}
-    function buildSplitId(label,index){const base=String(label||`split-${index+1}`).toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||`split-${index+1}`;let id=base;let n=2;const existing=new Set(state.splitEditorDraft.map(s=>s.id));while(existing.has(id)){id=`${base}-${n}`;n+=1}return id}
-    function addSplitEditor(){const i=state.splitEditorDraft.length;state.splitEditorDraft.push(normalizeSplit({id:buildSplitId(`New Split ${i+1}`,i),label:`New Split ${i+1}`}));renderSplitEditor()}
-    function insertSplitEditor(afterIndex){const insertAt=afterIndex+1;const label=`New Split ${insertAt+1}`;state.splitEditorDraft.splice(insertAt,0,normalizeSplit({id:buildSplitId(label,insertAt),label}));renderSplitEditor()}
-    function removeSplitEditor(index){if(state.splitEditorDraft.length<=1) return;state.splitEditorDraft.splice(index,1);renderSplitEditor()}
-    function moveSplitEditor(index,dir){const target=index+dir;if(target<0||target>=state.splitEditorDraft.length) return;[state.splitEditorDraft[index],state.splitEditorDraft[target]]=[state.splitEditorDraft[target],state.splitEditorDraft[index]];renderSplitEditor()}
-    function renderSplitEditor(){els.splitEditorGrid.innerHTML='';const phaseOptions=(selected='')=>['<option value="">No phase change</option>',...Object.entries(PHASES).filter(([id])=>id!=='legacy_all').map(([id,p])=>`<option value="${id}" ${selected===id?'selected':''}>${p.label}</option>`)].join('');state.splitEditorDraft.forEach((split,index)=>{const s=normalizeSplit(split);const wrap=document.createElement('div');const card=document.createElement('div');card.className='editorCard';const fields=Object.keys(COUNTER_DEFS).map(key=>`<div class="field"><label>${COUNTER_DEFS[key].icon} ${COUNTER_DEFS[key].label}</label><input type="number" min="0" max="${COUNTER_DEFS[key].max}" data-split-index="${index}" data-counter-key="${key}" value="${s.auto[key]||0}" /></div>`).join('');card.innerHTML=`<div class="row between" style="margin-bottom:10px"><div class="eyebrow">Split ${index+1}</div><div class="row"><button class="btn small" data-move-up="${index}" ${index===0?'disabled':''}>↑</button><button class="btn small" data-move-down="${index}" ${index===state.splitEditorDraft.length-1?'disabled':''}>↓</button><button class="btn danger small" data-remove="${index}" ${state.splitEditorDraft.length<=1?'disabled':''}>Remove</button></div></div><div class="editorTop"><div class="field"><label>Split label</label><input type="text" data-label-index="${index}" value="${s.label}" /></div><div class="field"><label>Split id</label><input type="text" value="${s.id}" disabled /></div></div><div class="field" style="margin-bottom:10px"><label>Objective note</label><textarea data-note-index="${index}" style="min-height:64px;resize:vertical">${s.note||''}</textarea></div><div class="editorTop"><div class="field"><label>Phase start marker</label><select data-phase-index="${index}">${phaseOptions(s.phaseId)}</select></div><div class="field"><label>Apply phase marker here</label><select data-phase-flag-index="${index}"><option value="false" ${!s.isPhaseStart?'selected':''}>No</option><option value="true" ${s.isPhaseStart?'selected':''}>Yes</option></select></div></div><div class="editorCounters">${fields}</div>`;wrap.appendChild(card);if(index<state.splitEditorDraft.length-1){const insert=document.createElement('div');insert.className='editorInsert';insert.innerHTML=`<button class="btn editorInsertBtn" data-insert-after="${index}">＋</button>`;wrap.appendChild(insert)}els.splitEditorGrid.appendChild(wrap)});
-      els.splitEditorGrid.querySelectorAll('input[data-label-index]').forEach(el=>el.addEventListener('input',e=>{state.splitEditorDraft[Number(e.target.dataset.labelIndex)].label=e.target.value}));
-      els.splitEditorGrid.querySelectorAll('textarea[data-note-index]').forEach(el=>el.addEventListener('input',e=>{state.splitEditorDraft[Number(e.target.dataset.noteIndex)].note=e.target.value}));
-      els.splitEditorGrid.querySelectorAll('select[data-phase-index]').forEach(el=>el.addEventListener('change',e=>{state.splitEditorDraft[Number(e.target.dataset.phaseIndex)].phaseId=e.target.value}));
-      els.splitEditorGrid.querySelectorAll('select[data-phase-flag-index]').forEach(el=>el.addEventListener('change',e=>{state.splitEditorDraft[Number(e.target.dataset.phaseFlagIndex)].isPhaseStart=e.target.value==='true'}));
-      els.splitEditorGrid.querySelectorAll('input[data-counter-key]').forEach(el=>el.addEventListener('input',e=>{const idx=Number(e.target.dataset.splitIndex);const key=e.target.dataset.counterKey;const val=clamp(Number(e.target.value||0),0,COUNTER_DEFS[key].max);if(val===0) delete state.splitEditorDraft[idx].auto[key];else state.splitEditorDraft[idx].auto[key]=val}));
-      els.splitEditorGrid.querySelectorAll('button[data-remove]').forEach(el=>el.addEventListener('click',()=>removeSplitEditor(Number(el.dataset.remove))));
-      els.splitEditorGrid.querySelectorAll('button[data-move-up]').forEach(el=>el.addEventListener('click',()=>moveSplitEditor(Number(el.dataset.moveUp),-1)));
-      els.splitEditorGrid.querySelectorAll('button[data-move-down]').forEach(el=>el.addEventListener('click',()=>moveSplitEditor(Number(el.dataset.moveDown),1)));
-      els.splitEditorGrid.querySelectorAll('button[data-insert-after]').forEach(el=>el.addEventListener('click',()=>insertSplitEditor(Number(el.dataset.insertAfter))))}
-    function saveSplitEditor(){SPLITS=clone(state.splitEditorDraft).map(s=>({note:'',phaseId:'',isPhaseStart:false,auto:{},...s}));normalizeSplitIndex();closeSplitEditor();render();save()}
-    function resetSplitEditor(){state.splitEditorDraft=normalizeSplits(DEFAULT_SPLITS);renderSplitEditor()}
-
-    els.startPauseBtn.addEventListener('click',toggleTimer);
-    els.undoBtn.addEventListener('click',undoSplit);
-    els.advanceCurrentBtn.addEventListener('click',()=>goSplit(state.currentSplitIndex));
-    els.settingsToggle.addEventListener('click',()=>{state.settings.showSettings=!state.settings.showSettings;render();save()});
-    els.difficultySelect.addEventListener('change',e=>{state.settings.difficulty=e.target.value;render();save()});
-    els.act1TargetMinutes.addEventListener('input',e=>{state.settings.act1TargetMinutes=Number(e.target.value||0);render();save()});
-    els.remoteCode.addEventListener('input',e=>{state.remoteCode=e.target.value;save()});
-    els.dirgeCheckbox.addEventListener('change',e=>{state.miscChecks.dirge=e.target.checked;render();save()});
-    els.openSplitEditorBtn.addEventListener('click',openSplitEditor);
-    els.exportTimesBtn.addEventListener('click',()=>exportJson({elapsedMs:state.elapsedMs,currentSplitIndex:state.currentSplitIndex,history:state.history,counters:state.counters,miscChecks:state.miscChecks,splitNames:SPLITS.map(s=>s.label)}));
-    els.importTimesInput.addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(f) importTimesJson(f);e.target.value=''});
-    els.exportSplitsBtn.addEventListener('click',()=>exportJson({splits:SPLITS,exportedAt:new Date().toISOString(),source:'manual-split-export'}));
-    els.importSplitsInput.addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(f) importSplitsJson(f);e.target.value=''});
-    els.resetBtn.addEventListener('click',resetRun);
-    els.downloadSplitBackupBtn.addEventListener('click',()=>exportJson(getSplitBackupPayload()));
-    els.copySplitBackupBtn.addEventListener('click',()=>openCopyModal('Copy this split backup JSON and save it somewhere safe.',getSplitBackupPayload()));
-    els.copyModalCopyBtn.addEventListener('click',copyModalToClipboard);
-    els.copyModalSelectBtn.addEventListener('click',()=>{els.copyModalTextarea.focus();els.copyModalTextarea.select();els.copyModalStatus.textContent='Selected.'});
-    els.closeCopyModalBtn.addEventListener('click',closeCopyModal);
-    els.copyModalOverlay.addEventListener('click',e=>{if(e.target===els.copyModalOverlay) closeCopyModal()});
-    els.addSplitEditorBtn.addEventListener('click',addSplitEditor);
-    els.resetSplitEditorBtn.addEventListener('click',resetSplitEditor);
-    els.closeSplitEditorBtn.addEventListener('click',closeSplitEditor);
-    els.saveSplitEditorBtn.addEventListener('click',saveSplitEditor);
-    els.splitEditorOverlay.addEventListener('click',e=>{if(e.target===els.splitEditorOverlay) closeSplitEditor()});
-
-    load();
-    render();
-  </script>
+  <script type="module" src="./controller.js"></script>
 </body>
 </html>
