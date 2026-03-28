@@ -13,7 +13,7 @@ import {
   formatMs,
   exportJson
 } from "./data.js";
-import { createSplitEditor } from "./split-editor.js";
+import { createSplitEditor } from "../split-editor.js";
 
 const state = {
   elapsedMs: 0,

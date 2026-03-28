@@ -7,7 +7,7 @@ import {
   normalizeSplit,
   normalizeSplits,
   exportJson
-} from "./data.js";
+} from "./js/data.js";
 
 export function createSplitEditor({
   overlayEl,
