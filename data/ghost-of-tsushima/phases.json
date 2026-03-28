@@ -1,115 +1,110 @@
 {
-  "version": 1,
-  "game": "ghost-of-tsushima",
-  "globalObjectives": ["trophies"],
-  "phases": {
-    "legacy_all": {
-      "label": "Legacy All",
-      "note": "Fallback for older split files with no phase markers.",
-      "visible": [
-        "trophies",
-        "inari",
-        "hotsprings",
-        "bamboo",
-        "haiku",
-        "shrines",
-        "records",
-        "artifacts",
-        "crickets",
-        "hiddenaltars",
-        "monochrome",
-        "dirge",
-        "cooper",
-        "sidetales",
-        "duels",
-        "territories",
-        "mythictales"
-      ]
-    },
-    "any_act1": {
-      "label": "Any% Act 1",
-      "note": "Focus on Act 1 collectibles, records, artifacts, crickets, hidden altars, and monochrome.",
-      "visible": [
-        "trophies",
-        "inari",
-        "hotsprings",
-        "bamboo",
-        "haiku",
-        "shrines",
-        "records",
-        "artifacts",
-        "crickets",
-        "hiddenaltars",
-        "monochrome"
-      ]
-    },
-    "any_act2": {
-      "label": "Any% Act 2",
-      "note": "Act 2 keeps the collectible focus and adds Dirge.",
-      "visible": [
-        "trophies",
-        "inari",
-        "hotsprings",
-        "bamboo",
-        "haiku",
-        "shrines",
-        "records",
-        "artifacts",
-        "crickets",
-        "hiddenaltars",
-        "monochrome",
-        "dirge"
-      ]
-    },
-    "any_act3": {
-      "label": "Any% Act 3",
-      "note": "Act 3 keeps collectible focus and swaps to Cooper.",
-      "visible": [
-        "trophies",
-        "inari",
-        "hotsprings",
-        "bamboo",
-        "haiku",
-        "shrines",
-        "records",
-        "artifacts",
-        "crickets",
-        "hiddenaltars",
-        "cooper"
-      ]
-    },
-    "ngp_act1": {
-      "label": "NG+ Act 1",
-      "note": "Focus on side tales, duels, mongol camps, and mythic tales.",
-      "visible": [
-        "trophies",
-        "sidetales",
-        "duels",
-        "territories",
-        "mythictales"
-      ]
-    },
-    "ngp_act2": {
-      "label": "NG+ Act 2",
-      "note": "Continue NG+ cleanup through Act 2.",
-      "visible": [
-        "trophies",
-        "sidetales",
-        "duels",
-        "territories",
-        "mythictales"
-      ]
-    },
-    "ngp_act3": {
-      "label": "NG+ Act 3",
-      "note": "Final NG+ cleanup focus.",
-      "visible": [
-        "trophies",
-        "sidetales",
-        "duels",
-        "territories",
-        "mythictales"
-      ]
-    }
+  "legacy_all": {
+    "label": "Legacy All",
+    "note": "Fallback for older split files with no phase markers.",
+    "visible": [
+      "trophies",
+      "inari",
+      "hotsprings",
+      "bamboo",
+      "haiku",
+      "shrines",
+      "records",
+      "artifacts",
+      "crickets",
+      "hiddenaltars",
+      "monochrome",
+      "dirge",
+      "cooper",
+      "sidetales",
+      "duels",
+      "territories",
+      "mythictales"
+    ]
+  },
+  "any_act1": {
+    "label": "Any% Act 1",
+    "note": "Focus on Act 1 collectibles, records, artifacts, crickets, hidden altars, and monochrome.",
+    "visible": [
+      "trophies",
+      "inari",
+      "hotsprings",
+      "bamboo",
+      "haiku",
+      "shrines",
+      "records",
+      "artifacts",
+      "crickets",
+      "hiddenaltars",
+      "monochrome"
+    ]
+  },
+  "any_act2": {
+    "label": "Any% Act 2",
+    "note": "Act 2 keeps the collectible focus and adds Dirge.",
+    "visible": [
+      "trophies",
+      "inari",
+      "hotsprings",
+      "bamboo",
+      "haiku",
+      "shrines",
+      "records",
+      "artifacts",
+      "crickets",
+      "hiddenaltars",
+      "monochrome",
+      "dirge"
+    ]
+  },
+  "any_act3": {
+    "label": "Any% Act 3",
+    "note": "Act 3 keeps collectible focus and swaps to Cooper.",
+    "visible": [
+      "trophies",
+      "inari",
+      "hotsprings",
+      "bamboo",
+      "haiku",
+      "shrines",
+      "records",
+      "artifacts",
+      "crickets",
+      "hiddenaltars",
+      "cooper"
+    ]
+  },
+  "ngp_act1": {
+    "label": "NG+ Act 1",
+    "note": "Focus on side tales, duels, Mongol territories, and mythic tales.",
+    "visible": [
+      "trophies",
+      "sidetales",
+      "duels",
+      "territories",
+      "mythictales"
+    ]
+  },
+  "ngp_act2": {
+    "label": "NG+ Act 2",
+    "note": "Continue NG+ cleanup through Act 2.",
+    "visible": [
+      "trophies",
+      "sidetales",
+      "duels",
+      "territories",
+      "mythictales"
+    ]
+  },
+  "ngp_act3": {
+    "label": "NG+ Act 3",
+    "note": "Final NG+ cleanup focus.",
+    "visible": [
+      "trophies",
+      "sidetales",
+      "duels",
+      "territories",
+      "mythictales"
+    ]
   }
 }

@@ -1,6 +1,4 @@
 {
-  "version": 1,
-  "game": "ghost-of-tsushima",
   "splits": [
     {
       "id": "prologue",
@@ -14,9 +12,9 @@
       }
     },
     {
-      "id": "new-split-2",
+      "id": "golden-temple-runs",
       "label": "Golden Temple Runs",
-      "note": "Ride south to unlock Golden Summit, Hot Springs and Fox Den.\nAriake Bamboo, Forest Hot Springs, Fox, Shinto Shrine.\nFT Golden Summit Hot Springs and clear the Golden Summit Shrine.\nFT Island Haiku and ride into Kashine Forest for the Fox Den(bow at shrine for hidden altar) before touching Yuna.",
+      "note": "Ride south to unlock Golden Summit, Hot Springs and Fox Den.\nAriake Bamboo, Forest Hot Springs, Fox, Shinto Shrine.\nFT Golden Summit Hot Springs and clear the Golden Summit Shrine.\nFT Island Haiku and ride into Kashine Forest for the Fox Den before touching Yuna.",
       "phaseId": "",
       "isPhaseStart": false,
       "auto": {
@@ -30,7 +28,7 @@
     {
       "id": "yuna",
       "label": "Yuna",
-      "note": "Start of the mission Hidden Altar. Get mongol scroll and artefact during mission.",
+      "note": "Start of the mission Hidden Altar. Get mongol scroll and artifact during mission.",
       "phaseId": "",
       "isPhaseStart": false,
       "auto": {
@@ -41,9 +39,9 @@
       }
     },
     {
-      "id": "new-split-4",
-      "label": "Northen Area Cleanup",
-      "note": "Inari Shrine where mission ends, Hotsprings,(Bear by the river, fighting with Bandit).\nBeach Inari shrine, between rocks, between tree and pillar.\nInari Shrine, between crevice. Left from Tree, south from small crossroad after bridge.\nFT back to Yuna Inari shrine(north from golden tree, top side waterfall) -> Haiku -> Temple run > Hidden altar(left frog statue)",
+      "id": "northern-area-cleanup",
+      "label": "Northern Area Cleanup",
+      "note": "Inari Shrine where mission ends, Hot Spring, bear by the river fighting with bandit.\nBeach Inari shrine between rocks.\nInari shrine between crevice.\nFT back to Yuna Inari shrine, then Haiku, then Temple run, then Hidden Altar.",
       "phaseId": "",
       "isPhaseStart": false,
       "auto": {
@@ -53,9 +51,9 @@
       }
     },
     {
-      "id": "new-split-5",
+      "id": "komoda",
       "label": "Komoda",
-      "note": "White Color + Bamboo\nKomoda - Bamboo, Haiku, Cricket, Fox Shrine(south from Golden Tree, between rocks)\nKashine Hills Inari Shrine - Unlock dragon shrine fast travel",
+      "note": "White color plus Bamboo.\nKomoda Bamboo, Haiku, Cricket, Fox Shrine.\nKashine Hills Inari Shrine unlocks Dragon Shrine fast travel.",
       "phaseId": "",
       "isPhaseStart": false,
       "auto": {
@@ -69,7 +67,7 @@
     {
       "id": "ishikawa",
       "label": "Ishikawa",
-      "note": "Get The BOW!\nAfter mission, Hotsprings, Shinto Shrine(2x hidden altar).\nFT Back to Dojo - Hiyoshi 2 scrolls, Bamboo Strike, Hotsprings.",
+      "note": "Get the bow.\nAfter mission: Hot Spring, Shinto Shrine, 2 hidden altars.\nFT back to dojo, Hiyoshi 2 scrolls, Bamboo Strike, Hot Spring.",
       "phaseId": "",
       "isPhaseStart": false,
       "auto": {
@@ -83,7 +81,7 @@
     {
       "id": "masako",
       "label": "Masako",
-      "note": "Start from Hiyoshi, ride to waterfall, inari shrine.\nSurvivor camp Inari.\nFox Shrine Golden forest, Southwest entrance to the grove from tree.\n",
+      "note": "Start from Hiyoshi, ride to waterfall Inari shrine.\nSurvivor camp Inari.\nFox Shrine in golden forest, southwest entrance to the grove.",
       "phaseId": "",
       "isPhaseStart": false,
       "auto": {
@@ -118,7 +116,7 @@
       }
     },
     {
-      "id": "ronin2",
+      "id": "ronin-2",
       "label": "Ronin 2",
       "note": "",
       "phaseId": "",
@@ -148,7 +146,7 @@
       "auto": {}
     },
     {
-      "id": "act1finale",
+      "id": "act-1-finale",
       "label": "Act 1 Finale",
       "note": "",
       "phaseId": "any_act2",
@@ -158,7 +156,7 @@
       }
     },
     {
-      "id": "act2",
+      "id": "act-2",
       "label": "Act 2",
       "note": "",
       "phaseId": "",

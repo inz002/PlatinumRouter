@@ -1,2 +1,6 @@
-
-azsd
+{
+  "id": "ghost-of-tsushima",
+  "title": "Ghost of Tsushima",
+  "overlayTitle": "Ghost of Tsushima Platinum",
+  "defaultDifficulty": "Lethal"
+}

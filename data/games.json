@@ -1,0 +1,10 @@
+{
+  "defaultGameId": "ghost-of-tsushima",
+  "games": [
+    {
+      "id": "ghost-of-tsushima",
+      "title": "Ghost of Tsushima",
+      "path": "./data/ghost-of-tsushima"
+    }
+  ]
+}

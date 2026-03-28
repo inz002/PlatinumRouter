@@ -1,13 +1,4 @@
-import {
-  COUNTER_DEFS,
-  PHASES,
-  DEFAULT_SPLITS,
-  clone,
-  clamp,
-  normalizeSplit,
-  normalizeSplits,
-  exportJson
-} from "./js/data.js";
+import { clone, clamp, normalizeSplit, normalizeSplits } from "./split-logic.js";
 
 export function createSplitEditor({
   overlayEl,
@@ -20,10 +11,12 @@ export function createSplitEditor({
   copyBtn,
   getSplits,
   setSplits,
+  getPhases,
+  getCounterDefs,
   onAfterSave
 }) {
   const state = {
-    draft: normalizeSplits(getSplits()),
+    draft: normalizeSplits(getSplits())
   };
 
   function open() {
@@ -37,7 +30,7 @@ export function createSplitEditor({
   }
 
   function reset() {
-    state.draft = normalizeSplits(DEFAULT_SPLITS);
+    state.draft = normalizeSplits(getSplits());
     render();
   }
 
@@ -47,69 +40,56 @@ export function createSplitEditor({
     if (typeof onAfterSave === "function") onAfterSave();
   }
 
-  function getBackupPayload() {
-    return {
-      splits: state.draft,
-      exportedAt: new Date().toISOString(),
-      source: "split-editor"
-    };
+  function exportDraft() {
+    downloadJson(
+      {
+        splits: state.draft,
+        exportedAt: new Date().toISOString(),
+        source: "split-editor"
+      },
+      "split-backup"
+    );
   }
 
-  async function copyBackup() {
-    const text = JSON.stringify(getBackupPayload(), null, 2);
+  async function copyDraft() {
+    const text = JSON.stringify(
+      {
+        splits: state.draft,
+        exportedAt: new Date().toISOString(),
+        source: "split-editor"
+      },
+      null,
+      2
+    );
+
     try {
       await navigator.clipboard.writeText(text);
       alert("Split backup copied.");
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
       alert("Clipboard blocked. Use export instead.");
     }
   }
 
-  function downloadBackup() {
-    exportJson(getBackupPayload(), "got-split-backup");
-  }
-
-  function buildSplitId(label, index) {
-    const base =
-      String(label || `split-${index + 1}`)
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "") || `split-${index + 1}`;
-
-    let id = base;
-    let n = 2;
-    const existing = new Set(state.draft.map((s) => s.id));
-
-    while (existing.has(id)) {
-      id = `${base}-${n}`;
-      n += 1;
-    }
-
-    return id;
-  }
-
   function addSplit() {
-    const i = state.draft.length;
+    const nextIndex = state.draft.length + 1;
     state.draft.push(
       normalizeSplit({
-        id: buildSplitId(`New Split ${i + 1}`, i),
-        label: `New Split ${i + 1}`
+        id: buildUniqueId(`new-split-${nextIndex}`),
+        label: `New Split ${nextIndex}`
       })
     );
     render();
   }
 
-  function insertSplit(afterIndex) {
-    const insertAt = afterIndex + 1;
-    const label = `New Split ${insertAt + 1}`;
+  function insertAfter(index) {
+    const nextIndex = index + 2;
     state.draft.splice(
-      insertAt,
+      index + 1,
       0,
       normalizeSplit({
-        id: buildSplitId(label, insertAt),
-        label
+        id: buildUniqueId(`new-split-${nextIndex}`),
+        label: `New Split ${nextIndex}`
       })
     );
     render();
@@ -145,45 +125,51 @@ export function createSplitEditor({
   }
 
   function setAuto(index, key, value) {
-    const normalized = clamp(Number(value || 0), 0, COUNTER_DEFS[key].max);
+    const defs = getCounterDefs();
+    const max = defs[key]?.max ?? 999;
+    const normalized = clamp(Number(value || 0), 0, max);
     if (!state.draft[index].auto) state.draft[index].auto = {};
     if (normalized === 0) delete state.draft[index].auto[key];
     else state.draft[index].auto[key] = normalized;
   }
 
   function render() {
+    const defs = getCounterDefs();
+    const phases = getPhases();
+
     gridEl.innerHTML = "";
 
-    const phaseOptions = (selected = "") =>
-      [
-        '<option value="">No phase change</option>',
-        ...Object.entries(PHASES)
-          .filter(([id]) => id !== "legacy_all")
-          .map(
-            ([id, phase]) =>
-              `<option value="${id}" ${selected === id ? "selected" : ""}>${phase.label}</option>`
-          )
-      ].join("");
-
-    state.draft.forEach((rawSplit, index) => {
-      const split = normalizeSplit(rawSplit);
-      const wrap = document.createElement("div");
+    state.draft.forEach((split, index) => {
+      const safe = normalizeSplit(split);
+      const cardWrap = document.createElement("div");
 
       const card = document.createElement("div");
       card.className = "editorCard";
 
-      const fields = Object.keys(COUNTER_DEFS)
+      const phaseOptions = [
+        `<option value="">No phase change</option>`,
+        ...Object.entries(phases)
+          .filter(([id]) => id !== "legacy_all")
+          .map(
+            ([id, phase]) =>
+              `<option value="${id}" ${safe.phaseId === id ? "selected" : ""}>${escapeHtml(
+                phase.label
+              )}</option>`
+          )
+      ].join("");
+
+      const counterFields = Object.entries(defs)
         .map(
-          (key) => `
+          ([key, def]) => `
             <div class="field">
-              <label>${COUNTER_DEFS[key].icon} ${COUNTER_DEFS[key].label}</label>
+              <label>${def.icon} ${escapeHtml(def.label)}</label>
               <input
                 type="number"
                 min="0"
-                max="${COUNTER_DEFS[key].max}"
+                max="${def.max}"
                 data-split-index="${index}"
                 data-counter-key="${key}"
-                value="${split.auto[key] || 0}"
+                value="${safe.auto[key] || 0}"
               />
             </div>
           `
@@ -203,54 +189,58 @@ export function createSplitEditor({
         <div class="editorTop">
           <div class="field">
             <label>Split label</label>
-            <input type="text" data-label-index="${index}" value="${escapeHtml(split.label)}" />
+            <input type="text" data-label-index="${index}" value="${escapeHtml(safe.label)}" />
           </div>
           <div class="field">
             <label>Split id</label>
-            <input type="text" value="${escapeHtml(split.id)}" disabled />
+            <input type="text" value="${escapeHtml(safe.id)}" disabled />
           </div>
         </div>
 
         <div class="field" style="margin-bottom:10px">
           <label>Objective note</label>
-          <textarea data-note-index="${index}" style="min-height:64px;resize:vertical">${escapeHtml(split.note || "")}</textarea>
+          <textarea data-note-index="${index}" style="min-height:64px;resize:vertical">${escapeHtml(
+            safe.note || ""
+          )}</textarea>
         </div>
 
         <div class="editorTop">
           <div class="field">
             <label>Phase start marker</label>
             <select data-phase-index="${index}">
-              ${phaseOptions(split.phaseId)}
+              ${phaseOptions}
             </select>
           </div>
           <div class="field">
             <label>Apply phase marker here</label>
             <select data-phase-flag-index="${index}">
-              <option value="false" ${!split.isPhaseStart ? "selected" : ""}>No</option>
-              <option value="true" ${split.isPhaseStart ? "selected" : ""}>Yes</option>
+              <option value="false" ${!safe.isPhaseStart ? "selected" : ""}>No</option>
+              <option value="true" ${safe.isPhaseStart ? "selected" : ""}>Yes</option>
             </select>
           </div>
         </div>
 
-        <div class="editorCounters">${fields}</div>
+        <div class="editorCounters">
+          ${counterFields}
+        </div>
       `;
 
-      wrap.appendChild(card);
+      cardWrap.appendChild(card);
 
       if (index < state.draft.length - 1) {
-        const insert = document.createElement("div");
-        insert.className = "editorInsert";
-        insert.innerHTML = `<button class="btn editorInsertBtn" data-insert-after="${index}">＋</button>`;
-        wrap.appendChild(insert);
+        const insertRow = document.createElement("div");
+        insertRow.className = "editorInsert";
+        insertRow.innerHTML = `<button class="btn editorInsertBtn" data-insert-after="${index}">＋</button>`;
+        cardWrap.appendChild(insertRow);
       }
 
-      gridEl.appendChild(wrap);
+      gridEl.appendChild(cardWrap);
     });
 
-    bindEditorEvents();
+    bindEvents();
   }
 
-  function bindEditorEvents() {
+  function bindEvents() {
     gridEl.querySelectorAll("input[data-label-index]").forEach((el) => {
       el.addEventListener("input", (e) => {
         setLabel(Number(e.target.dataset.labelIndex), e.target.value);
@@ -298,16 +288,27 @@ export function createSplitEditor({
     });
 
     gridEl.querySelectorAll("button[data-insert-after]").forEach((el) => {
-      el.addEventListener("click", () => insertSplit(Number(el.dataset.insertAfter)));
+      el.addEventListener("click", () => insertAfter(Number(el.dataset.insertAfter)));
     });
+  }
+
+  function buildUniqueId(base) {
+    let id = base;
+    let n = 2;
+    const existing = new Set(state.draft.map((s) => s.id));
+    while (existing.has(id)) {
+      id = `${base}-${n}`;
+      n += 1;
+    }
+    return id;
   }
 
   addBtn?.addEventListener("click", addSplit);
   resetBtn?.addEventListener("click", reset);
   closeBtn?.addEventListener("click", close);
   saveBtn?.addEventListener("click", save);
-  downloadBtn?.addEventListener("click", downloadBackup);
-  copyBtn?.addEventListener("click", copyBackup);
+  downloadBtn?.addEventListener("click", exportDraft);
+  copyBtn?.addEventListener("click", copyDraft);
 
   overlayEl?.addEventListener("click", (e) => {
     if (e.target === overlayEl) close();
@@ -316,10 +317,26 @@ export function createSplitEditor({
   return {
     open,
     close,
-    reset,
-    save,
+    render,
     getDraft: () => clone(state.draft)
   };
+}
+
+function downloadJson(data, prefix) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: "application/json"
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${prefix}-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    a.remove();
+  }, 200);
 }
 
 function escapeHtml(value) {
