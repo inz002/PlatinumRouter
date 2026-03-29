@@ -16,11 +16,12 @@ export async function loadGameData(gameId) {
 
   const basePath = normalizePath(game.path);
 
-  const [meta, counters, phases, defaultSplits] = await Promise.all([
+  const [meta, counters, phases, defaultSplits, quotas] = await Promise.all([
     fetchJson(`${basePath}/meta.json`, `meta.json for ${gameId}`),
     fetchJson(`${basePath}/counters.json`, `counters.json for ${gameId}`),
     fetchJson(`${basePath}/phases.json`, `phases.json for ${gameId}`),
-    fetchJson(`${basePath}/default-splits.json`, `default-splits.json for ${gameId}`)
+    fetchJson(`${basePath}/default-splits.json`, `default-splits.json for ${gameId}`),
+    fetchOptionalJson(`${basePath}/quotas.json`, { quotas: {} })
   ]);
 
   return {
@@ -29,7 +30,8 @@ export async function loadGameData(gameId) {
     meta,
     counters,
     phases,
-    defaultSplits
+    defaultSplits,
+    quotas: quotas?.quotas || {}
   };
 }
 
@@ -39,6 +41,16 @@ async function fetchJson(path, label) {
     throw new Error(`Failed to load ${label}`);
   }
   return response.json();
+}
+
+async function fetchOptionalJson(path, fallback) {
+  try {
+    const response = await fetch(path);
+    if (!response.ok) return fallback;
+    return await response.json();
+  } catch {
+    return fallback;
+  }
 }
 
 function normalizePath(path) {
