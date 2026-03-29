@@ -1,0 +1,53 @@
+{
+  "quotas": {
+    "legacy_all": {
+      "label": "Legacy All",
+      "targets": {}
+    },
+    "any_act1": {
+      "label": "Any% Act 1",
+      "targets": {
+        "inari": 22,
+        "hotsprings": 9,
+        "bamboo": 6,
+        "haiku": 8,
+        "shrines": 7
+      }
+    },
+    "any_act2": {
+      "label": "Any% Act 2",
+      "targets": {}
+    },
+    "any_act3": {
+      "label": "Any% Act 3",
+      "targets": {}
+    },
+    "ngp_act1": {
+      "label": "NG+ Act 1",
+      "targets": {
+        "sidetales": 0,
+        "duels": 0,
+        "territories": 0,
+        "mythictales": 0
+      }
+    },
+    "ngp_act2": {
+      "label": "NG+ Act 2",
+      "targets": {
+        "sidetales": 0,
+        "duels": 0,
+        "territories": 0,
+        "mythictales": 0
+      }
+    },
+    "ngp_act3": {
+      "label": "NG+ Act 3",
+      "targets": {
+        "sidetales": 0,
+        "duels": 0,
+        "territories": 0,
+        "mythictales": 0
+      }
+    }
+  }
+}
