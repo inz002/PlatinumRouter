@@ -13,10 +13,14 @@ import {
   buildCounters,
   applyAutoProgress,
   reverseAutoProgress,
-  buildSplitHistoryEntry
+  buildSplitHistoryEntry,
+  getActivePhaseId
 } from "./js/split-logic.js";
 import { createRenderer } from "./js/ui-render.js";
 import { createSplitEditor } from "./js/split-editor.js";
+import { createDebugger } from "./js/debug.js";
+
+const debug = createDebugger({ name: "controller" });
 
 const state = {
   gameId: "ghost-of-tsushima",
@@ -41,7 +45,8 @@ const gameData = {
   meta: null,
   counters: {},
   phases: {},
-  splits: []
+  splits: [],
+  quotas: {}
 };
 
 const els = {
@@ -96,13 +101,22 @@ let timer = null;
 let renderer = null;
 let splitEditor = null;
 
+debug.log("Controller boot start");
+debug.setStatus("storageKey", STORAGE_KEY);
+
 init().catch((error) => {
   console.error(error);
+  debug.error("Controller boot failed", {
+    message: error.message,
+    stack: error.stack
+  });
   alert(`Controller boot failed: ${error.message || error}`);
 });
 
 async function init() {
   gameData.registry = await loadGamesRegistry();
+  debug.log("Games registry loaded", gameData.registry);
+  debug.setStatus("defaultGameId", gameData.registry.defaultGameId || "none");
 
   const stored = mergeStoredState(buildDefaultStoredState(), loadStoredState());
   state.gameId = stored.gameId || gameData.registry.defaultGameId || "ghost-of-tsushima";
@@ -113,11 +127,37 @@ async function init() {
   gameData.meta = loaded.meta;
   gameData.counters = loaded.counters || {};
   gameData.phases = loaded.phases || {};
+  gameData.quotas = loaded.quotas || {};
   gameData.splits = normalizeSplits(
     loaded.defaultSplits?.splits || loaded.defaultSplits || []
   );
 
+  debug.log("Game data loaded", {
+    game: loaded.game,
+    meta: loaded.meta,
+    counterCount: Object.keys(loaded.counters || {}).length,
+    phaseCount: Object.keys(loaded.phases || {}).length,
+    splitCount: (loaded.defaultSplits?.splits || loaded.defaultSplits || []).length,
+    quotaCount: Object.keys(loaded.quotas || {}).length
+  });
+
+  debug.setStatus("gameId", state.gameId);
+  debug.setStatus("countersLoaded", Object.keys(gameData.counters || {}).length);
+  debug.setStatus("phasesLoaded", Object.keys(gameData.phases || {}).length);
+  debug.setStatus("defaultSplitsLoaded", gameData.splits.length);
+  debug.setStatus("quotasLoaded", Object.keys(gameData.quotas || {}).length);
+
   hydrateStateFromStored(stored);
+
+  debug.log("State hydrated", {
+    currentSplitIndex: state.currentSplitIndex,
+    historyCount: state.history.length,
+    counterKeys: Object.keys(state.counters || {}).length,
+    splitCount: state.splits.length
+  });
+
+  debug.setStatus("storedSplitCount", state.splits.length);
+  debug.setStatus("storedCounterCount", Object.keys(state.counters || {}).length);
 
   timer = createTimer({
     initialElapsedMs: state.elapsedMs,
@@ -140,6 +180,7 @@ async function init() {
       meta: gameData.meta,
       counters: gameData.counters,
       phases: gameData.phases,
+      quotas: gameData.quotas,
       splits: state.splits
     }),
     onManualCounterChange: handleManualCounterChange,
@@ -172,6 +213,20 @@ async function init() {
   });
 
   bindEvents();
+
+  debug.setSnapshotBuilder(() => ({
+    state,
+    gameData: {
+      game: gameData.game,
+      meta: gameData.meta,
+      countersLoaded: Object.keys(gameData.counters || {}).length,
+      phasesLoaded: Object.keys(gameData.phases || {}).length,
+      quotasLoaded: Object.keys(gameData.quotas || {}).length,
+      splitsLoaded: gameData.splits.length
+    },
+    saved: JSON.parse(localStorage.getItem(STORAGE_KEY) || "null")
+  }));
+
   persistAndRender();
 }
 
@@ -414,6 +469,28 @@ function importSplitsJson(file) {
 }
 
 function persistAndRender() {
+  const activePhaseId = getActivePhaseId(state.splits, state.currentSplitIndex, gameData.phases);
+
+  debug.setStatus("elapsedMs", state.elapsedMs);
+  debug.setStatus("currentSplitIndex", state.currentSplitIndex);
+  debug.setStatus("historyCount", state.history.length);
+  debug.setStatus("counterCount", Object.keys(state.counters || {}).length);
+  debug.setStatus("splitCount", state.splits.length);
+  debug.setStatus("activePhaseId", activePhaseId);
+  debug.setStatus(
+    "activeQuotaTargets",
+    Object.keys(gameData.quotas?.[activePhaseId]?.targets || {}).length
+  );
+
+  debug.log("Persisting state", {
+    elapsedMs: state.elapsedMs,
+    currentSplitIndex: state.currentSplitIndex,
+    historyCount: state.history.length,
+    counterCount: Object.keys(state.counters || {}).length,
+    splitCount: state.splits.length,
+    activePhaseId
+  });
+
   saveStoredState({
     gameId: state.gameId,
     elapsedMs: state.elapsedMs,
@@ -424,6 +501,7 @@ function persistAndRender() {
     settings: state.settings,
     splits: state.splits
   });
+
   renderer.render();
 }
 
