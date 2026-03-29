@@ -21,6 +21,8 @@ import { createSplitEditor } from "./js/split-editor.js";
 import { createDebugger } from "./js/debug.js";
 
 const debug = createDebugger({ name: "controller" });
+debug.log("Controller boot start");
+debug.setStatus("storageKey", STORAGE_KEY);
 
 const state = {
   gameId: "ghost-of-tsushima",
@@ -100,9 +102,6 @@ const els = {
 let timer = null;
 let renderer = null;
 let splitEditor = null;
-
-debug.log("Controller boot start");
-debug.setStatus("storageKey", STORAGE_KEY);
 
 init().catch((error) => {
   console.error(error);
@@ -427,6 +426,10 @@ function importTimesJson(file) {
       persistAndRender();
     } catch (error) {
       console.error(error);
+      debug.error("Could not import times JSON", {
+        message: error.message,
+        stack: error.stack
+      });
       alert("Could not import times JSON");
     }
   };
@@ -462,6 +465,10 @@ function importSplitsJson(file) {
       persistAndRender();
     } catch (error) {
       console.error(error);
+      debug.error("Could not import splits JSON", {
+        message: error.message,
+        stack: error.stack
+      });
       alert("Could not import splits JSON");
     }
   };
