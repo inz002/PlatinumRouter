@@ -1,7 +1,5 @@
 import {
   computeOverallPercent,
-  computeAct1Percent,
-  getAct1QuotaText,
   getActivePhaseId,
   clamp
 } from "./split-logic.js";
@@ -23,6 +21,7 @@ export function createRenderer({
       meta,
       counters: counterDefs,
       phases,
+      quotas,
       splits
     } = gameData;
 
@@ -39,9 +38,6 @@ export function createRenderer({
       state.miscChecks
     );
 
-    const act1Percent = computeAct1Percent(counterDefs, state.counters);
-    const act1QuotaText = getAct1QuotaText(counterDefs, state.counters);
-
     const activePhaseId = getActivePhaseId(
       splits,
       state.currentSplitIndex,
@@ -53,6 +49,10 @@ export function createRenderer({
       note: "",
       visible: []
     };
+
+    const activeQuota = quotas?.[activePhaseId] || { label: activePhase.label, targets: {} };
+    const quotaSummary = buildQuotaSummary(activeQuota.targets, counterDefs, state.counters);
+    const quotaPercent = computeQuotaPercent(activeQuota.targets, state.counters);
 
     const plannedMs = (state.settings.act1TargetMinutes || 180) * 60 * 1000;
     const diff = state.elapsedMs - plannedMs;
@@ -68,6 +68,7 @@ export function createRenderer({
 
     elements.runTitle.textContent =
       meta?.overlayTitle || meta?.title || "PlatinumRouter";
+
     elements.difficultyBadge.textContent = state.settings.difficulty;
     elements.difficultyBadge.className = `badge ${
       state.settings.difficulty === "Lethal" ? "lethal" : "easy"
@@ -90,12 +91,12 @@ export function createRenderer({
     elements.overallPercent.textContent = `${overallPercent}%`;
     elements.overallBar.style.width = `${overallPercent}%`;
 
-    elements.act1SummaryValue.textContent = `${act1Percent}%`;
-    elements.act1SummaryBar.style.width = `${act1Percent}%`;
+    elements.act1SummaryValue.textContent = `${quotaPercent}%`;
+    elements.act1SummaryBar.style.width = `${quotaPercent}%`;
 
     elements.pacePill.textContent = pace;
     elements.modePill.textContent = state.settings.difficulty;
-    elements.act1QuotaText.textContent = act1QuotaText;
+    elements.act1QuotaText.textContent = quotaSummary;
 
     elements.settingsToggle.textContent = state.settings.showSettings
       ? "⚙ Hide Settings"
@@ -112,6 +113,19 @@ export function createRenderer({
     elements.dirgeCheckbox.checked = !!state.miscChecks.dirge;
 
     renderVisibleObjectives(activePhase, counterDefs, elements.visibleObjectives);
+
+    if (elements.activePhaseName) {
+      elements.activePhaseName.textContent = activePhase.label || "No phase";
+    }
+
+    if (elements.activePhaseNote) {
+      const quotaSuffix =
+        Object.keys(activeQuota.targets || {}).length > 0
+          ? `\nQuota: ${activeQuota.label || activePhase.label}`
+          : "";
+      elements.activePhaseNote.textContent = `${activePhase.note || ""}${quotaSuffix}`.trim();
+    }
+
     renderCounters(counterDefs, state.counters, elements.progressGrid, onManualCounterChange);
     renderSplits(
       splits,
@@ -127,6 +141,38 @@ export function createRenderer({
   }
 
   return { render };
+}
+
+function buildQuotaSummary(targets = {}, counterDefs = {}, counters = {}) {
+  const entries = Object.entries(targets || {}).filter(([, value]) => Number(value) > 0);
+
+  if (!entries.length) {
+    return "No quota targets for this phase";
+  }
+
+  return entries
+    .map(([key, target]) => {
+      const def = counterDefs[key];
+      if (!def) return `${Math.min(counters[key]?.value || 0, target)}/${target} ${key}`;
+      const value = Math.min(counters[key]?.value || 0, target);
+      return `${value}/${target} ${def.icon}`;
+    })
+    .join(" · ");
+}
+
+function computeQuotaPercent(targets = {}, counters = {}) {
+  const entries = Object.entries(targets || {}).filter(([, value]) => Number(value) > 0);
+
+  if (!entries.length) return 0;
+
+  const done = entries.reduce(
+    (sum, [key, target]) => sum + Math.min(counters[key]?.value || 0, target),
+    0
+  );
+
+  const total = entries.reduce((sum, [, target]) => sum + target, 0);
+
+  return total ? Math.round((done / total) * 100) : 0;
 }
 
 function renderVisibleObjectives(activePhase, counterDefs, container) {
@@ -206,16 +252,15 @@ function renderSplits(
   splits.forEach((split, index) => {
     const done = index < currentSplitIndex;
     const active = index === currentSplitIndex;
+    const marker =
+      split.isPhaseStart && split.phaseId && phases?.[split.phaseId]
+        ? ` | ▶ ${phases[split.phaseId].label}`
+        : "";
 
     const autoSummary =
       Object.entries(split.auto || {})
-        .map(([k, v]) => `${counterDefs[k]?.icon || "?"}${v}`)
+        .map(([k, v]) => `${counterDefs?.[k]?.icon || "?"}${v}`)
         .join(" · ") || "No auto progress";
-
-    const marker =
-      split.isPhaseStart && split.phaseId && phases[split.phaseId]
-        ? ` | ▶ ${phases[split.phaseId].label}`
-        : "";
 
     const button = document.createElement("button");
     button.className = `split ${done ? "done" : ""} ${active ? "active" : ""}`;
