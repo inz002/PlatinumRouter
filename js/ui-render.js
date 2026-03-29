@@ -1,7 +1,6 @@
 import {
   computeOverallPercent,
-  getActivePhaseId,
-  clamp
+  getActivePhaseId
 } from "./split-logic.js";
 
 export function createRenderer({
@@ -50,9 +49,21 @@ export function createRenderer({
       visible: []
     };
 
-    const activeQuota = quotas?.[activePhaseId] || { label: activePhase.label, targets: {} };
-    const quotaSummary = buildQuotaSummary(activeQuota.targets, counterDefs, state.counters);
-    const quotaPercent = computeQuotaPercent(activeQuota.targets, state.counters);
+    const activeQuota = quotas?.[activePhaseId] || {
+      label: activePhase.label,
+      targets: {}
+    };
+
+    const quotaSummary = buildQuotaSummary(
+      activeQuota.targets,
+      counterDefs,
+      state.counters
+    );
+
+    const quotaPercent = computeQuotaPercent(
+      activeQuota.targets,
+      state.counters
+    );
 
     const plannedMs = (state.settings.act1TargetMinutes || 180) * 60 * 1000;
     const diff = state.elapsedMs - plannedMs;
@@ -86,6 +97,7 @@ export function createRenderer({
     elements.historyCount.textContent = `${state.history.length} split${
       state.history.length === 1 ? "" : "s"
     } logged`;
+
     elements.historySaved.textContent = `${state.history.length} saved`;
 
     elements.overallPercent.textContent = `${overallPercent}%`;
@@ -126,7 +138,13 @@ export function createRenderer({
       elements.activePhaseNote.textContent = `${activePhase.note || ""}${quotaSuffix}`.trim();
     }
 
-    renderCounters(counterDefs, state.counters, elements.progressGrid, onManualCounterChange);
+    renderCounters(
+      counterDefs,
+      state.counters,
+      elements.progressGrid,
+      onManualCounterChange
+    );
+
     renderSplits(
       splits,
       state.currentSplitIndex,
@@ -137,6 +155,7 @@ export function createRenderer({
       elements.queuePill,
       onAdvanceSplit
     );
+
     renderHistory(state.history, elements.historyList);
   }
 
@@ -153,8 +172,12 @@ function buildQuotaSummary(targets = {}, counterDefs = {}, counters = {}) {
   return entries
     .map(([key, target]) => {
       const def = counterDefs[key];
-      if (!def) return `${Math.min(counters[key]?.value || 0, target)}/${target} ${key}`;
       const value = Math.min(counters[key]?.value || 0, target);
+
+      if (!def) {
+        return `${value}/${target} ${key}`;
+      }
+
       return `${value}/${target} ${def.icon}`;
     })
     .join(" · ");
@@ -178,22 +201,20 @@ function computeQuotaPercent(targets = {}, counters = {}) {
 function renderVisibleObjectives(activePhase, counterDefs, container) {
   container.innerHTML = "";
 
-  elementsFromPhase(activePhase, counterDefs).forEach((label) => {
-    const chip = document.createElement("div");
-    chip.className = "miniChip";
-    chip.textContent = label;
-    container.appendChild(chip);
-  });
-}
-
-function elementsFromPhase(activePhase, counterDefs) {
-  return (activePhase.visible || [])
+  const labels = (activePhase.visible || [])
     .map((key) => {
       if (key === "dirge") return "🎵 Dirge";
       if (!counterDefs[key]) return null;
       return `${counterDefs[key].icon} ${counterDefs[key].label}`;
     })
     .filter(Boolean);
+
+  labels.forEach((label) => {
+    const chip = document.createElement("div");
+    chip.className = "miniChip";
+    chip.textContent = label;
+    container.appendChild(chip);
+  });
 }
 
 function renderCounters(counterDefs, counters, container, onManualCounterChange) {
@@ -252,6 +273,7 @@ function renderSplits(
   splits.forEach((split, index) => {
     const done = index < currentSplitIndex;
     const active = index === currentSplitIndex;
+
     const marker =
       split.isPhaseStart && split.phaseId && phases?.[split.phaseId]
         ? ` | ▶ ${phases[split.phaseId].label}`
