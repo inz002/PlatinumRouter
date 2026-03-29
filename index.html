@@ -90,6 +90,7 @@
 
               <div class="row">
                 <button id="openSplitEditorBtn" class="btn">🧩 Split Editor</button>
+                <button id="openActsEditorBtn" class="btn">🧭 Acts Editor</button>
                 <button id="exportTimesBtn" class="btn">⬇ Times</button>
                 <label class="btn">
                   ⬆ Times
@@ -217,6 +218,40 @@
         <div class="editorHead" style="border-top:1px solid var(--border);border-bottom:0;top:auto;bottom:0">
           <div class="subtitle">Old split JSON stays compatible because phase fields are optional.</div>
           <button id="saveSplitEditorBtn" class="btn primary">Save Split Setup</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="actsEditorOverlay" class="overlay">
+      <div class="editor">
+        <div class="editorHead">
+          <div>
+            <h2 style="margin:0">Acts Editor</h2>
+            <div class="subtitle">
+              Edit phase labels, notes, visible objectives, and quota targets.
+            </div>
+          </div>
+          <div class="row">
+            <button id="addActsEditorBtn" class="btn">＋ Add Phase</button>
+            <button id="exportActsEditorBtn" class="btn">⬇ Export Acts</button>
+            <button id="copyActsEditorBtn" class="btn">📋 Copy Acts</button>
+            <button id="resetActsEditorBtn" class="btn">Reset</button>
+            <button id="closeActsEditorBtn" class="btn">Close</button>
+          </div>
+        </div>
+
+        <div class="editorGrid" style="grid-template-columns: 320px 1fr;">
+          <div class="editorCard">
+            <div class="eyebrow" style="margin-bottom:10px">Phases</div>
+            <div id="actsEditorPhaseList" class="splitList"></div>
+          </div>
+
+          <div id="actsEditorForm"></div>
+        </div>
+
+        <div class="editorHead" style="border-top:1px solid var(--border);border-bottom:0;top:auto;bottom:0">
+          <div class="subtitle">Phase visibility and quotas are edited together here.</div>
+          <button id="saveActsEditorBtn" class="btn primary">Save Acts Setup</button>
         </div>
       </div>
     </div>
