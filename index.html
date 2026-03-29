@@ -52,7 +52,7 @@
               <div class="bar"><span id="overallBar" style="width:0%"></span></div>
             </div>
             <div class="card">
-              <div class="eyebrow">Act 1</div>
+              <div class="eyebrow">Act Quota</div>
               <div id="act1SummaryValue" class="big">0%</div>
               <div class="bar">
                 <span id="act1SummaryBar" style="width:0%;background:var(--blue)"></span>
@@ -79,7 +79,7 @@
               </div>
 
               <div class="field">
-                <label for="act1TargetMinutes">Act 1 target minutes</label>
+                <label for="act1TargetMinutes">Act target minutes</label>
                 <input id="act1TargetMinutes" type="number" value="180" />
               </div>
 
@@ -103,6 +103,26 @@
                 <button id="resetBtn" class="btn danger">↺ Reset</button>
               </div>
             </div>
+
+            <div class="debugDock">
+              <div class="row">
+                <button id="debugToggle" class="btn">🐞 Show Debug</button>
+                <button id="debugClear" class="btn">Clear Logs</button>
+                <button id="debugCopy" class="btn">Copy Snapshot</button>
+              </div>
+
+              <div id="debugPanel" class="debugPanel">
+                <div class="debugSection">
+                  <div class="eyebrow">Status</div>
+                  <div id="debugStatus"></div>
+                </div>
+
+                <div class="debugSection">
+                  <div class="eyebrow">Logs</div>
+                  <div id="debugBody" class="debugBody"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -112,9 +132,9 @@
           <div class="panel">
             <div class="mainTop">
               <div class="card">
-                <div class="eyebrow">Act 1 Quota</div>
+                <div class="eyebrow">Phase Quota</div>
                 <div id="act1QuotaText" class="mid" style="margin-top:8px">
-                  0/22 🦊 · 0/9 🍑 · 0/6 🎍 · 0/8 🎼 · 0/7 ⛩️
+                  No quota targets for this phase
                 </div>
               </div>
 
