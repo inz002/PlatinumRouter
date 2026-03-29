@@ -34,6 +34,7 @@ export function createActsEditor({
   saveBtn,
   resetBtn,
   exportBtn,
+  importInput,
   copyBtn,
   getPhases,
   getQuotas,
@@ -51,10 +52,8 @@ export function createActsEditor({
   function open() {
     state.draftPhases = clone(getPhases() || {});
     state.draftQuotas = clone(getQuotas() || {});
-
     const phaseIds = getSortedPhaseIds();
     state.selectedPhaseId = phaseIds[0] || null;
-
     render();
     overlayEl.classList.add("open");
   }
@@ -121,6 +120,47 @@ export function createActsEditor({
       console.error(error);
       alert("Clipboard blocked. Use export instead.");
     }
+  }
+
+  function importDraft(file) {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result));
+
+        const nextPhases =
+          parsed?.phases && typeof parsed.phases === "object"
+            ? parsed.phases
+            : null;
+
+        const nextQuotas =
+          parsed?.quotas && typeof parsed.quotas === "object"
+            ? parsed.quotas
+            : null;
+
+        if (!nextPhases && !nextQuotas) {
+          throw new Error("Imported file has no phases or quotas object.");
+        }
+
+        if (nextPhases) {
+          state.draftPhases = clone(nextPhases);
+        }
+
+        if (nextQuotas) {
+          state.draftQuotas = clone(nextQuotas);
+        }
+
+        const phaseIds = getSortedPhaseIds();
+        state.selectedPhaseId = phaseIds[0] || null;
+        render();
+      } catch (error) {
+        console.error(error);
+        alert("Could not import acts JSON");
+      }
+    };
+
+    reader.readAsText(file);
   }
 
   function addPhase() {
@@ -416,6 +456,12 @@ export function createActsEditor({
   resetBtn?.addEventListener("click", reset);
   exportBtn?.addEventListener("click", exportDraft);
   copyBtn?.addEventListener("click", copyDraft);
+
+  importInput?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (file) importDraft(file);
+    e.target.value = "";
+  });
 
   overlayEl?.addEventListener("click", (e) => {
     if (e.target === overlayEl) close();
