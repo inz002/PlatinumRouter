@@ -36,19 +36,23 @@ export function createDebugger({
 
   function renderStatus() {
     if (!statusEl) return;
-    const entries = Object.entries(state.status);
 
+    const entries = Object.entries(state.status);
     if (!entries.length) {
       statusEl.innerHTML = `<div class="debugEmpty">No status yet</div>`;
       return;
     }
 
-    statusEl.innerHTML = entries.map(([key, value]) => `
-      <div class="debugStatusRow">
-        <span class="debugStatusKey">${escapeHtml(key)}</span>
-        <span class="debugStatusValue">${escapeHtml(String(value))}</span>
-      </div>
-    `).join("");
+    statusEl.innerHTML = entries
+      .map(
+        ([key, value]) => `
+          <div class="debugStatusRow">
+            <span class="debugStatusKey">${escapeHtml(key)}</span>
+            <span class="debugStatusValue">${escapeHtml(String(value))}</span>
+          </div>
+        `
+      )
+      .join("");
   }
 
   function renderLogs() {
@@ -62,17 +66,23 @@ export function createDebugger({
     body.innerHTML = state.logs
       .slice()
       .reverse()
-      .map(entry => `
-        <div class="debugLog debugLog-${entry.level}">
-          <div class="debugLogTop">
-            <span class="debugLogName">${escapeHtml(name)}</span>
-            <span class="debugLogTime">${escapeHtml(entry.time)}</span>
-            <span class="debugLogLevel">${escapeHtml(entry.level.toUpperCase())}</span>
+      .map(
+        (entry) => `
+          <div class="debugLog debugLog-${entry.level}">
+            <div class="debugLogTop">
+              <span class="debugLogName">${escapeHtml(name)}</span>
+              <span class="debugLogTime">${escapeHtml(entry.time)}</span>
+              <span class="debugLogLevel">${escapeHtml(entry.level.toUpperCase())}</span>
+            </div>
+            <div class="debugLogMsg">${escapeHtml(entry.message)}</div>
+            ${
+              entry.data === undefined
+                ? ""
+                : `<pre class="debugLogData">${escapeHtml(safeStringify(entry.data))}</pre>`
+            }
           </div>
-          <div class="debugLogMsg">${escapeHtml(entry.message)}</div>
-          ${entry.data === undefined ? "" : `<pre class="debugLogData">${escapeHtml(safeStringify(entry.data))}</pre>`}
-        </div>
-      `)
+        `
+      )
       .join("");
   }
 
