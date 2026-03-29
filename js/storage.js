@@ -63,8 +63,9 @@ export function mergeStoredState(baseState, incomingState) {
     },
     history: Array.isArray(incoming.history) ? incoming.history : baseState.history,
     splits: Array.isArray(incoming.splits) ? incoming.splits : baseState.splits,
-    counters: incoming.counters && typeof incoming.counters === "object"
-      ? incoming.counters
-      : baseState.counters
+    counters:
+      incoming.counters && typeof incoming.counters === "object"
+        ? incoming.counters
+        : baseState.counters
   };
 }
