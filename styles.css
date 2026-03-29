@@ -52,16 +52,6 @@ textarea {
   margin-bottom: 12px;
 }
 
-.layout {
-  display: grid;
-  grid-template-columns: 350px 1fr;
-  gap: 12px;
-}
-
-.stack > * + * {
-  margin-top: 12px;
-}
-
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.16em;
@@ -94,6 +84,16 @@ textarea {
 .badge.easy {
   background: rgba(51, 209, 122, 0.9);
   color: #08110a;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 12px;
+}
+
+.stack > * + * {
+  margin-top: 12px;
 }
 
 .panel {
@@ -555,33 +555,119 @@ textarea {
   gap: 8px;
 }
 
-.copyModal {
-  width: min(900px, 100%);
-  background: rgba(8, 12, 22, 0.98);
-  border: 1px solid var(--border);
-  border-radius: 22px;
-  box-shadow: var(--shadow);
-  padding: 14px;
+.debugDock {
+  margin-top: 12px;
 }
 
-.copyArea {
-  width: 100%;
-  min-height: 360px;
-  background: rgba(0, 0, 0, 0.32);
-  color: white;
+.debugPanel {
+  display: none;
+  margin-top: 10px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.debugPanel.open {
+  display: block;
+}
+
+.debugSection + .debugSection {
+  margin-top: 12px;
+}
+
+.debugBody {
+  max-height: 320px;
+  overflow: auto;
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.debugLog {
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 12px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.debugLog-info {
+  border-color: rgba(97, 168, 255, 0.25);
+}
+
+.debugLog-warn {
+  border-color: rgba(255, 196, 0, 0.28);
+}
+
+.debugLog-error {
+  border-color: rgba(255, 93, 115, 0.28);
+}
+
+.debugLogTop {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.debugLogName,
+.debugLogLevel {
+  font-weight: 800;
+}
+
+.debugLogMsg {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.debugLogData {
+  margin: 6px 0 0;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
   font-family: var(--mono);
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #dbeafe;
+}
+
+.debugStatusRow {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.debugStatusRow:first-child {
+  border-top: 0;
+}
+
+.debugStatusKey {
+  color: var(--muted);
   font-size: 12px;
-  line-height: 1.4;
-  resize: vertical;
+}
+
+.debugStatusValue {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.debugEmpty {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 8px 0;
 }
 
 @media (max-width: 1280px) {
   .layout,
-  .goalsQueue,
-  .mainTop {
+  .queueWrap,
+  .mainTop,
+  .goalsQueue {
     grid-template-columns: 1fr;
   }
 
@@ -615,6 +701,11 @@ textarea {
   .editorTop,
   .editorCounters {
     grid-template-columns: 1fr;
+  }
+
+  .debugStatusRow {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 }
 
