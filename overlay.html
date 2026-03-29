@@ -118,148 +118,10 @@
       font-weight: 700;
       white-space: nowrap;
     }
-
-    .debugDock {
-      margin-top: 12px;
-    }
-
-    .row {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .btn {
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,.06);
-      color: var(--text);
-      padding: 8px 10px;
-      border-radius: 12px;
-      cursor: pointer;
-      font-weight: 700;
-      font-size: 12px;
-    }
-
-    .btn:hover {
-      background: rgba(255,255,255,.1);
-    }
-
-    .debugPanel {
-      display: none;
-      margin-top: 10px;
-      padding: 12px;
-      background: rgba(0, 0, 0, 0.55);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      max-width: 1000px;
-    }
-
-    .debugPanel.open {
-      display: block;
-    }
-
-    .debugSection + .debugSection {
-      margin-top: 12px;
-    }
-
-    .eyebrow {
-      text-transform: uppercase;
-      letter-spacing: .16em;
-      font-size: 11px;
-      color: var(--muted);
-    }
-
-    .debugBody {
-      max-height: 320px;
-      overflow: auto;
-      display: grid;
-      gap: 8px;
-      margin-top: 8px;
-    }
-
-    .debugLog {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 8px 10px;
-      background: rgba(255,255,255,.04);
-    }
-
-    .debugLog-info {
-      border-color: rgba(97,168,255,.25);
-    }
-
-    .debugLog-warn {
-      border-color: rgba(255,196,0,.28);
-    }
-
-    .debugLog-error {
-      border-color: rgba(255,93,115,.28);
-    }
-
-    .debugLogTop {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      font-size: 11px;
-      color: var(--muted);
-      margin-bottom: 4px;
-    }
-
-    .debugLogName,
-    .debugLogLevel {
-      font-weight: 800;
-    }
-
-    .debugLogMsg {
-      font-size: 13px;
-      color: var(--text);
-    }
-
-    .debugLogData {
-      margin: 6px 0 0;
-      padding: 8px;
-      border-radius: 10px;
-      background: rgba(0,0,0,.25);
-      font-family: var(--mono);
-      font-size: 11px;
-      white-space: pre-wrap;
-      word-break: break-word;
-      color: #dbeafe;
-    }
-
-    .debugStatusRow {
-      display: grid;
-      grid-template-columns: 180px 1fr;
-      gap: 10px;
-      padding: 6px 0;
-      border-top: 1px solid rgba(255,255,255,.05);
-    }
-
-    .debugStatusRow:first-child {
-      border-top: 0;
-    }
-
-    .debugStatusKey {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .debugStatusValue {
-      color: var(--text);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .debugEmpty {
-      color: var(--muted);
-      font-size: 12px;
-      padding: 8px 0;
-    }
   </style>
 </head>
 <body>
-  <div class="overlay" id="overlay">
+  <div class="overlay">
     <div class="timer" id="timer">00:00:00</div>
     <div class="divider"></div>
     <div class="items" id="items">
@@ -269,192 +131,8 @@
     <div class="meta" id="meta">Lethal</div>
   </div>
 
-  <div class="debugDock">
-    <div class="row">
-      <button id="debugToggle" class="btn">🐞 Show Debug</button>
-      <button id="debugClear" class="btn">Clear Logs</button>
-      <button id="debugCopy" class="btn">Copy Snapshot</button>
-    </div>
-
-    <div id="debugPanel" class="debugPanel">
-      <div class="debugSection">
-        <div class="eyebrow">Status</div>
-        <div id="debugStatus"></div>
-      </div>
-      <div class="debugSection">
-        <div class="eyebrow">Logs</div>
-        <div id="debugBody" class="debugBody"></div>
-      </div>
-    </div>
-  </div>
-
   <script>
     const STORAGE_KEY = "platinumrouter_state_v1";
-
-    function createDebugger({
-      name = "app",
-      panelId = "debugPanel",
-      bodyId = "debugBody",
-      statusId = "debugStatus",
-      toggleId = "debugToggle",
-      clearId = "debugClear",
-      copyId = "debugCopy",
-      maxLogs = 120
-    } = {}) {
-      const panel = document.getElementById(panelId);
-      const body = document.getElementById(bodyId);
-      const statusEl = document.getElementById(statusId);
-      const toggleBtn = document.getElementById(toggleId);
-      const clearBtn = document.getElementById(clearId);
-      const copyBtn = document.getElementById(copyId);
-
-      const state = {
-        open: false,
-        logs: [],
-        status: {},
-        snapshotBuilder: null
-      };
-
-      function now() {
-        return new Date().toLocaleTimeString();
-      }
-
-      function safeStringify(value) {
-        try {
-          return JSON.stringify(value, null, 2);
-        } catch {
-          return String(value);
-        }
-      }
-
-      function renderStatus() {
-        if (!statusEl) return;
-        const entries = Object.entries(state.status);
-        if (!entries.length) {
-          statusEl.innerHTML = `<div class="debugEmpty">No status yet</div>`;
-          return;
-        }
-
-        statusEl.innerHTML = entries.map(([key, value]) => `
-          <div class="debugStatusRow">
-            <span class="debugStatusKey">${escapeHtml(key)}</span>
-            <span class="debugStatusValue">${escapeHtml(String(value))}</span>
-          </div>
-        `).join("");
-      }
-
-      function renderLogs() {
-        if (!body) return;
-        if (!state.logs.length) {
-          body.innerHTML = `<div class="debugEmpty">No logs yet</div>`;
-          return;
-        }
-
-        body.innerHTML = state.logs
-          .slice()
-          .reverse()
-          .map(entry => `
-            <div class="debugLog debugLog-${entry.level}">
-              <div class="debugLogTop">
-                <span class="debugLogName">${escapeHtml(name)}</span>
-                <span class="debugLogTime">${escapeHtml(entry.time)}</span>
-                <span class="debugLogLevel">${escapeHtml(entry.level.toUpperCase())}</span>
-              </div>
-              <div class="debugLogMsg">${escapeHtml(entry.message)}</div>
-              ${entry.data === undefined ? "" : `<pre class="debugLogData">${escapeHtml(safeStringify(entry.data))}</pre>`}
-            </div>
-          `)
-          .join("");
-      }
-
-      function render() {
-        if (!panel) return;
-        panel.classList.toggle("open", state.open);
-        renderStatus();
-        renderLogs();
-        if (toggleBtn) {
-          toggleBtn.textContent = state.open ? "🐞 Hide Debug" : "🐞 Show Debug";
-        }
-      }
-
-      function push(level, message, data) {
-        state.logs.push({ level, message, data, time: now() });
-        if (state.logs.length > maxLogs) {
-          state.logs.splice(0, state.logs.length - maxLogs);
-        }
-        render();
-      }
-
-      function log(message, data) { push("info", message, data); }
-      function warn(message, data) { push("warn", message, data); }
-      function error(message, data) { push("error", message, data); }
-
-      function setStatus(key, value) {
-        state.status[key] = value;
-        renderStatus();
-      }
-
-      function toggle() {
-        state.open = !state.open;
-        render();
-      }
-
-      function clear() {
-        state.logs = [];
-        renderLogs();
-      }
-
-      function setSnapshotBuilder(fn) {
-        state.snapshotBuilder = fn;
-      }
-
-      async function copySnapshot() {
-        if (!state.snapshotBuilder) return;
-        const snapshot = state.snapshotBuilder();
-        const text = safeStringify(snapshot);
-
-        try {
-          await navigator.clipboard.writeText(text);
-          log("Debug snapshot copied");
-        } catch {
-          warn("Clipboard blocked", snapshot);
-        }
-      }
-
-      toggleBtn?.addEventListener("click", toggle);
-      clearBtn?.addEventListener("click", clear);
-      copyBtn?.addEventListener("click", copySnapshot);
-
-      render();
-
-      return {
-        log,
-        warn,
-        error,
-        setStatus,
-        setSnapshotBuilder,
-        render
-      };
-    }
-
-    function escapeHtml(value) {
-      return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;");
-    }
-
-    function unwrapMaybe(obj, key) {
-      if (obj && typeof obj === "object" && obj[key] && typeof obj[key] === "object") {
-        return obj[key];
-      }
-      return obj;
-    }
-
-    const debug = createDebugger({ name: "overlay" });
-    debug.log("Overlay boot start");
-    debug.setStatus("storageKey", STORAGE_KEY);
 
     function formatMs(ms) {
       const totalSeconds = Math.max(0, Math.floor((ms || 0) / 1000));
@@ -464,45 +142,15 @@
       return `${hours}:${minutes}:${seconds}`;
     }
 
-    function normalizeSplit(split) {
-      return {
-        id: "",
-        label: "",
-        note: "",
-        phaseId: "",
-        isPhaseStart: false,
-        auto: {},
-        ...split
-      };
-    }
-
     function loadState() {
       try {
-        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-        debug.setStatus("savedStatePresent", !!Object.keys(parsed).length);
-        return parsed;
-      } catch (error) {
-        debug.error("Failed to read localStorage", { message: error.message });
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      } catch {
         return {};
       }
     }
 
-    function getActivePhaseId(splits, currentSplitIndex, phases) {
-      let active = "legacy_all";
-
-      for (let i = 0; i <= currentSplitIndex && i < splits.length; i += 1) {
-        const split = normalizeSplit(splits[i]);
-        if (split.isPhaseStart && split.phaseId && phases[split.phaseId]) {
-          active = split.phaseId;
-        }
-      }
-
-      return active;
-    }
-
     async function loadGameData(gameId = "ghost-of-tsushima") {
-      debug.log("Loading game data", { gameId });
-
       const registryRes = await fetch("./data/games.json");
       const registry = await registryRes.json();
       const game = (registry.games || []).find((entry) => entry.id === gameId) || registry.games?.[0];
@@ -513,26 +161,12 @@
 
       const basePath = normalizePath(game.path);
 
-      const [metaRaw, countersRaw, phasesRaw, quotasRaw] = await Promise.all([
+      const [meta, counters] = await Promise.all([
         fetchJson(`${basePath}/meta.json`),
-        fetchJson(`${basePath}/counters.json`),
-        fetchJson(`${basePath}/phases.json`),
-        fetchOptionalJson(`${basePath}/quotas.json`, { quotas: {} })
+        fetchJson(`${basePath}/counters.json`)
       ]);
 
-      const meta = unwrapMaybe(metaRaw, "meta");
-      const counters = unwrapMaybe(countersRaw, "counters");
-      const phases = unwrapMaybe(phasesRaw, "phases");
-      const quotas = unwrapMaybe(quotasRaw, "quotas");
-
-      debug.log("Game data loaded", {
-        game,
-        counterCount: Object.keys(counters || {}).length,
-        phaseCount: Object.keys(phases || {}).length,
-        quotaCount: Object.keys(quotas || {}).length
-      });
-
-      return { game, meta, counters, phases, quotas };
+      return { game, meta, counters };
     }
 
     async function fetchJson(path) {
@@ -541,16 +175,6 @@
         throw new Error(`Failed to load ${path}`);
       }
       return response.json();
-    }
-
-    async function fetchOptionalJson(path, fallback) {
-      try {
-        const response = await fetch(path);
-        if (!response.ok) return fallback;
-        return await response.json();
-      } catch {
-        return fallback;
-      }
     }
 
     function normalizePath(path) {
@@ -586,33 +210,8 @@
         cachedGameData = await loadGameData(gameId);
       }
 
-      const { counters: counterDefs, phases, quotas, meta } = cachedGameData;
+      const { counters: counterDefs, meta } = cachedGameData;
       const counters = buildNormalizedCounters(counterDefs, state.counters);
-      const splits = Array.isArray(state.splits) ? state.splits : [];
-      const currentSplitIndex = Number.isFinite(state.currentSplitIndex) ? state.currentSplitIndex : 0;
-
-      debug.setStatus("gameId", gameId);
-      debug.setStatus("elapsedMs", state.elapsedMs || 0);
-      debug.setStatus("splitCount", splits.length);
-      debug.setStatus("counterCount", Object.keys(counters).length);
-      debug.setStatus("difficulty", state.settings?.difficulty || "Lethal");
-
-      const activePhaseId = getActivePhaseId(splits, currentSplitIndex, phases);
-      const activePhase = phases[activePhaseId] || phases.legacy_all || { visible: [] };
-      const activeQuota = quotas[activePhaseId] || { targets: {} };
-
-      let visibleKeys = Array.isArray(activePhase.visible) ? [...activePhase.visible] : [];
-
-      if (!visibleKeys.length) {
-        visibleKeys = Object.keys(activeQuota.targets || {});
-        debug.warn("Phase had no visible objectives, falling back to quota targets", {
-          activePhaseId,
-          fallbackKeys: visibleKeys
-        });
-      }
-
-      debug.setStatus("activePhaseId", activePhaseId);
-      debug.setStatus("visibleObjectives", visibleKeys.length);
 
       document.getElementById("timer").textContent = formatMs(state.elapsedMs || 0);
       document.getElementById("meta").textContent =
@@ -623,37 +222,30 @@
 
       const items = [];
 
-      visibleKeys.forEach((key) => {
-        if (key === "dirge") {
-          if (!state.miscChecks?.dirge) {
-            items.push({ icon: "🎵", text: "Dirge" });
-          }
-          return;
-        }
-
-        const def = counterDefs[key];
+      Object.entries(counterDefs || {}).forEach(([key, def]) => {
         const counter = counters[key];
-        if (!def || !counter) return;
+        if (!counter) return;
 
         const value = Number(counter.value || 0);
-        if (value >= def.max) return;
+        const max = Number(def.max || 0);
+
+        if (value >= max) return;
 
         items.push({
           icon: def.icon,
-          text: `${value}/${def.max}`
+          text: `${value}/${max}`
         });
       });
 
-      debug.setStatus("renderableItems", items.length);
+      if (!state.miscChecks?.dirge) {
+        items.push({
+          icon: "🎵",
+          text: "Dirge"
+        });
+      }
 
       if (!items.length) {
-        itemsEl.innerHTML = '<div class="empty">All visible objectives complete</div>';
-        debug.warn("Overlay rendered empty objective list", {
-          activePhaseId,
-          visibleKeys,
-          countersPresent: Object.keys(counters),
-          counterSample: counters
-        });
+        itemsEl.innerHTML = '<div class="empty">Everything complete</div>';
         return;
       }
 
@@ -663,45 +255,17 @@
         el.innerHTML = `<span class="icon">${item.icon}</span><span class="count">${item.text}</span>`;
         itemsEl.appendChild(el);
       });
-
-      debug.log("Overlay rendered items", {
-        itemCount: items.length,
-        activePhaseId
-      });
     }
 
-    debug.setSnapshotBuilder(() => ({
-      cachedGameData,
-      saved: loadState()
-    }));
-
     window.addEventListener("storage", () => {
-      render().catch((error) => {
-        debug.error("Overlay render failed on storage event", {
-          message: error.message,
-          stack: error.stack
-        });
-        console.error(error);
-      });
+      render().catch(console.error);
     });
 
     setInterval(() => {
-      render().catch((error) => {
-        debug.error("Overlay render failed on interval", {
-          message: error.message,
-          stack: error.stack
-        });
-        console.error(error);
-      });
+      render().catch(console.error);
     }, 500);
 
-    render().catch((error) => {
-      debug.error("Overlay initial render failed", {
-        message: error.message,
-        stack: error.stack
-      });
-      console.error(error);
-    });
+    render().catch(console.error);
   </script>
 </body>
 </html>
