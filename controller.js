@@ -18,6 +18,7 @@ import {
 } from "./js/split-logic.js";
 import { createRenderer } from "./js/ui-render.js";
 import { createSplitEditor } from "./js/split-editor.js";
+import { createActsEditor } from "./js/acts-editor.js";
 import { createDebugger } from "./js/debug.js";
 
 const debug = createDebugger({ name: "controller" });
@@ -72,6 +73,7 @@ const els = {
   act1TargetMinutes: document.getElementById("act1TargetMinutes"),
   remoteCode: document.getElementById("remoteCode"),
   openSplitEditorBtn: document.getElementById("openSplitEditorBtn"),
+  openActsEditorBtn: document.getElementById("openActsEditorBtn"),
   exportTimesBtn: document.getElementById("exportTimesBtn"),
   importTimesInput: document.getElementById("importTimesInput"),
   exportSplitsBtn: document.getElementById("exportSplitsBtn"),
@@ -96,12 +98,23 @@ const els = {
   copySplitBackupBtn: document.getElementById("copySplitBackupBtn"),
   resetSplitEditorBtn: document.getElementById("resetSplitEditorBtn"),
   closeSplitEditorBtn: document.getElementById("closeSplitEditorBtn"),
-  saveSplitEditorBtn: document.getElementById("saveSplitEditorBtn")
+  saveSplitEditorBtn: document.getElementById("saveSplitEditorBtn"),
+
+  actsEditorOverlay: document.getElementById("actsEditorOverlay"),
+  actsEditorPhaseList: document.getElementById("actsEditorPhaseList"),
+  actsEditorForm: document.getElementById("actsEditorForm"),
+  addActsEditorBtn: document.getElementById("addActsEditorBtn"),
+  exportActsEditorBtn: document.getElementById("exportActsEditorBtn"),
+  copyActsEditorBtn: document.getElementById("copyActsEditorBtn"),
+  resetActsEditorBtn: document.getElementById("resetActsEditorBtn"),
+  closeActsEditorBtn: document.getElementById("closeActsEditorBtn"),
+  saveActsEditorBtn: document.getElementById("saveActsEditorBtn")
 };
 
 let timer = null;
 let renderer = null;
 let splitEditor = null;
+let actsEditor = null;
 
 init().catch((error) => {
   console.error(error);
@@ -211,6 +224,30 @@ async function init() {
     }
   });
 
+  actsEditor = createActsEditor({
+    overlayEl: els.actsEditorOverlay,
+    phaseListEl: els.actsEditorPhaseList,
+    formEl: els.actsEditorForm,
+    addBtn: els.addActsEditorBtn,
+    closeBtn: els.closeActsEditorBtn,
+    saveBtn: els.saveActsEditorBtn,
+    resetBtn: els.resetActsEditorBtn,
+    exportBtn: els.exportActsEditorBtn,
+    copyBtn: els.copyActsEditorBtn,
+    getPhases: () => gameData.phases,
+    getQuotas: () => gameData.quotas,
+    getCounterDefs: () => gameData.counters,
+    setPhases: (nextPhases) => {
+      gameData.phases = nextPhases || {};
+    },
+    setQuotas: (nextQuotas) => {
+      gameData.quotas = nextQuotas || {};
+    },
+    onAfterSave: () => {
+      persistAndRender();
+    }
+  });
+
   bindEvents();
 
   debug.setSnapshotBuilder(() => ({
@@ -307,6 +344,7 @@ function bindEvents() {
   });
 
   els.openSplitEditorBtn.addEventListener("click", () => splitEditor.open());
+  els.openActsEditorBtn?.addEventListener("click", () => actsEditor.open());
 
   els.exportTimesBtn.addEventListener("click", exportTimesJson);
   els.importTimesInput.addEventListener("change", (e) => {
@@ -476,7 +514,11 @@ function importSplitsJson(file) {
 }
 
 function persistAndRender() {
-  const activePhaseId = getActivePhaseId(state.splits, state.currentSplitIndex, gameData.phases);
+  const activePhaseId = getActivePhaseId(
+    state.splits,
+    state.currentSplitIndex,
+    gameData.phases
+  );
 
   debug.setStatus("elapsedMs", state.elapsedMs);
   debug.setStatus("currentSplitIndex", state.currentSplitIndex);
