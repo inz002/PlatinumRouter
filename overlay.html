@@ -445,6 +445,13 @@
         .replaceAll('"', "&quot;");
     }
 
+    function unwrapMaybe(obj, key) {
+      if (obj && typeof obj === "object" && obj[key] && typeof obj[key] === "object") {
+        return obj[key];
+      }
+      return obj;
+    }
+
     const debug = createDebugger({ name: "overlay" });
     debug.log("Overlay boot start");
     debug.setStatus("storageKey", STORAGE_KEY);
@@ -506,19 +513,26 @@
 
       const basePath = normalizePath(game.path);
 
-      const [meta, counters, phases] = await Promise.all([
+      const [metaRaw, countersRaw, phasesRaw, quotasRaw] = await Promise.all([
         fetchJson(`${basePath}/meta.json`),
         fetchJson(`${basePath}/counters.json`),
-        fetchJson(`${basePath}/phases.json`)
+        fetchJson(`${basePath}/phases.json`),
+        fetchOptionalJson(`${basePath}/quotas.json`, { quotas: {} })
       ]);
+
+      const meta = unwrapMaybe(metaRaw, "meta");
+      const counters = unwrapMaybe(countersRaw, "counters");
+      const phases = unwrapMaybe(phasesRaw, "phases");
+      const quotas = unwrapMaybe(quotasRaw, "quotas");
 
       debug.log("Game data loaded", {
         game,
         counterCount: Object.keys(counters || {}).length,
-        phaseCount: Object.keys(phases || {}).length
+        phaseCount: Object.keys(phases || {}).length,
+        quotaCount: Object.keys(quotas || {}).length
       });
 
-      return { game, meta, counters, phases };
+      return { game, meta, counters, phases, quotas };
     }
 
     async function fetchJson(path) {
@@ -527,6 +541,16 @@
         throw new Error(`Failed to load ${path}`);
       }
       return response.json();
+    }
+
+    async function fetchOptionalJson(path, fallback) {
+      try {
+        const response = await fetch(path);
+        if (!response.ok) return fallback;
+        return await response.json();
+      } catch {
+        return fallback;
+      }
     }
 
     function normalizePath(path) {
@@ -562,7 +586,7 @@
         cachedGameData = await loadGameData(gameId);
       }
 
-      const { counters: counterDefs, phases, meta } = cachedGameData;
+      const { counters: counterDefs, phases, quotas, meta } = cachedGameData;
       const counters = buildNormalizedCounters(counterDefs, state.counters);
       const splits = Array.isArray(state.splits) ? state.splits : [];
       const currentSplitIndex = Number.isFinite(state.currentSplitIndex) ? state.currentSplitIndex : 0;
@@ -575,9 +599,20 @@
 
       const activePhaseId = getActivePhaseId(splits, currentSplitIndex, phases);
       const activePhase = phases[activePhaseId] || phases.legacy_all || { visible: [] };
+      const activeQuota = quotas[activePhaseId] || { targets: {} };
+
+      let visibleKeys = Array.isArray(activePhase.visible) ? [...activePhase.visible] : [];
+
+      if (!visibleKeys.length) {
+        visibleKeys = Object.keys(activeQuota.targets || {});
+        debug.warn("Phase had no visible objectives, falling back to quota targets", {
+          activePhaseId,
+          fallbackKeys: visibleKeys
+        });
+      }
 
       debug.setStatus("activePhaseId", activePhaseId);
-      debug.setStatus("visibleObjectives", (activePhase.visible || []).length);
+      debug.setStatus("visibleObjectives", visibleKeys.length);
 
       document.getElementById("timer").textContent = formatMs(state.elapsedMs || 0);
       document.getElementById("meta").textContent =
@@ -587,7 +622,6 @@
       itemsEl.innerHTML = "";
 
       const items = [];
-      const visibleKeys = Array.isArray(activePhase.visible) ? activePhase.visible : [];
 
       visibleKeys.forEach((key) => {
         if (key === "dirge") {
@@ -617,7 +651,8 @@
         debug.warn("Overlay rendered empty objective list", {
           activePhaseId,
           visibleKeys,
-          countersPresent: Object.keys(counters)
+          countersPresent: Object.keys(counters),
+          counterSample: counters
         });
         return;
       }
@@ -668,144 +703,5 @@
       console.error(error);
     });
   </script>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ghost of Tsushima Plain Overlay</title>
-  <style>
-    :root {
-      --bg: rgba(0, 0, 0, 0.88);
-      --border: rgba(255, 255, 255, 0.12);
-      --text: #f8fafc;
-      --muted: rgba(255, 255, 255, 0.64);
-      --pill: rgba(255, 255, 255, 0.08);
-      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html,
-    body {
-      margin: 0;
-      padding: 0;
-      background: transparent;
-      color: var(--text);
-      font-family: Inter, system-ui, sans-serif;
-      overflow: hidden;
-    }
-
-    .overlay {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-height: 48px;
-      max-height: 48px;
-      padding: 6px 10px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      width: fit-content;
-      max-width: 100vw;
-      overflow: hidden;
-      backdrop-filter: blur(8px);
-    }
-
-    .timer {
-      flex: 0 0 auto;
-      font-family: var(--mono);
-      font-size: 24px;
-      font-weight: 900;
-      line-height: 1;
-      letter-spacing: -0.03em;
-      white-space: nowrap;
-    }
-
-    .divider {
-      width: 1px;
-      align-self: stretch;
-      background: var(--border);
-      flex: 0 0 auto;
-    }
-
-    .items {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      min-width: 0;
-      overflow-x: auto;
-      overflow-y: hidden;
-      scrollbar-width: none;
-    }
-
-    .items::-webkit-scrollbar {
-      display: none;
-    }
-
-    .item {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      height: 34px;
-      padding: 0 10px;
-      border-radius: 999px;
-      background: var(--pill);
-      border: 1px solid var(--border);
-      white-space: nowrap;
-      flex: 0 0 auto;
-    }
-
-    .icon {
-      font-size: 18px;
-      line-height: 1;
-    }
-
-    .count {
-      font-size: 14px;
-      font-weight: 800;
-      line-height: 1;
-    }
-
-    .meta {
-      flex: 0 0 auto;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 0 10px;
-      height: 34px;
-      border-radius: 999px;
-      background: var(--pill);
-      border: 1px solid var(--border);
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--muted);
-      white-space: nowrap;
-    }
-
-    .empty {
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-  </style>
-</head>
-<body>
-  <div class="overlay" id="overlay">
-    <div class="timer" id="timer">00:00:00</div>
-    <div class="divider"></div>
-    <div class="items" id="items">
-      <div class="empty">Waiting for controller state…</div>
-    </div>
-    <div class="divider"></div>
-    <div class="meta" id="meta">Lethal</div>
-  </div>
-
-  <script src="./overlay.js"></script>
 </body>
 </html>
