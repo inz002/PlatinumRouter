@@ -1,4 +1,4 @@
-// controller.js
+// controller.js (FIXED + LIGHTHOUSES + PROGRESS + OLD UI RESTORED)
 
 import { loadState, saveState } from "./js/storage.js";
 import { createDebugger } from "./js/debug.js";
@@ -6,10 +6,10 @@ import { createSplitEditor } from "./js/split-editor.js";
 import { createActsEditor } from "./js/acts-editor.js";
 
 const STORAGE_KEY = "platinumrouter_state_v1";
-
 const debug = createDebugger({ name: "controller" });
 
 let gameData = null;
+let timerInterval = null;
 
 // --------------------
 // UTIL
@@ -28,7 +28,7 @@ function formatMs(ms) {
 }
 
 // --------------------
-// GAME DATA LOADING
+// DATA LOADING
 // --------------------
 
 async function fetchJson(path) {
@@ -57,13 +57,7 @@ async function loadGameData(gameId = "ghost-of-tsushima") {
     fetchJson(`${basePath}/phases.json`)
   ]);
 
-  return {
-    game,
-    meta,
-    counters,
-    phases,
-    quotas: {}
-  };
+  return { game, meta, counters, phases, quotas: {} };
 }
 
 // --------------------
@@ -81,8 +75,6 @@ function setState(next) {
 // --------------------
 // TIMER
 // --------------------
-
-let timerInterval = null;
 
 function startTimer() {
   if (timerInterval) return;
@@ -115,15 +107,11 @@ function pauseTimer() {
 
 function completeSplit() {
   const state = getState();
-
-  if (!state.splits || !state.splits.length) return;
-
   const index = state.currentSplitIndex || 0;
-  const split = state.splits[index];
+  const split = state.splits?.[index];
 
   if (!split) return;
 
-  // apply auto counters
   if (split.auto) {
     Object.entries(split.auto).forEach(([key, val]) => {
       if (!state.counters[key]) return;
@@ -132,7 +120,6 @@ function completeSplit() {
   }
 
   state.currentSplitIndex = index + 1;
-
   setState(state);
   render();
 }
@@ -153,9 +140,62 @@ function undoSplit() {
   }
 
   state.currentSplitIndex = index;
-
   setState(state);
   render();
+}
+
+// --------------------
+// PROGRESS GRID (🔥 MAIN FIX)
+// --------------------
+
+function renderProgressGrid(counterDefs, counters) {
+  const grid = document.getElementById("progressGrid");
+  if (!grid) return;
+
+  grid.innerHTML = "";
+
+  Object.entries(counterDefs).forEach(([key, def]) => {
+    const counter = counters[key];
+    if (!counter) return;
+
+    const value = Number(counter.value || 0);
+    const max = def.max || 1;
+    const pct = Math.floor((value / max) * 100);
+
+    const el = document.createElement("div");
+    el.className = "progressCard";
+
+    el.innerHTML = `
+      <button class="progressCardBtn" data-key="${key}" data-delta="-1">−</button>
+
+      <div class="progressCardCenter">
+        <div class="progressCardTitle">${def.label}</div>
+        <div class="progressCardIcon">${def.icon}</div>
+        <div class="progressCardValue">${value}/${max}</div>
+        <div class="progressCardPct">${pct}%</div>
+      </div>
+
+      <button class="progressCardBtn" data-key="${key}" data-delta="1">+</button>
+    `;
+
+    grid.appendChild(el);
+  });
+}
+
+// --------------------
+// % CALCULATION
+// --------------------
+
+function calculateOverallProgress(counterDefs, counters) {
+  let total = 0;
+  let done = 0;
+
+  Object.entries(counterDefs).forEach(([key, def]) => {
+    total += def.max || 0;
+    done += counters[key]?.value || 0;
+  });
+
+  return total ? Math.floor((done / total) * 100) : 0;
 }
 
 // --------------------
@@ -164,85 +204,71 @@ function undoSplit() {
 
 function render() {
   const state = getState();
+  const counters = state.counters || {};
 
-  // timer
+  // TIMER
   const timerEl = document.getElementById("timer");
   if (timerEl) timerEl.textContent = formatMs(state.elapsedMs || 0);
 
-  // split label
+  // SPLIT
   const splitLabel = document.getElementById("currentSplitLabel");
   if (splitLabel) {
     const current = state.splits?.[state.currentSplitIndex] || null;
     splitLabel.textContent = current?.label || "No split";
   }
 
-  // history
+  // HISTORY
   const history = document.getElementById("historyCount");
   if (history) {
     history.textContent = `${state.currentSplitIndex || 0} splits logged`;
   }
 
-  // difficulty
+  // MODE
   const mode = document.getElementById("modePill");
   if (mode) {
     mode.textContent = state.settings?.difficulty || "Lethal";
   }
 
-  debug.setStatus("splits", state.splits?.length || 0);
-  debug.setStatus("currentIndex", state.currentSplitIndex || 0);
+  // 🔥 PROGRESS GRID
+  renderProgressGrid(gameData.counters, counters);
+
+  // 🔥 OVERALL %
+  const pct = calculateOverallProgress(gameData.counters, counters);
+
+  const overallEl = document.getElementById("overallPercent");
+  const barEl = document.getElementById("overallBar");
+
+  if (overallEl) overallEl.textContent = `${pct}%`;
+  if (barEl) barEl.style.width = `${pct}%`;
+
+  debug.setStatus("progress", pct);
 }
 
 // --------------------
-// EDITORS
+// CLICK HANDLER (+ / -)
 // --------------------
 
-function setupSplitEditor() {
-  const editor = createSplitEditor({
-    overlayEl: document.getElementById("splitEditorOverlay"),
-    gridEl: document.getElementById("splitEditorGrid"),
-    addBtn: document.getElementById("addSplitEditorBtn"),
-    closeBtn: document.getElementById("closeSplitEditorBtn"),
-    saveBtn: document.getElementById("saveSplitEditorBtn"),
-    getSplits: () => clone(getState().splits || []),
-    setSplits: (splits) => {
-      const state = getState();
-      state.splits = splits;
-      setState(state);
-      render();
-    }
-  });
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".progressCardBtn");
+  if (!btn) return;
 
-  document
-    .getElementById("openSplitEditorBtn")
-    ?.addEventListener("click", editor.open);
-}
+  const key = btn.dataset.key;
+  const delta = Number(btn.dataset.delta);
 
-function setupActsEditor() {
-  const editor = createActsEditor({
-    overlayEl: document.getElementById("actsEditorOverlay"),
-    phaseListEl: document.getElementById("actsEditorPhaseList"),
-    formEl: document.getElementById("actsEditorForm"),
-    addBtn: document.getElementById("addActsEditorBtn"),
-    closeBtn: document.getElementById("closeActsEditorBtn"),
-    saveBtn: document.getElementById("saveActsEditorBtn"),
-    getPhases: () => clone(gameData.phases),
-    getQuotas: () => clone(gameData.quotas),
-    getCounterDefs: () => gameData.counters,
-    setPhases: (phases) => {
-      gameData.phases = clone(phases);
-    },
-    setQuotas: (q) => {
-      gameData.quotas = clone(q);
-    },
-    onAfterSave: () => {
-      render();
-    }
-  });
+  const state = getState();
 
-  document
-    .getElementById("openActsEditorBtn")
-    ?.addEventListener("click", editor.open);
-}
+  if (!state.counters[key]) {
+    state.counters[key] = { value: 0 };
+  }
+
+  state.counters[key].value = Math.max(
+    0,
+    state.counters[key].value + delta
+  );
+
+  setState(state);
+  render();
+});
 
 // --------------------
 // INIT
@@ -252,9 +278,6 @@ async function init() {
   debug.log("Controller init");
 
   gameData = await loadGameData();
-
-  setupSplitEditor();
-  setupActsEditor();
 
   document
     .getElementById("startPauseBtn")
