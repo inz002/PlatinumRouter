@@ -184,6 +184,7 @@
       const progressChipEl = document.getElementById("progressChip");
 
       timerEl.textContent = formatMs(state.elapsedMs || 0);
+      timerEl.classList.toggle("running", !!state.running);
       metaEl.textContent = state.settings?.difficulty || meta?.defaultDifficulty || "Lethal";
       dirgeChipEl.hidden = !state.miscChecks?.dirge;
 
