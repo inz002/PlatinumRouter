@@ -4,31 +4,47 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ghost of Tsushima Overlay</title>
-
   <link rel="stylesheet" href="./overlay.css" />
 </head>
-
 <body>
-  <div class="overlay" id="overlay">
-    <div class="timer" id="timer">00:00:00</div>
-
-    <div class="divider"></div>
-
-    <div class="items" id="items">
-      <div class="empty">Waiting for controller state…</div>
+  <div class="overlayShell">
+    <div class="overlayBar" id="overlayBar">
+      <div class="timerChip" id="timer">00:00:00</div>
+      <div class="chipsWrap" id="items">
+        <div class="empty">Waiting for controller state…</div>
+      </div>
+      <div class="metaChip" id="dirgeChip" hidden>🎵 Dirge</div>
+      <div class="metaChip" id="meta">Lethal</div>
     </div>
 
-    <div class="divider"></div>
+    <div class="debugDock">
+      <div class="debugRow">
+        <button id="debugToggle" class="debugBtn">🐞 Show Debug</button>
+        <button id="debugClear" class="debugBtn">Clear Logs</button>
+        <button id="debugCopy" class="debugBtn">Copy Snapshot</button>
+      </div>
 
-    <div class="meta" id="meta">Lethal</div>
+      <div id="debugPanel" class="debugPanel">
+        <div class="debugSection">
+          <div class="eyebrow">Status</div>
+          <div id="debugStatus"></div>
+        </div>
+
+        <div class="debugSection">
+          <div class="eyebrow">Logs</div>
+          <div id="debugBody" class="debugBody"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script type="module">
     import { createDebugger } from "./js/debug.js";
 
     const STORAGE_KEY = "platinumrouter_state_v1";
-
     const debug = createDebugger({ name: "overlay" });
+
+    let cache = null;
 
     function formatMs(ms) {
       const totalSeconds = Math.max(0, Math.floor((ms || 0) / 1000));
@@ -48,8 +64,12 @@
 
     function normalizeSplit(split) {
       return {
+        id: "",
+        label: "",
+        note: "",
         phaseId: "",
         isPhaseStart: false,
+        auto: {},
         ...split
       };
     }
@@ -57,7 +77,7 @@
     function getActivePhaseId(splits, currentSplitIndex, phases) {
       let active = "legacy_all";
 
-      for (let i = 0; i <= currentSplitIndex && i < splits.length; i++) {
+      for (let i = 0; i <= currentSplitIndex && i < splits.length; i += 1) {
         const split = normalizeSplit(splits[i]);
         if (split.isPhaseStart && split.phaseId && phases[split.phaseId]) {
           active = split.phaseId;
@@ -67,100 +87,153 @@
       return active;
     }
 
-    async function loadGameData(gameId = "ghost-of-tsushima") {
-      const registry = await fetch("./data/games.json").then(r => r.json());
-      const game = registry.games.find(g => g.id === gameId);
-
-      const base = game.path;
-
-      const [meta, counters, phases] = await Promise.all([
-        fetch(`${base}/meta.json`).then(r => r.json()),
-        fetch(`${base}/counters.json`).then(r => r.json()),
-        fetch(`${base}/phases.json`).then(r => r.json())
-      ]);
-
-      return { meta, counters, phases };
+    function normalizePath(path) {
+      if (!path) return "./data/ghost-of-tsushima";
+      if (path.startsWith("./")) return path;
+      if (path.startsWith("/")) return `.${path}`;
+      return `./${path}`;
     }
 
-    function buildCounters(defs, saved) {
-      const result = {};
+    async function fetchJson(path) {
+      const response = await fetch(path, { cache: "no-store" });
+      if (!response.ok) throw new Error(`Failed to load ${path}`);
+      return response.json();
+    }
 
-      Object.entries(defs || {}).forEach(([key, def]) => {
+    async function loadGameData(gameId = "ghost-of-tsushima") {
+      const registry = await fetchJson("./data/games.json");
+      const game = (registry.games || []).find((entry) => entry.id === gameId) || registry.games?.[0];
+
+      if (!game) throw new Error("No game config found");
+
+      const basePath = normalizePath(game.path);
+
+      const [meta, counters, phases] = await Promise.all([
+        fetchJson(`${basePath}/meta.json`),
+        fetchJson(`${basePath}/counters.json`),
+        fetchJson(`${basePath}/phases.json`)
+      ]);
+
+      return { game, meta, counters, phases };
+    }
+
+    function buildNormalizedCounters(counterDefs, savedCounters) {
+      const result = {};
+      const source = savedCounters && typeof savedCounters === "object" ? savedCounters : {};
+
+      Object.entries(counterDefs || {}).forEach(([key, def]) => {
+        const saved = source[key] || {};
         result[key] = {
           ...def,
-          value: Number(saved?.[key]?.value || 0)
+          value: Number.isFinite(Number(saved.value)) ? Number(saved.value) : 0,
+          manualDelta: Number.isFinite(Number(saved.manualDelta)) ? Number(saved.manualDelta) : 0
         };
       });
 
       return result;
     }
 
-    let cache = null;
+    function chipHtml(icon, text, extraClass = "") {
+      return `<div class="counterChip ${extraClass}"><span class="chipIcon">${icon || "•"}</span><span class="chipText">${text}</span></div>`;
+    }
 
     async function render() {
       const state = loadState();
       const gameId = state.gameId || "ghost-of-tsushima";
 
-      if (!cache) {
+      if (!cache || cache.game.id !== gameId) {
         cache = await loadGameData(gameId);
       }
 
-      const { counters: defs, phases, meta } = cache;
+      const { counters: counterDefs, phases, meta } = cache;
+      const counters = buildNormalizedCounters(counterDefs, state.counters);
+      const splits = Array.isArray(state.splits) ? state.splits : [];
+      const currentSplitIndex = Number.isFinite(state.currentSplitIndex) ? state.currentSplitIndex : 0;
 
-      const counters = buildCounters(defs, state.counters);
-      const splits = state.splits || [];
-      const index = state.currentSplitIndex || 0;
+      const activePhaseId = getActivePhaseId(splits, currentSplitIndex, phases);
+      const activePhase = phases[activePhaseId] || phases.legacy_all || { visible: [] };
 
-      const phaseId = getActivePhaseId(splits, index, phases);
-      const phase = phases[phaseId] || { visible: [] };
-
-      document.getElementById("timer").textContent = formatMs(state.elapsedMs);
-      document.getElementById("meta").textContent =
-        state.settings?.difficulty || meta.defaultDifficulty || "Lethal";
-
+      const timerEl = document.getElementById("timer");
+      const metaEl = document.getElementById("meta");
       const itemsEl = document.getElementById("items");
+      const dirgeChipEl = document.getElementById("dirgeChip");
+
+      timerEl.textContent = formatMs(state.elapsedMs || 0);
+      metaEl.textContent = state.settings?.difficulty || meta?.defaultDifficulty || "Lethal";
+      dirgeChipEl.hidden = !state.miscChecks?.dirge;
+
+      const visibleKeys = Array.isArray(activePhase.visible) ? activePhase.visible : [];
+      const orderedKeys = [
+        ...visibleKeys,
+        ...Object.keys(counterDefs).filter((key) => !visibleKeys.includes(key))
+      ];
+
       itemsEl.innerHTML = "";
 
-      const visible = phase.visible || [];
+      const fragments = [];
 
-      const items = [];
+      orderedKeys.forEach((key) => {
+        if (key === "dirge") return;
 
-      visible.forEach((key) => {
-        if (key === "dirge") {
-          if (!state.miscChecks?.dirge) {
-            items.push({ icon: "🎵", text: "Dirge" });
-          }
-          return;
-        }
-
-        const def = defs[key];
+        const def = counterDefs[key];
         const counter = counters[key];
-
         if (!def || !counter) return;
 
-        if (counter.value >= def.max) return;
+        const value = Number(counter.value || 0);
+        const max = Number(def.max || 0);
 
-        items.push({
-          icon: def.icon,
-          text: `${counter.value}/${def.max}`
-        });
+        fragments.push(chipHtml(def.icon, `${value}/${max}`, visibleKeys.includes(key) ? "activePhaseChip" : ""));
       });
 
-      if (!items.length) {
-        itemsEl.innerHTML = '<div class="empty">All objectives complete</div>';
-        return;
+      if (!fragments.length) {
+        itemsEl.innerHTML = `<div class="empty">No counters loaded</div>`;
+      } else {
+        itemsEl.innerHTML = fragments.join("");
       }
 
-      items.forEach((item) => {
-        const el = document.createElement("div");
-        el.className = "item";
-        el.innerHTML = `<span class="icon">${item.icon}</span><span class="count">${item.text}</span>`;
-        itemsEl.appendChild(el);
-      });
+      debug.setStatus("gameId", gameId);
+      debug.setStatus("activePhase", activePhaseId);
+      debug.setStatus("visibleObjectives", visibleKeys.length);
+      debug.setStatus("splitCount", splits.length);
+      debug.setStatus("counterCount", Object.keys(counters).length);
+      debug.setStatus("difficulty", state.settings?.difficulty || "Lethal");
+      debug.setStatus("elapsedMs", state.elapsedMs || 0);
     }
 
-    setInterval(render, 500);
-    render();
+    debug.setSnapshotBuilder(() => ({
+      cache,
+      saved: loadState()
+    }));
+
+    window.addEventListener("storage", (event) => {
+      if (event.key === STORAGE_KEY) {
+        render().catch((error) => {
+          debug.error("Overlay render failed on storage event", {
+            message: error.message,
+            stack: error.stack
+          });
+          console.error(error);
+        });
+      }
+    });
+
+    setInterval(() => {
+      render().catch((error) => {
+        debug.error("Overlay render failed on interval", {
+          message: error.message,
+          stack: error.stack
+        });
+        console.error(error);
+      });
+    }, 500);
+
+    render().catch((error) => {
+      debug.error("Overlay initial render failed", {
+        message: error.message,
+        stack: error.stack
+      });
+      console.error(error);
+    });
   </script>
 </body>
 </html>
