@@ -3,239 +3,671 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ghost of Tsushima Controller</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <title>Ghost of Tsushima Plain Overlay</title>
+  <style>
+    :root {
+      --bg: rgba(0, 0, 0, 0.88);
+      --border: rgba(255, 255, 255, 0.12);
+      --text: #f8fafc;
+      --muted: rgba(255, 255, 255, 0.64);
+      --pill: rgba(255, 255, 255, 0.08);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--text);
+      font-family: Inter, system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    body {
+      padding: 10px;
+    }
+
+    .overlay {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 48px;
+      max-height: 48px;
+      padding: 6px 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      width: fit-content;
+      max-width: 100vw;
+      overflow: hidden;
+      backdrop-filter: blur(8px);
+    }
+
+    .timer {
+      flex: 0 0 auto;
+      font-family: var(--mono);
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      white-space: nowrap;
+    }
+
+    .divider {
+      width: 1px;
+      align-self: stretch;
+      background: var(--border);
+      flex: 0 0 auto;
+    }
+
+    .items {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+    }
+
+    .items::-webkit-scrollbar {
+      display: none;
+    }
+
+    .item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 34px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: var(--pill);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .icon {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .count {
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .meta {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 10px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--pill);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .debugDock {
+      margin-top: 12px;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .btn:hover {
+      background: rgba(255,255,255,.1);
+    }
+
+    .debugPanel {
+      display: none;
+      margin-top: 10px;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.55);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      max-width: 1000px;
+    }
+
+    .debugPanel.open {
+      display: block;
+    }
+
+    .debugSection + .debugSection {
+      margin-top: 12px;
+    }
+
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: .16em;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .debugBody {
+      max-height: 320px;
+      overflow: auto;
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .debugLog {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 10px;
+      background: rgba(255,255,255,.04);
+    }
+
+    .debugLog-info {
+      border-color: rgba(97,168,255,.25);
+    }
+
+    .debugLog-warn {
+      border-color: rgba(255,196,0,.28);
+    }
+
+    .debugLog-error {
+      border-color: rgba(255,93,115,.28);
+    }
+
+    .debugLogTop {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .debugLogName,
+    .debugLogLevel {
+      font-weight: 800;
+    }
+
+    .debugLogMsg {
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .debugLogData {
+      margin: 6px 0 0;
+      padding: 8px;
+      border-radius: 10px;
+      background: rgba(0,0,0,.25);
+      font-family: var(--mono);
+      font-size: 11px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #dbeafe;
+    }
+
+    .debugStatusRow {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 10px;
+      padding: 6px 0;
+      border-top: 1px solid rgba(255,255,255,.05);
+    }
+
+    .debugStatusRow:first-child {
+      border-top: 0;
+    }
+
+    .debugStatusKey {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .debugStatusValue {
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .debugEmpty {
+      color: var(--muted);
+      font-size: 12px;
+      padding: 8px 0;
+    }
+  </style>
 </head>
 <body>
-  <main class="app-shell">
-    <header class="hero">
-      <div>
-        <p class="eyebrow">Run Control Overlay</p>
-        <h1>Ghost of Tsushima Platinum</h1>
-        <p class="hero-note">Main controller with phase-based objective visibility.</p>
-      </div>
-      <div class="hero-badge-row">
-        <span id="difficultyBadge" class="pill pill-accent">Lethal</span>
-        <span id="activePhaseBadge" class="pill">Legacy All</span>
-      </div>
-    </header>
+  <div class="overlay" id="overlay">
+    <div class="timer" id="timer">00:00:00</div>
+    <div class="divider"></div>
+    <div class="items" id="items">
+      <div class="empty">Waiting for controller state…</div>
+    </div>
+    <div class="divider"></div>
+    <div class="meta" id="meta">Lethal</div>
+  </div>
 
-    <section class="top-grid">
-      <article class="panel">
-        <div class="panel-title">⏱ Run Timer</div>
-        <div id="timerDisplay" class="timer-display">00:00:00</div>
-        <div class="button-row">
-          <button id="startPauseBtn" class="btn btn-primary" type="button">▶ Start</button>
-          <button id="undoBtn" class="btn" type="button">↶ Undo</button>
-        </div>
-      </article>
+  <div class="debugDock">
+    <div class="row">
+      <button id="debugToggle" class="btn">🐞 Show Debug</button>
+      <button id="debugClear" class="btn">Clear Logs</button>
+      <button id="debugCopy" class="btn">Copy Snapshot</button>
+    </div>
 
-      <article class="panel">
-        <div class="panel-title">Current Split</div>
-        <div id="currentSplitLabel" class="current-split-label">No split</div>
-        <div id="splitCountLabel" class="muted-line">0 splits logged</div>
-        <div class="split-action-row">
-          <span id="runDifficultyInline" class="pill">Lethal</span>
-          <button id="completeSplitBtn" class="btn btn-primary" type="button">▶ Complete Current Split</button>
-        </div>
-      </article>
-
-      <article class="panel">
-        <div class="panel-title">Progress</div>
-
-        <div class="stat-block">
-          <div class="stat-top">
-            <span>Overall Progress</span>
-            <strong id="overallPct">0%</strong>
-          </div>
-          <div class="bar-track">
-            <div id="overallPctBar" class="bar-fill" style="width: 0%;"></div>
-          </div>
-        </div>
-
-        <div class="stat-block">
-          <div class="stat-top">
-            <span>Act Quota</span>
-            <strong id="quotaPct">0%</strong>
-          </div>
-          <div class="bar-track">
-            <div id="quotaPctBar" class="bar-fill" style="width: 0%;"></div>
-          </div>
-        </div>
-
-        <div class="pace-box">
-          <span class="muted-line">Pace</span>
-          <strong id="paceText">On fresh air</strong>
-        </div>
-      </article>
-    </section>
-
-    <section class="settings-wrap">
-      <button id="toggleSettingsBtn" class="btn" type="button">⚙ Show Settings</button>
-
-      <div id="settingsPanel" class="panel hidden">
-        <div class="settings-grid">
-          <label class="field">
-            <span>Difficulty</span>
-            <select id="difficultySelect">
-              <option value="Lethal">Lethal</option>
-              <option value="Easy">Easy</option>
-            </select>
-          </label>
-
-          <label class="field">
-            <span>Act target minutes</span>
-            <input id="actTargetMinutesInput" type="number" min="1" step="1" placeholder="e.g. 480" />
-          </label>
-
-          <label class="field">
-            <span>Remote control code</span>
-            <input id="remoteCodeInput" type="text" autocomplete="off" placeholder="optional" />
-          </label>
-        </div>
-
-        <div class="button-row wrap">
-          <button id="openSplitEditorBtn" class="btn" type="button">Split Editor</button>
-          <button id="openActsEditorBtn" class="btn" type="button">Acts Editor</button>
-          <button id="downloadTimesBtn" class="btn" type="button">⬇ Times</button>
-          <button id="uploadTimesBtn" class="btn" type="button">⬆ Times</button>
-          <button id="downloadSplitsBtn" class="btn" type="button">⬇ Splits</button>
-          <button id="uploadSplitsBtn" class="btn" type="button">⬆ Splits</button>
-          <button id="resetRunBtn" class="btn btn-danger" type="button">↺ Reset</button>
-        </div>
-
-        <div class="button-row wrap top-gap">
-          <button id="toggleDebugBtn" class="btn" type="button">Show Debug</button>
-          <button id="clearLogsBtn" class="btn" type="button">Clear Logs</button>
-          <button id="copySnapshotBtn" class="btn" type="button">Copy Snapshot</button>
-        </div>
-      </div>
-    </section>
-
-    <section class="middle-grid">
-      <article class="panel">
-        <div class="panel-title">Status</div>
-        <div id="statusText" class="status-box">Booting…</div>
-      </article>
-
-      <article class="panel">
-        <div class="panel-title">Logs</div>
-        <div id="logsText" class="log-box"></div>
-      </article>
-    </section>
-
-    <section class="middle-grid">
-      <article class="panel">
-        <div class="panel-title">Phase Quota</div>
-        <div id="phaseQuotaBox" class="quota-box">No quota targets for this phase</div>
-      </article>
-
-      <article class="panel">
-        <div class="panel-title">Misc Checklist</div>
-        <label class="checkbox-row">
-          <input id="dirgeCheckbox" type="checkbox" />
-          <span>Dirge of the Fallen</span>
-        </label>
-        <p class="small-note">Monochrome and Cooper are tracked as counters. Dirge is a one-time checkbox.</p>
-      </article>
-    </section>
-
-    <section class="middle-grid">
-      <article class="panel">
-        <div class="panel-title">Active Objective Set</div>
-        <div id="activePhaseLabel" class="active-phase-label">Legacy All</div>
-        <div id="phaseNoteText" class="muted-line">No phase note.</div>
-      </article>
-
-      <article class="panel">
-        <div class="panel-title">Current Objective Note</div>
-        <div id="currentObjectiveNote" class="note-box">No note for this split yet.</div>
-      </article>
-    </section>
-
-    <section class="bottom-grid">
-      <article class="panel">
-        <div class="panel-title">Tracked Totals</div>
-        <div id="trackedTotalsGrid" class="tracked-totals-grid"></div>
-        <p class="small-note">Visible objectives come from the active phase, including lighthouses.</p>
-      </article>
-
-      <article class="panel">
-        <div class="panel-title">Split Queue</div>
-        <div id="splitQueueCount" class="muted-line">0 total splits</div>
-        <div id="splitQueue" class="split-queue"></div>
-      </article>
-
-      <article class="panel">
-        <div class="panel-title">Split History</div>
-        <div id="historyCount" class="muted-line">0 saved</div>
-        <div id="splitHistory" class="split-history"></div>
-      </article>
-    </section>
-  </main>
-
-  <div id="splitEditorModal" class="modal hidden" aria-hidden="true">
-    <div class="modal-card modal-wide">
-      <div class="modal-header">
-        <div>
-          <h2>Split Editor</h2>
-          <p>Edit the raw split JSON.</p>
-        </div>
-        <div class="button-row wrap">
-          <button id="addSplitBtn" class="btn" type="button">＋ Add Split</button>
-          <button id="downloadSplitBackupBtn" class="btn" type="button">⬇ Download Split Backup</button>
-          <button id="copySplitBackupBtn" class="btn" type="button">Copy Split Backup</button>
-          <button id="resetSplitEditorBtn" class="btn" type="button">Reset</button>
-          <button id="closeSplitEditorBtn" class="btn btn-danger" type="button">Close</button>
-        </div>
+    <div id="debugPanel" class="debugPanel">
+      <div class="debugSection">
+        <div class="eyebrow">Status</div>
+        <div id="debugStatus"></div>
       </div>
 
-      <textarea id="splitEditorTextarea" class="editor-textarea" spellcheck="false"></textarea>
-
-      <div class="modal-footer">
-        <button id="saveSplitSetupBtn" class="btn btn-primary" type="button">Save Split Setup</button>
+      <div class="debugSection">
+        <div class="eyebrow">Logs</div>
+        <div id="debugBody" class="debugBody"></div>
       </div>
     </div>
   </div>
 
-  <div id="actsEditorModal" class="modal hidden" aria-hidden="true">
-    <div class="modal-card modal-wide">
-      <div class="modal-header">
-        <div>
-          <h2>Acts Editor</h2>
-          <p>Edit phases and quotas JSON.</p>
-        </div>
-        <div class="button-row wrap">
-          <button id="addPhaseBtn" class="btn" type="button">＋ Add Phase</button>
-          <button id="exportActsBtn" class="btn" type="button">⬇ Export Acts</button>
-          <button id="importActsBtn" class="btn" type="button">⬆ Import Acts</button>
-          <button id="copyActsBtn" class="btn" type="button">Copy Acts</button>
-          <button id="resetActsBtn" class="btn" type="button">Reset</button>
-          <button id="closeActsEditorBtn" class="btn btn-danger" type="button">Close</button>
-        </div>
-      </div>
+  <script>
+    const STORAGE_KEY = "platinumrouter_state_v1";
 
-      <div class="editor-two-col">
-        <div>
-          <div class="panel-title">Phases JSON</div>
-          <textarea id="actsEditorPhasesTextarea" class="editor-textarea" spellcheck="false"></textarea>
-        </div>
-        <div>
-          <div class="panel-title">Quotas JSON</div>
-          <textarea id="actsEditorQuotasTextarea" class="editor-textarea" spellcheck="false"></textarea>
-        </div>
-      </div>
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
 
-      <div class="modal-footer">
-        <button id="saveActsSetupBtn" class="btn btn-primary" type="button">Save Acts Setup</button>
-      </div>
-    </div>
-  </div>
+    function createDebugger({
+      name = "app",
+      panelId = "debugPanel",
+      bodyId = "debugBody",
+      statusId = "debugStatus",
+      toggleId = "debugToggle",
+      clearId = "debugClear",
+      copyId = "debugCopy",
+      maxLogs = 120
+    } = {}) {
+      const panel = document.getElementById(panelId);
+      const body = document.getElementById(bodyId);
+      const statusEl = document.getElementById(statusId);
+      const toggleBtn = document.getElementById(toggleId);
+      const clearBtn = document.getElementById(clearId);
+      const copyBtn = document.getElementById(copyId);
 
-  <input id="timesUploadInput" type="file" accept="application/json" hidden />
-  <input id="splitsUploadInput" type="file" accept="application/json" hidden />
-  <input id="actsUploadInput" type="file" accept="application/json" hidden />
+      const state = {
+        open: false,
+        logs: [],
+        status: {},
+        snapshotBuilder: null
+      };
 
-  <script src="./controller.js"></script>
+      function now() {
+        return new Date().toLocaleTimeString();
+      }
+
+      function safeStringify(value) {
+        try {
+          return JSON.stringify(value, null, 2);
+        } catch {
+          return String(value);
+        }
+      }
+
+      function renderStatus() {
+        if (!statusEl) return;
+        const entries = Object.entries(state.status);
+        if (!entries.length) {
+          statusEl.innerHTML = `<div class="debugEmpty">No status yet</div>`;
+          return;
+        }
+
+        statusEl.innerHTML = entries.map(([key, value]) => `
+          <div class="debugStatusRow">
+            <span class="debugStatusKey">${escapeHtml(key)}</span>
+            <span class="debugStatusValue">${escapeHtml(String(value))}</span>
+          </div>
+        `).join("");
+      }
+
+      function renderLogs() {
+        if (!body) return;
+        if (!state.logs.length) {
+          body.innerHTML = `<div class="debugEmpty">No logs yet</div>`;
+          return;
+        }
+
+        body.innerHTML = state.logs
+          .slice()
+          .reverse()
+          .map(entry => `
+            <div class="debugLog debugLog-${entry.level}">
+              <div class="debugLogTop">
+                <span class="debugLogName">${escapeHtml(name)}</span>
+                <span class="debugLogTime">${escapeHtml(entry.time)}</span>
+                <span class="debugLogLevel">${escapeHtml(entry.level.toUpperCase())}</span>
+              </div>
+              <div class="debugLogMsg">${escapeHtml(entry.message)}</div>
+              ${entry.data === undefined ? "" : `<pre class="debugLogData">${escapeHtml(safeStringify(entry.data))}</pre>`}
+            </div>
+          `)
+          .join("");
+      }
+
+      function render() {
+        if (!panel) return;
+        panel.classList.toggle("open", state.open);
+        renderStatus();
+        renderLogs();
+        if (toggleBtn) {
+          toggleBtn.textContent = state.open ? "🐞 Hide Debug" : "🐞 Show Debug";
+        }
+      }
+
+      function push(level, message, data) {
+        state.logs.push({ level, message, data, time: now() });
+        if (state.logs.length > maxLogs) {
+          state.logs.splice(0, state.logs.length - maxLogs);
+        }
+        render();
+      }
+
+      function log(message, data) { push("info", message, data); }
+      function warn(message, data) { push("warn", message, data); }
+      function error(message, data) { push("error", message, data); }
+
+      function setStatus(key, value) {
+        state.status[key] = value;
+        renderStatus();
+      }
+
+      function toggle() {
+        state.open = !state.open;
+        render();
+      }
+
+      function clear() {
+        state.logs = [];
+        renderLogs();
+      }
+
+      function setSnapshotBuilder(fn) {
+        state.snapshotBuilder = fn;
+      }
+
+      async function copySnapshot() {
+        if (!state.snapshotBuilder) return;
+        const snapshot = state.snapshotBuilder();
+        const text = safeStringify(snapshot);
+
+        try {
+          await navigator.clipboard.writeText(text);
+          log("Debug snapshot copied");
+        } catch {
+          warn("Clipboard blocked", snapshot);
+        }
+      }
+
+      toggleBtn?.addEventListener("click", toggle);
+      clearBtn?.addEventListener("click", clear);
+      copyBtn?.addEventListener("click", copySnapshot);
+
+      render();
+
+      return {
+        log,
+        warn,
+        error,
+        setStatus,
+        setSnapshotBuilder,
+        render
+      };
+    }
+
+    const debug = createDebugger({ name: "overlay" });
+    debug.log("Overlay boot start");
+    debug.setStatus("storageKey", STORAGE_KEY);
+
+    function formatMs(ms) {
+      const totalSeconds = Math.max(0, Math.floor((ms || 0) / 1000));
+      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+      const seconds = String(totalSeconds % 60).padStart(2, "0");
+      return `${hours}:${minutes}:${seconds}`;
+    }
+
+    function normalizeSplit(split) {
+      return {
+        id: "",
+        label: "",
+        note: "",
+        phaseId: "",
+        isPhaseStart: false,
+        auto: {},
+        ...split
+      };
+    }
+
+    function loadState() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        debug.setStatus("savedStatePresent", !!Object.keys(parsed).length);
+        return parsed;
+      } catch (error) {
+        debug.error("Failed to read localStorage", { message: error.message });
+        return {};
+      }
+    }
+
+    function getActivePhaseId(splits, currentSplitIndex, phases) {
+      let active = "legacy_all";
+
+      for (let i = 0; i <= currentSplitIndex && i < splits.length; i += 1) {
+        const split = normalizeSplit(splits[i]);
+        if (split.isPhaseStart && split.phaseId && phases[split.phaseId]) {
+          active = split.phaseId;
+        }
+      }
+
+      return active;
+    }
+
+    async function fetchJson(path) {
+      const response = await fetch(path, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Failed to load ${path}`);
+      }
+      return response.json();
+    }
+
+    function normalizePath(path) {
+      if (!path) return "./data/ghost-of-tsushima";
+      if (path.startsWith("./")) return path;
+      if (path.startsWith("/")) return `.${path}`;
+      return `./${path}`;
+    }
+
+    async function loadGameData(gameId = "ghost-of-tsushima") {
+      debug.log("Loading game data", { gameId });
+
+      const registry = await fetchJson("./data/games.json");
+      const game = (registry.games || []).find((entry) => entry.id === gameId) || registry.games?.[0];
+
+      if (!game) {
+        throw new Error("No game config found");
+      }
+
+      const basePath = normalizePath(game.path);
+
+      const [meta, counters, phases] = await Promise.all([
+        fetchJson(`${basePath}/meta.json`),
+        fetchJson(`${basePath}/counters.json`),
+        fetchJson(`${basePath}/phases.json`)
+      ]);
+
+      debug.log("Game data loaded", {
+        gameId: game.id,
+        counterCount: Object.keys(counters || {}).length,
+        phaseCount: Object.keys(phases || {}).length
+      });
+
+      return { game, meta, counters, phases };
+    }
+
+    function buildNormalizedCounters(counterDefs, savedCounters) {
+      const result = {};
+      const source = savedCounters && typeof savedCounters === "object" ? savedCounters : {};
+
+      Object.entries(counterDefs || {}).forEach(([key, def]) => {
+        const saved = source[key] || {};
+        result[key] = {
+          ...def,
+          value: Number.isFinite(Number(saved.value)) ? Number(saved.value) : 0,
+          manualDelta: Number.isFinite(Number(saved.manualDelta)) ? Number(saved.manualDelta) : 0
+        };
+      });
+
+      return result;
+    }
+
+    let cachedGameData = null;
+
+    async function render() {
+      const state = loadState();
+      const gameId = state.gameId || "ghost-of-tsushima";
+
+      if (!cachedGameData || cachedGameData.game.id !== gameId) {
+        cachedGameData = await loadGameData(gameId);
+      }
+
+      const { counters: counterDefs, phases, meta } = cachedGameData;
+      const counters = buildNormalizedCounters(counterDefs, state.counters);
+      const splits = Array.isArray(state.splits) ? state.splits : [];
+      const currentSplitIndex = Number.isFinite(state.currentSplitIndex) ? state.currentSplitIndex : 0;
+      const activePhaseId = getActivePhaseId(splits, currentSplitIndex, phases);
+      const activePhase = phases[activePhaseId] || phases.legacy_all || { visible: [] };
+
+      debug.setStatus("gameId", gameId);
+      debug.setStatus("elapsedMs", state.elapsedMs || 0);
+      debug.setStatus("splitCount", splits.length);
+      debug.setStatus("counterCount", Object.keys(counters).length);
+      debug.setStatus("difficulty", state.settings?.difficulty || "Lethal");
+      debug.setStatus("activePhaseId", activePhaseId);
+      debug.setStatus("visibleObjectives", (activePhase.visible || []).length);
+
+      document.getElementById("timer").textContent = formatMs(state.elapsedMs || 0);
+      document.getElementById("meta").textContent =
+        state.settings?.difficulty || meta?.defaultDifficulty || "Lethal";
+
+      const itemsEl = document.getElementById("items");
+      itemsEl.innerHTML = "";
+
+      const items = [];
+      const visibleKeys = Array.isArray(activePhase.visible) ? activePhase.visible : [];
+
+      visibleKeys.forEach((key) => {
+        if (key === "dirge") {
+          if (!state.miscChecks?.dirge) {
+            items.push({ icon: "🎵", text: "Dirge" });
+          }
+          return;
+        }
+
+        const def = counterDefs[key];
+        const counter = counters[key];
+        if (!def || !counter) return;
+
+        const value = Number(counter.value || 0);
+        if (value >= Number(def.max || 0)) return;
+
+        items.push({
+          icon: def.icon || "•",
+          text: `${value}/${def.max}`
+        });
+      });
+
+      debug.setStatus("renderableItems", items.length);
+
+      if (!items.length) {
+        itemsEl.innerHTML = '<div class="empty">All visible objectives complete</div>';
+        debug.warn("Overlay rendered empty objective list", {
+          activePhaseId,
+          visibleKeys
+        });
+        return;
+      }
+
+      items.forEach((item) => {
+        const el = document.createElement("div");
+        el.className = "item";
+        el.innerHTML = `<span class="icon">${escapeHtml(item.icon)}</span><span class="count">${escapeHtml(item.text)}</span>`;
+        itemsEl.appendChild(el);
+      });
+
+      debug.log("Overlay rendered items", {
+        itemCount: items.length,
+        activePhaseId
+      });
+    }
+
+    debug.setSnapshotBuilder(() => ({
+      cachedGameData,
+      saved: loadState()
+    }));
+
+    window.addEventListener("storage", () => {
+      render().catch((error) => {
+        debug.error("Overlay render failed on storage event", {
+          message: error.message,
+          stack: error.stack
+        });
+        console.error(error);
+      });
+    });
+
+    setInterval(() => {
+      render().catch((error) => {
+        debug.error("Overlay render failed on interval", {
+          message: error.message,
+          stack: error.stack
+        });
+        console.error(error);
+      });
+    }, 500);
+
+    render().catch((error) => {
+      debug.error("Overlay initial render failed", {
+        message: error.message,
+        stack: error.stack
+      });
+      console.error(error);
+    });
+  </script>
 </body>
 </html>
