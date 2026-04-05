@@ -1,9 +1,12 @@
 :root {
-  --bg: rgba(0, 0, 0, 0.88);
+  --bg: rgba(8, 10, 16, 0.84);
+  --bg2: rgba(18, 20, 28, 0.88);
   --border: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.2);
   --text: #f8fafc;
-  --muted: rgba(255, 255, 255, 0.64);
-  --pill: rgba(255, 255, 255, 0.08);
+  --muted: rgba(255, 255, 255, 0.68);
+  --pill: rgba(255, 255, 255, 0.06);
+  --pill-active: rgba(255, 255, 255, 0.1);
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -11,7 +14,8 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   background: transparent;
@@ -21,91 +25,236 @@ html, body {
 }
 
 body {
-  padding: 10px;
+  padding: 8px;
 }
 
-/* MAIN OVERLAY */
-.overlay {
+.overlayShell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.overlayBar {
   display: flex;
   align-items: center;
-  gap: 10px;
-
-  padding: 6px 10px;
-
+  gap: 6px;
+  max-width: calc(100vw - 16px);
+  padding: 4px 6px;
+  border-radius: 16px;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 14px;
-
   backdrop-filter: blur(8px);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.28);
 }
 
-/* TIMER */
-.timer {
-  font-family: var(--mono);
-  font-size: 24px;
-  font-weight: 900;
-}
-
-/* DIVIDER */
-.divider {
-  width: 1px;
-  background: var(--border);
-  align-self: stretch;
-}
-
-/* ITEMS */
-.items {
-  display: flex;
+.timerChip,
+.counterChip,
+.metaChip {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-  overflow-x: auto;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--pill);
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
-.items::-webkit-scrollbar {
+.timerChip {
+  font-family: var(--mono);
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.metaChip {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.chipsWrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.chipsWrap::-webkit-scrollbar {
   display: none;
 }
 
-/* ITEM CHIP */
-.item {
+.counterChip.activePhaseChip {
+  background: var(--pill-active);
+  border-color: var(--border-strong);
+}
+
+.chipIcon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.chipText {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+.debugDock {
+  width: min(1000px, calc(100vw - 16px));
+}
+
+.debugRow {
   display: flex;
+  gap: 8px;
   align-items: center;
-  gap: 6px;
+  flex-wrap: wrap;
+}
 
-  padding: 0 10px;
-  height: 34px;
-
-  border-radius: 999px;
-  background: var(--pill);
+.debugBtn {
   border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 12px;
 }
 
-.icon {
-  font-size: 18px;
+.debugBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
-.count {
-  font-size: 14px;
+.debugPanel {
+  display: none;
+  margin-top: 10px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  max-width: 1000px;
+}
+
+.debugPanel.open {
+  display: block;
+}
+
+.debugSection + .debugSection {
+  margin-top: 12px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.debugBody {
+  max-height: 320px;
+  overflow: auto;
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.debugLog {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.debugLog-info {
+  border-color: rgba(97, 168, 255, 0.25);
+}
+
+.debugLog-warn {
+  border-color: rgba(255, 196, 0, 0.28);
+}
+
+.debugLog-error {
+  border-color: rgba(255, 93, 115, 0.28);
+}
+
+.debugLogTop {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.debugLogName,
+.debugLogLevel {
   font-weight: 800;
 }
 
-/* META */
-.meta {
-  padding: 0 10px;
-  height: 34px;
-
-  display: flex;
-  align-items: center;
-
-  border-radius: 999px;
-  background: var(--pill);
-  border: 1px solid var(--border);
-
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--muted);
+.debugLogMsg {
+  font-size: 13px;
+  color: var(--text);
 }
 
-/* EMPTY */
-.empty {
+.debugLogData {
+  margin: 6px 0 0;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #dbeafe;
+}
+
+.debugStatusRow {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.debugStatusRow:first-child {
+  border-top: 0;
+}
+
+.debugStatusKey {
   color: var(--muted);
+  font-size: 12px;
+}
+
+.debugStatusValue {
+  color: var(--text);
+  font-size: 12px;
   font-weight: 700;
+}
+
+.debugEmpty {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 8px 0;
+}
+
+@media (max-width: 760px) {
+  .debugStatusRow {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
 }
