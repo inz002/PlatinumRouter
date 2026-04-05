@@ -1,574 +1,804 @@
-import { loadGamesRegistry, loadGameData } from "./js/data-loader.js";
-import {
-  STORAGE_KEY,
-  buildDefaultStoredState,
-  loadStoredState,
-  saveStoredState,
-  mergeStoredState
-} from "./js/storage.js";
-import { createTimer } from "./js/timer.js";
-import {
-  clamp,
-  normalizeSplits,
-  buildCounters,
-  applyAutoProgress,
-  reverseAutoProgress,
-  buildSplitHistoryEntry,
-  getActivePhaseId
-} from "./js/split-logic.js";
-import { createRenderer } from "./js/ui-render.js";
-import { createSplitEditor } from "./js/split-editor.js";
-import { createActsEditor } from "./js/acts-editor.js";
-import { createDebugger } from "./js/debug.js";
+const STORAGE_KEY = "platinumrouter_state_v1";
+const SPLITS_STORAGE_KEY = "platinumrouter_splits_v1";
+const PHASES_STORAGE_KEY = "platinumrouter_phases_v1";
+const QUOTAS_STORAGE_KEY = "platinumrouter_quotas_v1";
+const COUNTERS_STORAGE_KEY = "platinumrouter_counters_v1";
 
-const debug = createDebugger({ name: "controller" });
-debug.log("Controller boot start");
-debug.setStatus("storageKey", STORAGE_KEY);
+const COUNTERS_URL = "./data/ghost-of-tsushima/counters.json";
+const PHASES_URL = "./data/ghost-of-tsushima/phases.json";
+const QUOTAS_URL = "./data/ghost-of-tsushima/quotas.json";
+const SPLITS_URL = "./data/ghost-of-tsushima/default-splits.json";
 
-const state = {
-  gameId: "ghost-of-tsushima",
+const FALLBACK_SPLITS = [
+  { id: "start", label: "Start Run", note: "Boot sequence.", phaseId: "any_act1", isPhaseStart: true, auto: {} },
+  { id: "act1-route", label: "Act 1 Route", note: "Act 1 progression and early cleanup.", auto: {} },
+  { id: "act2-start", label: "Act 2 Start", note: "Transition into Act 2.", phaseId: "any_act2", isPhaseStart: true, auto: {} },
+  { id: "act2-route", label: "Act 2 Route", note: "Continue route.", auto: {} },
+  { id: "act3-start", label: "Act 3 Start", note: "Transition into Act 3.", phaseId: "any_act3", isPhaseStart: true, auto: {} },
+  { id: "ngp-start", label: "NG+ Start", note: "Cleanup route.", phaseId: "ngp_act1", isPhaseStart: true, auto: {} }
+];
+
+const DEFAULT_STATE = {
+  difficulty: "Lethal",
+  actTargetMinutes: 480,
+  remoteCode: "",
   elapsedMs: 0,
-  running: false,
+  timerRunning: false,
+  timerStartedAt: null,
   currentSplitIndex: 0,
-  history: [],
-  counters: {},
-  miscChecks: { dirge: false },
-  settings: {
-    difficulty: "Lethal",
-    act1TargetMinutes: 180,
-    showSettings: false,
-    remoteCode: ""
-  },
-  splits: []
+  splitHistory: [],
+  counts: {},
+  dirgeChecked: false,
+  logs: [],
+  debugVisible: false
 };
 
-const gameData = {
-  registry: null,
-  game: null,
-  meta: null,
-  counters: {},
-  phases: {},
-  splits: [],
-  quotas: {}
-};
+let state = { ...DEFAULT_STATE };
+let counters = {};
+let phases = {};
+let quotas = { quotas: {} };
+let splits = [...FALLBACK_SPLITS];
 
-const els = {
-  runTitle: document.getElementById("runTitle"),
-  difficultyBadge: document.getElementById("difficultyBadge"),
-  timer: document.getElementById("timer"),
-  startPauseBtn: document.getElementById("startPauseBtn"),
-  undoBtn: document.getElementById("undoBtn"),
-  advanceCurrentBtn: document.getElementById("advanceCurrentBtn"),
-  currentSplitLabel: document.getElementById("currentSplitLabel"),
-  historyCount: document.getElementById("historyCount"),
-  modePill: document.getElementById("modePill"),
-  overallPercent: document.getElementById("overallPercent"),
-  overallBar: document.getElementById("overallBar"),
-  act1SummaryValue: document.getElementById("act1SummaryValue"),
-  act1SummaryBar: document.getElementById("act1SummaryBar"),
-  pacePill: document.getElementById("pacePill"),
-  settingsToggle: document.getElementById("settingsToggle"),
-  settingsPanel: document.getElementById("settingsPanel"),
-  difficultySelect: document.getElementById("difficultySelect"),
-  act1TargetMinutes: document.getElementById("act1TargetMinutes"),
-  remoteCode: document.getElementById("remoteCode"),
-  openSplitEditorBtn: document.getElementById("openSplitEditorBtn"),
-  openActsEditorBtn: document.getElementById("openActsEditorBtn"),
-  exportTimesBtn: document.getElementById("exportTimesBtn"),
-  importTimesInput: document.getElementById("importTimesInput"),
-  exportSplitsBtn: document.getElementById("exportSplitsBtn"),
-  importSplitsInput: document.getElementById("importSplitsInput"),
-  resetBtn: document.getElementById("resetBtn"),
-  act1QuotaText: document.getElementById("act1QuotaText"),
-  dirgeCheckbox: document.getElementById("dirgeCheckbox"),
-  activePhaseName: document.getElementById("activePhaseName"),
-  activePhaseNote: document.getElementById("activePhaseNote"),
-  visibleObjectives: document.getElementById("visibleObjectives"),
-  currentObjectiveText: document.getElementById("currentObjectiveText"),
-  progressGrid: document.getElementById("progressGrid"),
-  splitButtons: document.getElementById("splitButtons"),
-  queuePill: document.getElementById("queuePill"),
-  historySaved: document.getElementById("historySaved"),
-  historyList: document.getElementById("historyList"),
-
-  splitEditorOverlay: document.getElementById("splitEditorOverlay"),
-  splitEditorGrid: document.getElementById("splitEditorGrid"),
-  addSplitEditorBtn: document.getElementById("addSplitEditorBtn"),
-  downloadSplitBackupBtn: document.getElementById("downloadSplitBackupBtn"),
-  copySplitBackupBtn: document.getElementById("copySplitBackupBtn"),
-  resetSplitEditorBtn: document.getElementById("resetSplitEditorBtn"),
-  closeSplitEditorBtn: document.getElementById("closeSplitEditorBtn"),
-  saveSplitEditorBtn: document.getElementById("saveSplitEditorBtn"),
-
-  actsEditorOverlay: document.getElementById("actsEditorOverlay"),
-  actsEditorPhaseList: document.getElementById("actsEditorPhaseList"),
-  actsEditorForm: document.getElementById("actsEditorForm"),
-  addActsEditorBtn: document.getElementById("addActsEditorBtn"),
-  exportActsEditorBtn: document.getElementById("exportActsEditorBtn"),
-  importActsEditorInput: document.getElementById("importActsEditorInput"),
-  copyActsEditorBtn: document.getElementById("copyActsEditorBtn"),
-  resetActsEditorBtn: document.getElementById("resetActsEditorBtn"),
-  closeActsEditorBtn: document.getElementById("closeActsEditorBtn"),
-  saveActsEditorBtn: document.getElementById("saveActsEditorBtn")
-};
-
-let timer = null;
-let renderer = null;
-let splitEditor = null;
-let actsEditor = null;
-
-init().catch((error) => {
-  console.error(error);
-  debug.error("Controller boot failed", {
-    message: error.message,
-    stack: error.stack
-  });
-  alert(`Controller boot failed: ${error.message || error}`);
-});
-
-async function init() {
-  gameData.registry = await loadGamesRegistry();
-  debug.log("Games registry loaded", gameData.registry);
-  debug.setStatus("defaultGameId", gameData.registry.defaultGameId || "none");
-
-  const stored = mergeStoredState(buildDefaultStoredState(), loadStoredState());
-  state.gameId = stored.gameId || gameData.registry.defaultGameId || "ghost-of-tsushima";
-
-  const loaded = await loadGameData(state.gameId);
-
-  gameData.game = loaded.game;
-  gameData.meta = loaded.meta;
-  gameData.counters = loaded.counters || {};
-  gameData.phases = loaded.phases || {};
-  gameData.quotas = loaded.quotas || {};
-  gameData.splits = normalizeSplits(
-    loaded.defaultSplits?.splits || loaded.defaultSplits || []
-  );
-
-  debug.log("Game data loaded", {
-    game: loaded.game,
-    meta: loaded.meta,
-    counterCount: Object.keys(loaded.counters || {}).length,
-    phaseCount: Object.keys(loaded.phases || {}).length,
-    splitCount: (loaded.defaultSplits?.splits || loaded.defaultSplits || []).length,
-    quotaCount: Object.keys(loaded.quotas || {}).length
-  });
-
-  debug.setStatus("gameId", state.gameId);
-  debug.setStatus("countersLoaded", Object.keys(gameData.counters || {}).length);
-  debug.setStatus("phasesLoaded", Object.keys(gameData.phases || {}).length);
-  debug.setStatus("defaultSplitsLoaded", gameData.splits.length);
-  debug.setStatus("quotasLoaded", Object.keys(gameData.quotas || {}).length);
-
-  hydrateStateFromStored(stored);
-
-  debug.log("State hydrated", {
-    currentSplitIndex: state.currentSplitIndex,
-    historyCount: state.history.length,
-    counterKeys: Object.keys(state.counters || {}).length,
-    splitCount: state.splits.length
-  });
-
-  debug.setStatus("storedSplitCount", state.splits.length);
-  debug.setStatus("storedCounterCount", Object.keys(state.counters || {}).length);
-
-  timer = createTimer({
-    initialElapsedMs: state.elapsedMs,
-    onTick: (elapsedMs) => {
-      state.elapsedMs = elapsedMs;
-      state.running = true;
-      persistAndRender();
-    },
-    onStateChange: (snapshot) => {
-      state.elapsedMs = snapshot.elapsedMs;
-      state.running = snapshot.running;
-      persistAndRender();
-    }
-  });
-
-  renderer = createRenderer({
-    elements: els,
-    getState: () => state,
-    getGameData: () => ({
-      meta: gameData.meta,
-      counters: gameData.counters,
-      phases: gameData.phases,
-      quotas: gameData.quotas,
-      splits: state.splits
-    }),
-    onManualCounterChange: handleManualCounterChange,
-    onAdvanceSplit: advanceSplit
-  });
-
-  splitEditor = createSplitEditor({
-    overlayEl: els.splitEditorOverlay,
-    gridEl: els.splitEditorGrid,
-    addBtn: els.addSplitEditorBtn,
-    resetBtn: els.resetSplitEditorBtn,
-    closeBtn: els.closeSplitEditorBtn,
-    saveBtn: els.saveSplitEditorBtn,
-    downloadBtn: els.downloadSplitBackupBtn,
-    copyBtn: els.copySplitBackupBtn,
-    getSplits: () => state.splits,
-    setSplits: (nextSplits) => {
-      state.splits = normalizeSplits(nextSplits, gameData.splits);
-    },
-    getPhases: () => gameData.phases,
-    getCounterDefs: () => gameData.counters,
-    onAfterSave: () => {
-      state.currentSplitIndex = clamp(
-        state.currentSplitIndex,
-        0,
-        Math.max(0, state.splits.length - 1)
-      );
-      persistAndRender();
-    }
-  });
-
-  actsEditor = createActsEditor({
-    overlayEl: els.actsEditorOverlay,
-    phaseListEl: els.actsEditorPhaseList,
-    formEl: els.actsEditorForm,
-    addBtn: els.addActsEditorBtn,
-    closeBtn: els.closeActsEditorBtn,
-    saveBtn: els.saveActsEditorBtn,
-    resetBtn: els.resetActsEditorBtn,
-    exportBtn: els.exportActsEditorBtn,
-    importInput: els.importActsEditorInput,
-    copyBtn: els.copyActsEditorBtn,
-    getPhases: () => gameData.phases,
-    getQuotas: () => gameData.quotas,
-    getCounterDefs: () => gameData.counters,
-    setPhases: (nextPhases) => {
-      gameData.phases = nextPhases || {};
-    },
-    setQuotas: (nextQuotas) => {
-      gameData.quotas = nextQuotas || {};
-    },
-    onAfterSave: () => {
-      persistAndRender();
-    }
-  });
-
-  bindEvents();
-
-  debug.setSnapshotBuilder(() => ({
-    state,
-    gameData: {
-      game: gameData.game,
-      meta: gameData.meta,
-      countersLoaded: Object.keys(gameData.counters || {}).length,
-      phasesLoaded: Object.keys(gameData.phases || {}).length,
-      quotasLoaded: Object.keys(gameData.quotas || {}).length,
-      splitsLoaded: gameData.splits.length
-    },
-    saved: JSON.parse(localStorage.getItem(STORAGE_KEY) || "null")
-  }));
-
-  persistAndRender();
+function $(id) {
+  return document.getElementById(id);
 }
 
-function hydrateStateFromStored(stored) {
-  state.elapsedMs = stored.elapsedMs || 0;
-  state.running = false;
-  state.currentSplitIndex = stored.currentSplitIndex || 0;
-  state.history = Array.isArray(stored.history) ? stored.history : [];
-  state.miscChecks = { dirge: false, ...(stored.miscChecks || {}) };
-  state.settings = {
-    difficulty: gameData.meta?.defaultDifficulty || "Lethal",
-    act1TargetMinutes: 180,
-    showSettings: false,
-    remoteCode: "",
-    ...(stored.settings || {})
-  };
+function deepClone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
 
-  if (stored.counters && Object.keys(stored.counters).length) {
-    state.counters = normalizeCounters(stored.counters, gameData.counters);
-  } else {
-    state.counters = buildCounters(gameData.counters);
+function safeParse(json, fallback) {
+  try {
+    return JSON.parse(json);
+  } catch {
+    return fallback;
+  }
+}
+
+function loadLocalJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveLocalJson(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+async function fetchJson(url, fallback) {
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return fallback;
+    return await res.json();
+  } catch {
+    return fallback;
+  }
+}
+
+function formatMs(ms) {
+  const totalSeconds = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
+  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function addLog(message) {
+  const stamp = new Date().toLocaleTimeString();
+  state.logs.unshift(`[${stamp}] ${message}`);
+  state.logs = state.logs.slice(0, 80);
+  saveState();
+}
+
+function setStatus(message) {
+  $("statusText").textContent = message;
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  syncOverlayState();
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    state = raw ? { ...DEFAULT_STATE, ...JSON.parse(raw) } : { ...DEFAULT_STATE };
+  } catch {
+    state = { ...DEFAULT_STATE };
+  }
+}
+
+function buildInitialCounts() {
+  const next = {};
+  for (const [key] of Object.entries(counters)) {
+    next[key] = Number(state.counts?.[key] || 0);
+  }
+  state.counts = next;
+}
+
+function getCurrentSplit() {
+  return splits[state.currentSplitIndex] || null;
+}
+
+function getCompletedSplitCount() {
+  return state.currentSplitIndex;
+}
+
+function getActivePhaseId() {
+  let active = "legacy_all";
+
+  for (let i = 0; i <= state.currentSplitIndex && i < splits.length; i += 1) {
+    const split = splits[i];
+    if (split?.isPhaseStart && split.phaseId && phases[split.phaseId]) {
+      active = split.phaseId;
+    }
   }
 
-  if (Array.isArray(stored.splits) && stored.splits.length) {
-    state.splits = normalizeSplits(stored.splits, gameData.splits);
-  } else {
-    state.splits = normalizeSplits(gameData.splits, gameData.splits);
+  return active;
+}
+
+function getActivePhase() {
+  const id = getActivePhaseId();
+  return { id, ...(phases[id] || { label: id, visible: [] }) };
+}
+
+function getVisibleCounterKeys() {
+  const phase = getActivePhase();
+  const visible = Array.isArray(phase.visible) ? phase.visible : [];
+  return visible.filter((key) => counters[key]);
+}
+
+function getCurrentQuotaTargets() {
+  const phaseId = getActivePhaseId();
+  return quotas?.quotas?.[phaseId]?.targets || {};
+}
+
+function computeOverallProgressPct() {
+  const trophiesMax = Number(counters?.trophies?.max || 0);
+  const trophiesCurrent = Number(state.counts?.trophies || 0);
+
+  if (trophiesMax > 0) {
+    return clamp((trophiesCurrent / trophiesMax) * 100, 0, 100);
   }
 
-  state.currentSplitIndex = clamp(
-    state.currentSplitIndex,
-    0,
-    Math.max(0, state.splits.length - 1)
-  );
+  let total = 0;
+  let max = 0;
+  for (const [key, meta] of Object.entries(counters)) {
+    const localMax = Number(meta?.max || 0);
+    if (localMax <= 0) continue;
+    total += Number(state.counts[key] || 0);
+    max += localMax;
+  }
+
+  if (!max) return 0;
+  return clamp((total / max) * 100, 0, 100);
 }
 
-function normalizeCounters(storedCounters, defs) {
-  const base = buildCounters(defs);
-  Object.keys(base).forEach((key) => {
-    if (!storedCounters[key]) return;
-    base[key].value = clamp(Number(storedCounters[key].value || 0), 0, base[key].max);
-    base[key].manualDelta = Number(storedCounters[key].manualDelta || 0);
-  });
-  return base;
+function computeQuotaProgressPct() {
+  const targets = getCurrentQuotaTargets();
+  const keys = Object.keys(targets);
+
+  if (!keys.length) return 0;
+
+  let current = 0;
+  let max = 0;
+
+  for (const key of keys) {
+    const target = Number(targets[key] || 0);
+    if (target <= 0) continue;
+    current += clamp(Number(state.counts[key] || 0), 0, target);
+    max += target;
+  }
+
+  if (!max) return 0;
+  return clamp((current / max) * 100, 0, 100);
 }
 
-function bindEvents() {
-  els.startPauseBtn.addEventListener("click", () => {
-    if (state.running) timer.pause();
-    else timer.start();
-  });
+function computePaceText() {
+  const targetMinutes = Number(state.actTargetMinutes || 0);
+  if (targetMinutes <= 0) return "No act target set";
 
-  els.undoBtn.addEventListener("click", undoLastSplit);
-  els.advanceCurrentBtn.addEventListener("click", () => advanceSplit(state.currentSplitIndex));
+  const targetMs = targetMinutes * 60 * 1000;
+  const diff = targetMs - Number(state.elapsedMs || 0);
 
-  els.settingsToggle.addEventListener("click", () => {
-    state.settings.showSettings = !state.settings.showSettings;
-    persistAndRender();
-  });
-
-  els.difficultySelect.addEventListener("change", (e) => {
-    state.settings.difficulty = e.target.value;
-    persistAndRender();
-  });
-
-  els.act1TargetMinutes.addEventListener("input", (e) => {
-    state.settings.act1TargetMinutes = Number(e.target.value || 0);
-    persistAndRender();
-  });
-
-  els.remoteCode.addEventListener("input", (e) => {
-    state.settings.remoteCode = e.target.value;
-    persistAndRender();
-  });
-
-  els.dirgeCheckbox.addEventListener("change", (e) => {
-    state.miscChecks.dirge = e.target.checked;
-    persistAndRender();
-  });
-
-  els.openSplitEditorBtn.addEventListener("click", () => splitEditor.open());
-  els.openActsEditorBtn?.addEventListener("click", () => actsEditor.open());
-
-  els.exportTimesBtn.addEventListener("click", exportTimesJson);
-  els.importTimesInput.addEventListener("change", (e) => {
-    const file = e.target.files?.[0];
-    if (file) importTimesJson(file);
-    e.target.value = "";
-  });
-
-  els.exportSplitsBtn.addEventListener("click", exportSplitsJson);
-  els.importSplitsInput.addEventListener("change", (e) => {
-    const file = e.target.files?.[0];
-    if (file) importSplitsJson(file);
-    e.target.value = "";
-  });
-
-  els.resetBtn.addEventListener("click", resetRun);
+  if (diff >= 0) {
+    return `${formatMs(diff)} ahead`;
+  }
+  return `${formatMs(Math.abs(diff))} behind`;
 }
 
-function handleManualCounterChange(key, diff) {
-  const counter = state.counters[key];
-  if (!counter) return;
+function applyAutoCounts(auto, multiplier = 1) {
+  if (!auto || typeof auto !== "object") return;
 
-  counter.value = clamp(counter.value + diff, 0, counter.max);
-  counter.manualDelta += diff;
-  persistAndRender();
-}
-
-function advanceSplit(index) {
-  if (index !== state.currentSplitIndex) return;
-
-  const split = state.splits[index];
-  const previousCumulativeMs = state.history.length
-    ? state.history[state.history.length - 1].cumulativeMs
-    : 0;
-
-  state.counters = applyAutoProgress(state.counters, split.auto || {});
-  state.history.push(
-    buildSplitHistoryEntry({
-      splitIndex: index,
-      split,
-      elapsedMs: state.elapsedMs,
-      previousCumulativeMs
-    })
-  );
-
-  state.currentSplitIndex = clamp(
-    state.currentSplitIndex + 1,
-    0,
-    Math.max(0, state.splits.length - 1)
-  );
-
-  persistAndRender();
-}
-
-function undoLastSplit() {
-  if (!state.history.length) return;
-
-  const removed = state.history.pop();
-  state.counters = reverseAutoProgress(state.counters, removed.autoApplied || {});
-  state.currentSplitIndex = removed.splitIndex;
-  persistAndRender();
-}
-
-function resetRun() {
-  timer.reset(0);
-  state.currentSplitIndex = 0;
-  state.history = [];
-  state.counters = buildCounters(gameData.counters);
-  state.miscChecks = { dirge: false };
-  state.settings.difficulty = gameData.meta?.defaultDifficulty || "Lethal";
-  persistAndRender();
-}
-
-function exportTimesJson() {
-  downloadJson(
-    {
-      gameId: state.gameId,
-      elapsedMs: state.elapsedMs,
-      currentSplitIndex: state.currentSplitIndex,
-      history: state.history,
-      counters: state.counters,
-      miscChecks: state.miscChecks,
-      settings: state.settings,
-      splits: state.splits
-    },
-    `${state.gameId}-times`
-  );
-}
-
-function importTimesJson(file) {
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const parsed = JSON.parse(String(reader.result));
-      timer.pause();
-      timer.setElapsed(parsed.elapsedMs || 0);
-
-      state.currentSplitIndex = parsed.currentSplitIndex || 0;
-      state.history = Array.isArray(parsed.history) ? parsed.history : [];
-      state.miscChecks = { dirge: false, ...(parsed.miscChecks || {}) };
-      state.settings = {
-        ...state.settings,
-        ...(parsed.settings || {})
-      };
-      state.counters = normalizeCounters(parsed.counters || {}, gameData.counters);
-
-      if (Array.isArray(parsed.splits) && parsed.splits.length) {
-        state.splits = normalizeSplits(parsed.splits, gameData.splits);
-      }
-
-      state.currentSplitIndex = clamp(
-        state.currentSplitIndex,
-        0,
-        Math.max(0, state.splits.length - 1)
-      );
-
-      persistAndRender();
-    } catch (error) {
-      console.error(error);
-      debug.error("Could not import times JSON", {
-        message: error.message,
-        stack: error.stack
-      });
-      alert("Could not import times JSON");
+  for (const [key, amount] of Object.entries(auto)) {
+    if (!(key in state.counts)) {
+      state.counts[key] = 0;
     }
-  };
-  reader.readAsText(file);
+
+    const max = Number(counters?.[key]?.max ?? Infinity);
+    const next = Number(state.counts[key] || 0) + Number(amount || 0) * multiplier;
+    state.counts[key] = clamp(next, 0, Number.isFinite(max) ? max : Infinity);
+  }
 }
 
-function exportSplitsJson() {
-  downloadJson(
-    {
-      splits: state.splits,
-      exportedAt: new Date().toISOString(),
-      source: "controller-export"
-    },
-    `${state.gameId}-splits`
-  );
+function completeCurrentSplit() {
+  const split = getCurrentSplit();
+  if (!split) {
+    setStatus("Run complete. No more splits.");
+    return;
+  }
+
+  applyAutoCounts(split.auto, 1);
+
+  state.splitHistory.push({
+    id: split.id,
+    label: split.label,
+    note: split.note || "",
+    auto: deepClone(split.auto || {}),
+    elapsedMs: state.elapsedMs
+  });
+
+  state.currentSplitIndex += 1;
+  addLog(`Completed split: ${split.label}`);
+  setStatus(`Completed split: ${split.label}`);
+  saveState();
+  render();
 }
 
-function importSplitsJson(file) {
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const parsed = JSON.parse(String(reader.result));
-      const imported = Array.isArray(parsed) ? parsed : parsed.splits;
-      if (!Array.isArray(imported) || !imported.length) {
-        throw new Error("Invalid splits payload");
-      }
-      state.splits = normalizeSplits(imported, gameData.splits);
-      state.currentSplitIndex = clamp(
-        state.currentSplitIndex,
-        0,
-        Math.max(0, state.splits.length - 1)
-      );
-      persistAndRender();
-    } catch (error) {
-      console.error(error);
-      debug.error("Could not import splits JSON", {
-        message: error.message,
-        stack: error.stack
-      });
-      alert("Could not import splits JSON");
-    }
-  };
-  reader.readAsText(file);
+function undoSplit() {
+  if (!state.splitHistory.length || state.currentSplitIndex <= 0) {
+    setStatus("Nothing to undo.");
+    return;
+  }
+
+  const last = state.splitHistory.pop();
+  applyAutoCounts(last.auto, -1);
+  state.currentSplitIndex = Math.max(0, state.currentSplitIndex - 1);
+
+  addLog(`Undid split: ${last.label}`);
+  setStatus(`Undid split: ${last.label}`);
+  saveState();
+  render();
 }
 
-function persistAndRender() {
-  const activePhaseId = getActivePhaseId(
-    state.splits,
-    state.currentSplitIndex,
-    gameData.phases
-  );
+function updateTimer() {
+  if (state.timerRunning && state.timerStartedAt) {
+    state.elapsedMs = Date.now() - state.timerStartedAt;
+    syncOverlayState();
+    renderTimerOnly();
+  }
+  requestAnimationFrame(updateTimer);
+}
 
-  debug.setStatus("elapsedMs", state.elapsedMs);
-  debug.setStatus("currentSplitIndex", state.currentSplitIndex);
-  debug.setStatus("historyCount", state.history.length);
-  debug.setStatus("counterCount", Object.keys(state.counters || {}).length);
-  debug.setStatus("splitCount", state.splits.length);
-  debug.setStatus("activePhaseId", activePhaseId);
-  debug.setStatus(
-    "activeQuotaTargets",
-    Object.keys(gameData.quotas?.[activePhaseId]?.targets || {}).length
-  );
+function startPauseTimer() {
+  if (state.timerRunning) {
+    state.timerRunning = false;
+    state.elapsedMs = Date.now() - state.timerStartedAt;
+    state.timerStartedAt = null;
+    addLog("Timer paused.");
+    setStatus("Timer paused.");
+  } else {
+    state.timerRunning = true;
+    state.timerStartedAt = Date.now() - Number(state.elapsedMs || 0);
+    addLog("Timer started.");
+    setStatus("Timer started.");
+  }
+  saveState();
+  render();
+}
 
-  debug.log("Persisting state", {
+function renderTimerOnly() {
+  $("timerDisplay").textContent = formatMs(state.elapsedMs);
+}
+
+function renderTop() {
+  const currentSplit = getCurrentSplit();
+  const activePhase = getActivePhase();
+  const overallPct = Math.round(computeOverallProgressPct());
+  const quotaPct = Math.round(computeQuotaProgressPct());
+
+  $("timerDisplay").textContent = formatMs(state.elapsedMs);
+  $("currentSplitLabel").textContent = currentSplit ? currentSplit.label : "Run complete";
+  $("splitCountLabel").textContent = `${getCompletedSplitCount()} splits logged`;
+  $("runDifficultyInline").textContent = state.difficulty;
+  $("difficultyBadge").textContent = state.difficulty;
+  $("activePhaseBadge").textContent = activePhase.label || activePhase.id;
+  $("overallPct").textContent = `${overallPct}%`;
+  $("quotaPct").textContent = `${quotaPct}%`;
+  $("overallPctBar").style.width = `${overallPct}%`;
+  $("quotaPctBar").style.width = `${quotaPct}%`;
+  $("paceText").textContent = computePaceText();
+  $("startPauseBtn").textContent = state.timerRunning ? "⏸ Pause" : "▶ Start";
+}
+
+function renderSettings() {
+  $("difficultySelect").value = state.difficulty;
+  $("actTargetMinutesInput").value = state.actTargetMinutes;
+  $("remoteCodeInput").value = state.remoteCode;
+  $("dirgeCheckbox").checked = !!state.dirgeChecked;
+}
+
+function renderLogs() {
+  $("logsText").textContent = state.logs.length ? state.logs.join("\n") : "No logs yet.";
+}
+
+function renderPhaseInfo() {
+  const activePhase = getActivePhase();
+  const note = activePhase.note || "No phase note.";
+  $("activePhaseLabel").textContent = activePhase.label || activePhase.id;
+  $("phaseNoteText").textContent = note;
+
+  const currentSplit = getCurrentSplit();
+  $("currentObjectiveNote").textContent = currentSplit?.note || "No note for this split yet.";
+}
+
+function renderQuotaBox() {
+  const targets = getCurrentQuotaTargets();
+  const keys = Object.keys(targets);
+
+  if (!keys.length) {
+    $("phaseQuotaBox").textContent = "No quota targets for this phase";
+    return;
+  }
+
+  const lines = keys.map((key) => {
+    const label = counters[key]?.label || key;
+    const current = Number(state.counts[key] || 0);
+    const target = Number(targets[key] || 0);
+    return `${label}: ${current}/${target}`;
+  });
+
+  $("phaseQuotaBox").textContent = lines.join("\n");
+}
+
+function createCounterCard(key) {
+  const meta = counters[key];
+  const card = document.createElement("div");
+  card.className = "counter-card";
+
+  const top = document.createElement("div");
+  top.className = "counter-top";
+
+  const label = document.createElement("div");
+  label.className = "counter-label";
+
+  const icon = document.createElement("span");
+  icon.textContent = meta.icon || "";
+
+  const name = document.createElement("span");
+  name.className = "counter-name";
+  name.textContent = meta.label || key;
+
+  const value = document.createElement("span");
+  value.className = "counter-value";
+  value.textContent = `${Number(state.counts[key] || 0)}/${Number(meta.max || 0)}`;
+
+  label.appendChild(icon);
+  label.appendChild(name);
+  top.appendChild(label);
+  top.appendChild(value);
+
+  const controls = document.createElement("div");
+  controls.className = "counter-controls";
+
+  const minus = document.createElement("button");
+  minus.className = "btn";
+  minus.type = "button";
+  minus.textContent = "−";
+  minus.addEventListener("click", () => {
+    state.counts[key] = clamp(Number(state.counts[key] || 0) - 1, 0, Number(meta.max || 0));
+    saveState();
+    render();
+  });
+
+  const plus = document.createElement("button");
+  plus.className = "btn";
+  plus.type = "button";
+  plus.textContent = "+";
+  plus.addEventListener("click", () => {
+    state.counts[key] = clamp(Number(state.counts[key] || 0) + 1, 0, Number(meta.max || 0));
+    saveState();
+    render();
+  });
+
+  controls.appendChild(minus);
+  controls.appendChild(plus);
+
+  card.appendChild(top);
+  card.appendChild(controls);
+  return card;
+}
+
+function renderTrackedTotals() {
+  const grid = $("trackedTotalsGrid");
+  grid.innerHTML = "";
+
+  const keys = getVisibleCounterKeys();
+  if (!keys.length) {
+    grid.textContent = "No visible objectives.";
+    return;
+  }
+
+  for (const key of keys) {
+    grid.appendChild(createCounterCard(key));
+  }
+}
+
+function renderSplitQueue() {
+  const queue = $("splitQueue");
+  queue.innerHTML = "";
+  $("splitQueueCount").textContent = `${splits.length} total splits`;
+
+  if (!splits.length) {
+    queue.textContent = "No splits loaded.";
+    return;
+  }
+
+  splits.forEach((split, index) => {
+    const card = document.createElement("div");
+    card.className = "split-card";
+    if (index === state.currentSplitIndex) card.classList.add("current");
+    if (index < state.currentSplitIndex) card.classList.add("done");
+
+    const title = document.createElement("div");
+    title.className = "split-title";
+    title.textContent = split.label || split.id || `Split ${index + 1}`;
+
+    const meta = document.createElement("div");
+    meta.className = "split-meta";
+    meta.textContent = [
+      split.phaseId ? `Phase: ${split.phaseId}` : null,
+      split.note || null
+    ].filter(Boolean).join(" • ") || "No extra info.";
+
+    card.appendChild(title);
+    card.appendChild(meta);
+    queue.appendChild(card);
+  });
+}
+
+function renderSplitHistory() {
+  const box = $("splitHistory");
+  box.innerHTML = "";
+  $("historyCount").textContent = `${state.splitHistory.length} saved`;
+
+  if (!state.splitHistory.length) {
+    box.textContent = "No split history yet.";
+    return;
+  }
+
+  [...state.splitHistory].reverse().forEach((entry) => {
+    const card = document.createElement("div");
+    card.className = "split-card";
+
+    const title = document.createElement("div");
+    title.className = "split-title";
+    title.textContent = entry.label;
+
+    const meta = document.createElement("div");
+    meta.className = "split-meta";
+    meta.textContent = `${formatMs(entry.elapsedMs)}${entry.note ? ` • ${entry.note}` : ""}`;
+
+    card.appendChild(title);
+    card.appendChild(meta);
+    box.appendChild(card);
+  });
+}
+
+function syncOverlayState() {
+  const activePhase = getActivePhase();
+  const overlayState = {
+    difficulty: state.difficulty,
     elapsedMs: state.elapsedMs,
-    currentSplitIndex: state.currentSplitIndex,
-    historyCount: state.history.length,
-    counterCount: Object.keys(state.counters || {}).length,
-    splitCount: state.splits.length,
-    activePhaseId
-  });
-
-  saveStoredState({
-    gameId: state.gameId,
-    elapsedMs: state.elapsedMs,
-    currentSplitIndex: state.currentSplitIndex,
-    history: state.history,
-    counters: state.counters,
-    miscChecks: state.miscChecks,
-    settings: state.settings,
-    splits: state.splits
-  });
-
-  renderer.render();
+    counts: state.counts,
+    counters,
+    phases,
+    quotas,
+    activePhaseId: activePhase.id,
+    visibleCounters: getVisibleCounterKeys(),
+    dirgeChecked: state.dirgeChecked,
+    currentSplitIndex: state.currentSplitIndex
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, ...overlayState }));
 }
 
-function downloadJson(data, prefix) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: "application/json"
-  });
+function downloadJson(filename, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${prefix}-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
-  a.style.display = "none";
-  document.body.appendChild(a);
+  a.download = filename;
   a.click();
-  setTimeout(() => {
-    URL.revokeObjectURL(url);
-    a.remove();
-  }, 200);
+  URL.revokeObjectURL(url);
 }
+
+async function readUploadedJson(file) {
+  const text = await file.text();
+  return JSON.parse(text);
+}
+
+function openModal(id) {
+  $(id).classList.remove("hidden");
+}
+
+function closeModal(id) {
+  $(id).classList.add("hidden");
+}
+
+function renderEditors() {
+  $("splitEditorTextarea").value = JSON.stringify(splits, null, 2);
+  $("actsEditorPhasesTextarea").value = JSON.stringify(phases, null, 2);
+  $("actsEditorQuotasTextarea").value = JSON.stringify(quotas, null, 2);
+}
+
+function attachEvents() {
+  $("startPauseBtn").addEventListener("click", startPauseTimer);
+  $("undoBtn").addEventListener("click", undoSplit);
+  $("completeSplitBtn").addEventListener("click", completeCurrentSplit);
+
+  $("toggleSettingsBtn").addEventListener("click", () => {
+    $("settingsPanel").classList.toggle("hidden");
+  });
+
+  $("difficultySelect").addEventListener("change", (e) => {
+    state.difficulty = e.target.value;
+    saveState();
+    render();
+  });
+
+  $("actTargetMinutesInput").addEventListener("change", (e) => {
+    state.actTargetMinutes = Number(e.target.value || 0);
+    saveState();
+    render();
+  });
+
+  $("remoteCodeInput").addEventListener("input", (e) => {
+    state.remoteCode = e.target.value;
+    saveState();
+  });
+
+  $("dirgeCheckbox").addEventListener("change", (e) => {
+    state.dirgeChecked = !!e.target.checked;
+    saveState();
+    render();
+  });
+
+  $("clearLogsBtn").addEventListener("click", () => {
+    state.logs = [];
+    saveState();
+    render();
+  });
+
+  $("copySnapshotBtn").addEventListener("click", async () => {
+    await navigator.clipboard.writeText(JSON.stringify({ state, counters, phases, quotas, splits }, null, 2));
+    setStatus("Snapshot copied.");
+  });
+
+  $("toggleDebugBtn").addEventListener("click", () => {
+    state.debugVisible = !state.debugVisible;
+    addLog(`Debug ${state.debugVisible ? "enabled" : "disabled"}.`);
+    saveState();
+    render();
+  });
+
+  $("resetRunBtn").addEventListener("click", () => {
+    if (!confirm("Reset timer, history, and counters?")) return;
+    const difficulty = state.difficulty;
+    const actTargetMinutes = state.actTargetMinutes;
+    const remoteCode = state.remoteCode;
+    state = { ...DEFAULT_STATE, difficulty, actTargetMinutes, remoteCode };
+    buildInitialCounts();
+    addLog("Run reset.");
+    saveState();
+    render();
+  });
+
+  $("downloadTimesBtn").addEventListener("click", () => {
+    downloadJson("times.json", {
+      elapsedMs: state.elapsedMs,
+      splitHistory: state.splitHistory,
+      counts: state.counts,
+      dirgeChecked: state.dirgeChecked
+    });
+  });
+
+  $("uploadTimesBtn").addEventListener("click", () => $("timesUploadInput").click());
+  $("downloadSplitsBtn").addEventListener("click", () => downloadJson("splits.json", splits));
+  $("uploadSplitsBtn").addEventListener("click", () => $("splitsUploadInput").click());
+
+  $("timesUploadInput").addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const data = await readUploadedJson(file);
+      state.elapsedMs = Number(data.elapsedMs || 0);
+      state.splitHistory = Array.isArray(data.splitHistory) ? data.splitHistory : [];
+      state.counts = typeof data.counts === "object" ? data.counts : state.counts;
+      state.dirgeChecked = !!data.dirgeChecked;
+      state.currentSplitIndex = state.splitHistory.length;
+      saveState();
+      render();
+      setStatus("Times imported.");
+    } catch {
+      setStatus("Failed to import times.");
+    }
+    e.target.value = "";
+  });
+
+  $("splitsUploadInput").addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const data = await readUploadedJson(file);
+      if (!Array.isArray(data)) throw new Error();
+      splits = data;
+      saveLocalJson(SPLITS_STORAGE_KEY, splits);
+      renderEditors();
+      saveState();
+      render();
+      setStatus("Splits imported.");
+    } catch {
+      setStatus("Failed to import splits.");
+    }
+    e.target.value = "";
+  });
+
+  $("openSplitEditorBtn").addEventListener("click", () => {
+    renderEditors();
+    openModal("splitEditorModal");
+  });
+
+  $("closeSplitEditorBtn").addEventListener("click", () => closeModal("splitEditorModal"));
+  $("downloadSplitBackupBtn").addEventListener("click", () => downloadJson("split-backup.json", splits));
+
+  $("copySplitBackupBtn").addEventListener("click", async () => {
+    await navigator.clipboard.writeText(JSON.stringify(splits, null, 2));
+    setStatus("Split backup copied.");
+  });
+
+  $("resetSplitEditorBtn").addEventListener("click", () => {
+    $("splitEditorTextarea").value = JSON.stringify(loadLocalJson(SPLITS_STORAGE_KEY, splits), null, 2);
+  });
+
+  $("addSplitBtn").addEventListener("click", () => {
+    const current = safeParse($("splitEditorTextarea").value, []);
+    current.push({
+      id: `split_${current.length + 1}`,
+      label: `New Split ${current.length + 1}`,
+      note: "",
+      phaseId: "",
+      isPhaseStart: false,
+      auto: {}
+    });
+    $("splitEditorTextarea").value = JSON.stringify(current, null, 2);
+  });
+
+  $("saveSplitSetupBtn").addEventListener("click", () => {
+    try {
+      const parsed = JSON.parse($("splitEditorTextarea").value);
+      if (!Array.isArray(parsed)) throw new Error();
+      splits = parsed;
+      saveLocalJson(SPLITS_STORAGE_KEY, splits);
+      closeModal("splitEditorModal");
+      setStatus("Split setup saved.");
+      saveState();
+      render();
+    } catch {
+      setStatus("Split setup JSON is invalid.");
+    }
+  });
+
+  $("openActsEditorBtn").addEventListener("click", () => {
+    renderEditors();
+    openModal("actsEditorModal");
+  });
+
+  $("closeActsEditorBtn").addEventListener("click", () => closeModal("actsEditorModal"));
+
+  $("addPhaseBtn").addEventListener("click", () => {
+    const current = safeParse($("actsEditorPhasesTextarea").value, {});
+    current[`new_phase_${Object.keys(current).length + 1}`] = {
+      label: "New Phase",
+      note: "",
+      visible: ["trophies"]
+    };
+    $("actsEditorPhasesTextarea").value = JSON.stringify(current, null, 2);
+  });
+
+  $("copyActsBtn").addEventListener("click", async () => {
+    const combined = {
+      phases: safeParse($("actsEditorPhasesTextarea").value, phases),
+      quotas: safeParse($("actsEditorQuotasTextarea").value, quotas)
+    };
+    await navigator.clipboard.writeText(JSON.stringify(combined, null, 2));
+    setStatus("Acts setup copied.");
+  });
+
+  $("exportActsBtn").addEventListener("click", () => {
+    downloadJson("acts.json", {
+      phases: safeParse($("actsEditorPhasesTextarea").value, phases),
+      quotas: safeParse($("actsEditorQuotasTextarea").value, quotas)
+    });
+  });
+
+  $("importActsBtn").addEventListener("click", () => $("actsUploadInput").click());
+
+  $("actsUploadInput").addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const data = await readUploadedJson(file);
+      if (!data?.phases || !data?.quotas) throw new Error();
+      $("actsEditorPhasesTextarea").value = JSON.stringify(data.phases, null, 2);
+      $("actsEditorQuotasTextarea").value = JSON.stringify(data.quotas, null, 2);
+      setStatus("Acts file loaded into editor.");
+    } catch {
+      setStatus("Failed to import acts file.");
+    }
+    e.target.value = "";
+  });
+
+  $("resetActsBtn").addEventListener("click", () => {
+    $("actsEditorPhasesTextarea").value = JSON.stringify(phases, null, 2);
+    $("actsEditorQuotasTextarea").value = JSON.stringify(quotas, null, 2);
+  });
+
+  $("saveActsSetupBtn").addEventListener("click", () => {
+    try {
+      const nextPhases = JSON.parse($("actsEditorPhasesTextarea").value);
+      const nextQuotas = JSON.parse($("actsEditorQuotasTextarea").value);
+      phases = nextPhases;
+      quotas = nextQuotas;
+      saveLocalJson(PHASES_STORAGE_KEY, phases);
+      saveLocalJson(QUOTAS_STORAGE_KEY, quotas);
+      closeModal("actsEditorModal");
+      setStatus("Acts setup saved.");
+      saveState();
+      render();
+    } catch {
+      setStatus("Acts setup JSON is invalid.");
+    }
+  });
+}
+
+function render() {
+  renderTop();
+  renderSettings();
+  renderLogs();
+  renderPhaseInfo();
+  renderQuotaBox();
+  renderTrackedTotals();
+  renderSplitQueue();
+  renderSplitHistory();
+}
+
+async function boot() {
+  loadState();
+
+  counters = loadLocalJson(COUNTERS_STORAGE_KEY, null) || await fetchJson(COUNTERS_URL, {});
+  phases = loadLocalJson(PHASES_STORAGE_KEY, null) || await fetchJson(PHASES_URL, {});
+  quotas = loadLocalJson(QUOTAS_STORAGE_KEY, null) || await fetchJson(QUOTAS_URL, { quotas: {} });
+  splits = loadLocalJson(SPLITS_STORAGE_KEY, null) || await fetchJson(SPLITS_URL, FALLBACK_SPLITS);
+
+  saveLocalJson(COUNTERS_STORAGE_KEY, counters);
+  saveLocalJson(PHASES_STORAGE_KEY, phases);
+  saveLocalJson(QUOTAS_STORAGE_KEY, quotas);
+  saveLocalJson(SPLITS_STORAGE_KEY, splits);
+
+  buildInitialCounts();
+  attachEvents();
+  renderEditors();
+  saveState();
+  render();
+  setStatus("Controller ready.");
+  updateTimer();
+}
+
+boot();
