@@ -8,7 +8,6 @@ import { createSplitEditor } from "./js/split-editor.js";
 import { createActsEditor } from "./js/acts-editor.js";
 import {
   clamp,
-  normalizeSplit,
   normalizeSplits,
   getActivePhaseId
 } from "./js/split-logic.js";
@@ -211,12 +210,16 @@ function render() {
   if (!gameData) return;
 
   const state = getCurrentState();
+
   const uiState = {
     elapsedMs: Number(state.timer?.elapsed || 0),
     counters: buildUiCounters(state),
     splits: state.splits?.items || [],
     currentSplitIndex: Number(state.splits?.currentIndex || 0),
-    settings: state.settings,
+    settings: {
+      ...state.settings,
+      __timerRunning: !!state.timer?.running
+    },
     miscChecks: {
       dirge: !!state.misc?.dirgeDone
     }
@@ -706,37 +709,4 @@ async function boot() {
   const initial = buildInitialState(getState());
 
   setWholeState(initial);
-  syncPhaseToState();
-
-  bindStaticEvents();
-  setupSplitEditor();
-  setupActsEditor();
-  setupSubscriptions();
-
-  debug.setSnapshotBuilder(() => ({
-    gameData,
-    state: getCurrentState()
-  }));
-
-  const state = getCurrentState();
-  if (state.timer?.running) {
-    ensureTimerLoop();
-  }
-
-  render();
-
-  debug.log("Controller booted", {
-    counters: Object.keys(gameData?.counters || {}).length,
-    phases: Object.keys(gameData?.phases || {}).length,
-    splits: (state.splits?.items || []).length
-  });
-}
-
-boot().catch((error) => {
-  debug.error("Controller boot failed", {
-    message: error.message,
-    stack: error.stack
-  });
-
-  console.error(error);
-});
+  syncPhas
