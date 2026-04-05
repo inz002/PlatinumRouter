@@ -1,169 +1,287 @@
-.layout {
-  display: grid;
-  grid-template-columns: 350px 1fr;
-  gap: 12px;
+:root {
+  --bg: rgba(8, 10, 16, 0.84);
+  --bg2: rgba(18, 20, 28, 0.88);
+  --border: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --text: #f8fafc;
+  --muted: rgba(255, 255, 255, 0.68);
+  --pill: rgba(255, 255, 255, 0.06);
+  --pill-active: rgba(255, 255, 255, 0.1);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --timer-green-bg: rgba(34, 197, 94, 0.14);
+  --timer-green-border: rgba(34, 197, 94, 0.38);
+  --timer-green-text: #86efac;
+
+  --progress-bg: rgba(96, 165, 250, 0.14);
+  --progress-border: rgba(96, 165, 250, 0.34);
+  --progress-text: #bfdbfe;
 }
 
-.stack > * + * {
-  margin-top: 12px;
+* {
+  box-sizing: border-box;
 }
 
-.goalsQueue {
-  display: grid;
-  grid-template-columns: 1fr 350px;
-  gap: 12px;
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: Inter, system-ui, sans-serif;
+  overflow-x: hidden;
+  overflow-y: visible;
 }
 
-.mainTop {
-  display: grid;
-  grid-template-columns: 1.4fr 0.9fr;
-  gap: 12px;
-  margin-bottom: 12px;
+body {
+  padding: 8px;
 }
 
-.compact {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-.statCard {
-  min-height: 120px;
-}
-
-.visibleList {
+.overlayShell {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
 }
 
-.miniChip {
+.overlayBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100vw - 16px);
+  padding: 4px 6px;
+  border-radius: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.28);
+}
+
+.timerChip,
+.counterChip,
+.metaChip {
+  min-height: 32px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.06);
+  padding: 0 10px;
+  border-radius: 12px;
   border: 1px solid var(--border);
-  font-size: 13px;
-  color: var(--text);
+  background: var(--pill);
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
-.progressGrid {
+.timerChip {
+  font-family: var(--mono);
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.timerChip.running {
+  background: var(--timer-green-bg);
+  border-color: var(--timer-green-border);
+  color: var(--timer-green-text);
+  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.08);
+}
+
+.metaChip {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.metaChip.progressChip {
+  background: var(--progress-bg);
+  border-color: var(--progress-border);
+  color: var(--progress-text);
+  min-width: 56px;
+  justify-content: center;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+
+.chipsWrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.chipsWrap::-webkit-scrollbar {
+  display: none;
+}
+
+.counterChip.activePhaseChip {
+  background: var(--pill-active);
+  border-color: var(--border-strong);
+}
+
+.chipIcon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.chipText {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+.debugDock {
+  width: min(1000px, calc(100vw - 16px));
+}
+
+.debugRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.debugBtn {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.debugBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.debugPanel {
+  display: none;
+  margin-top: 10px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  max-width: 1000px;
+}
+
+.debugPanel.open {
+  display: block;
+}
+
+.debugSection + .debugSection {
+  margin-top: 12px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.debugBody {
+  max-height: 320px;
+  overflow: auto;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-top: 8px;
 }
 
-.progressCard {
-  background: rgba(255,255,255,0.04);
+.debugLog {
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 10px 12px;
-  min-height: 110px;
-  display: grid;
-  grid-template-columns: 28px 1fr 28px;
-  align-items: center;
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.debugLog-info {
+  border-color: rgba(97, 168, 255, 0.25);
+}
+
+.debugLog-warn {
+  border-color: rgba(255, 196, 0, 0.28);
+}
+
+.debugLog-error {
+  border-color: rgba(255, 93, 115, 0.28);
+}
+
+.debugLogTop {
+  display: flex;
   gap: 8px;
-}
-
-.progressCardCenter {
-  text-align: center;
-}
-
-.progressCardTitle {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--text);
-  font-weight: 800;
-  min-height: 28px;
-}
-
-.progressCardIcon {
-  font-size: 24px;
-  line-height: 1;
-  margin: 4px 0 8px;
-}
-
-.progressCardValue {
-  font-size: 18px;
-  font-weight: 900;
-  line-height: 1.1;
-}
-
-.progressCardPct {
+  flex-wrap: wrap;
   font-size: 11px;
   color: var(--muted);
-  margin-top: 4px;
+  margin-bottom: 4px;
 }
 
-.progressCardBtn {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-  border-radius: 12px;
-  height: 40px;
-  width: 28px;
-  cursor: pointer;
-  font-size: 22px;
-  line-height: 1;
-  display: grid;
-  place-items: center;
-}
-
-.quotaInline {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  align-items: center;
-}
-
-.quotaChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.debugLogName,
+.debugLogLevel {
   font-weight: 800;
 }
 
-.overlayModal {
-  position: fixed;
-  inset: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  background: rgba(2, 6, 23, 0.7);
-  z-index: 50;
+.debugLogMsg {
+  font-size: 13px;
+  color: var(--text);
 }
 
-.overlayModal.open {
-  display: flex;
+.debugLogData {
+  margin: 6px 0 0;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #dbeafe;
 }
 
-@media (max-width: 1280px) {
-  .layout,
-  .goalsQueue,
-  .mainTop {
+.debugStatusRow {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.debugStatusRow:first-child {
+  border-top: 0;
+}
+
+.debugStatusKey {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.debugStatusValue {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.debugEmpty {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 8px 0;
+}
+
+@media (max-width: 760px) {
+  .debugStatusRow {
     grid-template-columns: 1fr;
-  }
-
-  .progressGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 900px) {
-  .progressGrid,
-  .compact {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
-  .progressGrid,
-  .compact {
-    grid-template-columns: 1fr;
+    gap: 4px;
   }
 }
