@@ -10,9 +10,13 @@
   <div class="overlayShell">
     <div class="overlayBar" id="overlayBar">
       <div class="timerChip" id="timer">00:00:00</div>
+
+      <div class="metaChip" id="progressChip">0%</div>
+
       <div class="chipsWrap" id="items">
         <div class="empty">Waiting for controller state…</div>
       </div>
+
       <div class="metaChip" id="dirgeChip" hidden>🎵 Dirge</div>
       <div class="metaChip" id="meta">Lethal</div>
     </div>
@@ -137,6 +141,26 @@
       return `<div class="counterChip ${extraClass}"><span class="chipIcon">${icon || "•"}</span><span class="chipText">${text}</span></div>`;
     }
 
+    function computeOverallPercent(counterDefs, counters) {
+      let total = 0;
+      let done = 0;
+
+      Object.keys(counterDefs || {}).forEach((key) => {
+        const def = counterDefs[key];
+        const counter = counters[key];
+        if (!def || !counter) return;
+
+        const max = Number(def.max || 0);
+        const value = Number(counter.value || 0);
+
+        total += max;
+        done += Math.min(value, max);
+      });
+
+      if (total <= 0) return 0;
+      return Math.floor((done / total) * 100);
+    }
+
     async function render() {
       const state = loadState();
       const gameId = state.gameId || "ghost-of-tsushima";
@@ -157,10 +181,14 @@
       const metaEl = document.getElementById("meta");
       const itemsEl = document.getElementById("items");
       const dirgeChipEl = document.getElementById("dirgeChip");
+      const progressChipEl = document.getElementById("progressChip");
 
       timerEl.textContent = formatMs(state.elapsedMs || 0);
       metaEl.textContent = state.settings?.difficulty || meta?.defaultDifficulty || "Lethal";
       dirgeChipEl.hidden = !state.miscChecks?.dirge;
+
+      const overallPercent = computeOverallPercent(counterDefs, counters);
+      progressChipEl.textContent = `${overallPercent}%`;
 
       const visibleKeys = Array.isArray(activePhase.visible) ? activePhase.visible : [];
       const orderedKeys = [
@@ -182,7 +210,13 @@
         const value = Number(counter.value || 0);
         const max = Number(def.max || 0);
 
-        fragments.push(chipHtml(def.icon, `${value}/${max}`, visibleKeys.includes(key) ? "activePhaseChip" : ""));
+        fragments.push(
+          chipHtml(
+            def.icon,
+            `${value}/${max}`,
+            visibleKeys.includes(key) ? "activePhaseChip" : ""
+          )
+        );
       });
 
       if (!fragments.length) {
@@ -198,6 +232,7 @@
       debug.setStatus("counterCount", Object.keys(counters).length);
       debug.setStatus("difficulty", state.settings?.difficulty || "Lethal");
       debug.setStatus("elapsedMs", state.elapsedMs || 0);
+      debug.setStatus("overallPercent", `${overallPercent}%`);
     }
 
     debug.setSnapshotBuilder(() => ({
