@@ -79,16 +79,14 @@ function buildInitialState(raw = {}) {
   const splits = normalizeSplits(raw.splits?.length ? raw.splits : gameData.defaultSplits || []);
   const counters = normalizeCounterState(gameData.counters, raw.counters || {});
 
-  const timerRunning = !!raw.running;
+  const running = !!raw.running;
   const elapsedMs = Math.max(0, Number(raw.elapsedMs || 0));
-  const startedAt = timerRunning
-    ? Number(raw.startedAt || Date.now() - elapsedMs)
-    : null;
+  const startedAt = running ? Number(raw.startedAt || Date.now() - elapsedMs) : null;
 
   return {
     gameId: raw.gameId || GAME_ID,
     elapsedMs,
-    running: timerRunning,
+    running,
     startedAt,
     currentSplitIndex: clamp(Number(raw.currentSplitIndex || 0), 0, splits.length),
     counters,
@@ -112,15 +110,6 @@ function setState(nextState) {
   saveState(STORAGE_KEY, nextState);
 }
 
-function getCurrentState() {
-  return getState();
-}
-
-function persistAndRender(nextState) {
-  setState(nextState);
-  render();
-}
-
 function getActivePhaseId(state) {
   let active = "legacy_all";
 
@@ -140,12 +129,8 @@ function getQuotaTargets(state) {
 }
 
 function computePaceText(state) {
-  const actTargets = getQuotaTargets(state);
   const actTargetMinutes = Number(state.settings?.act1TargetMinutes || 0);
-
-  if (!actTargetMinutes) {
-    return "No target";
-  }
+  if (!actTargetMinutes) return "No target";
 
   const targetMs = actTargetMinutes * 60 * 1000;
   const diff = state.elapsedMs - targetMs;
@@ -166,11 +151,6 @@ function updateExtraUi(state) {
     pacePill.textContent = computePaceText(state);
   }
 
-  const settingsPanel = document.getElementById("settingsPanel");
-  if (settingsPanel && !settingsPanel.dataset.bound) {
-    settingsPanel.classList.remove("open");
-  }
-
   const difficultySelect = document.getElementById("difficultySelect");
   if (difficultySelect) {
     difficultySelect.value = state.settings?.difficulty || "Lethal";
@@ -185,10 +165,22 @@ function updateExtraUi(state) {
   if (remoteCode) {
     remoteCode.value = state.settings?.remoteCode || "";
   }
+
+  const startPauseBtn = document.getElementById("startPauseBtn");
+  if (startPauseBtn) {
+    startPauseBtn.textContent = state.running ? "⏸ Pause" : "▶ Start";
+  }
+
+  const settingsPanel = document.getElementById("settingsPanel");
+  const settingsToggle = document.getElementById("settingsToggle");
+  if (settingsPanel && settingsToggle) {
+    const isOpen = settingsPanel.classList.contains("open");
+    settingsToggle.textContent = isOpen ? "⚙ Hide Settings" : "⚙ Show Settings";
+  }
 }
 
 function render() {
-  const state = getCurrentState();
+  const state = getState();
 
   renderUI({
     state,
@@ -206,10 +198,11 @@ function render() {
   debug.setStatus("currentSplitIndex", state.currentSplitIndex);
   debug.setStatus("splitCount", state.splits.length);
   debug.setStatus("activePhase", getActivePhaseId(state));
+  debug.setStatus("quotaTargets", Object.keys(getQuotaTargets(state)).length);
 }
 
 function startTimer() {
-  const state = getCurrentState();
+  const state = getState();
   if (state.running) return;
 
   state.running = true;
@@ -218,7 +211,7 @@ function startTimer() {
 
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = setInterval(() => {
-    const live = getCurrentState();
+    const live = getState();
     if (!live.running) return;
 
     live.elapsedMs = Date.now() - live.startedAt;
@@ -234,7 +227,7 @@ function startTimer() {
 }
 
 function pauseTimer() {
-  const state = getCurrentState();
+  const state = getState();
   if (!state.running) return;
 
   state.elapsedMs = Date.now() - state.startedAt;
@@ -251,7 +244,7 @@ function pauseTimer() {
 }
 
 function toggleTimer() {
-  const state = getCurrentState();
+  const state = getState();
   if (state.running) pauseTimer();
   else startTimer();
 }
@@ -269,7 +262,7 @@ function applyAuto(state, auto, multiplier = 1) {
 }
 
 function completeSplit() {
-  const state = getCurrentState();
+  const state = getState();
   const split = state.splits[state.currentSplitIndex];
 
   if (!split) return;
@@ -277,11 +270,12 @@ function completeSplit() {
   applyAuto(state, split.auto, 1);
   state.currentSplitIndex = clamp(state.currentSplitIndex + 1, 0, state.splits.length);
 
-  persistAndRender(state);
+  setState(state);
+  render();
 }
 
 function undoSplit() {
-  const state = getCurrentState();
+  const state = getState();
   const prevIndex = state.currentSplitIndex - 1;
 
   if (prevIndex < 0) return;
@@ -292,11 +286,12 @@ function undoSplit() {
   }
 
   state.currentSplitIndex = prevIndex;
-  persistAndRender(state);
+  setState(state);
+  render();
 }
 
 function adjustCounter(counterKey, delta) {
-  const state = getCurrentState();
+  const state = getState();
   const counterDef = gameData.counters?.[counterKey];
   const counterState = state.counters?.[counterKey];
 
@@ -309,7 +304,8 @@ function adjustCounter(counterKey, delta) {
   counterState.value = next;
   counterState.manualDelta = Number(counterState.manualDelta || 0) + Number(delta || 0);
 
-  persistAndRender(state);
+  setState(state);
+  render();
 }
 
 function downloadJson(filename, payload) {
@@ -330,7 +326,7 @@ async function readFileAsJson(file) {
 }
 
 function exportTimes() {
-  const state = getCurrentState();
+  const state = getState();
 
   downloadJson("times.json", {
     elapsedMs: state.elapsedMs,
@@ -345,14 +341,10 @@ function exportTimes() {
 async function importTimes(file) {
   try {
     const parsed = await readFileAsJson(file);
-    const state = getCurrentState();
+    const state = getState();
 
     state.elapsedMs = Math.max(0, Number(parsed.elapsedMs || 0));
-    state.currentSplitIndex = clamp(
-      Number(parsed.currentSplitIndex || 0),
-      0,
-      state.splits.length
-    );
+    state.currentSplitIndex = clamp(Number(parsed.currentSplitIndex || 0), 0, state.splits.length);
     state.counters = normalizeCounterState(gameData.counters, parsed.counters || {});
     state.miscChecks = {
       ...state.miscChecks,
@@ -367,7 +359,8 @@ async function importTimes(file) {
       state.startedAt = Date.now() - state.elapsedMs;
     }
 
-    persistAndRender(state);
+    setState(state);
+    render();
   } catch (error) {
     debug.error("Failed to import times", { message: error.message });
     alert("Could not import times JSON");
@@ -375,7 +368,7 @@ async function importTimes(file) {
 }
 
 function exportSplits() {
-  const state = getCurrentState();
+  const state = getState();
 
   downloadJson("splits.json", {
     splits: state.splits,
@@ -396,11 +389,12 @@ async function importSplits(file) {
       throw new Error("Missing splits array");
     }
 
-    const state = getCurrentState();
+    const state = getState();
     state.splits = normalizeSplits(nextSplits);
     state.currentSplitIndex = clamp(state.currentSplitIndex, 0, state.splits.length);
 
-    persistAndRender(state);
+    setState(state);
+    render();
   } catch (error) {
     debug.error("Failed to import splits", { message: error.message });
     alert("Could not import splits JSON");
@@ -415,46 +409,56 @@ function resetRun() {
     timerInterval = null;
   }
 
-  const current = getCurrentState();
+  const current = getState();
   const resetState = buildInitialState({
     gameId: GAME_ID,
     settings: current.settings
   });
 
-  persistAndRender(resetState);
+  setState(resetState);
+  render();
+}
+
+function toggleSettings() {
+  const panel = document.getElementById("settingsPanel");
+  const button = document.getElementById("settingsToggle");
+  if (!panel || !button) return;
+
+  const isOpen = panel.classList.toggle("open");
+  button.textContent = isOpen ? "⚙ Hide Settings" : "⚙ Show Settings";
 }
 
 function bindStaticEvents() {
   document.getElementById("startPauseBtn")?.addEventListener("click", toggleTimer);
   document.getElementById("undoBtn")?.addEventListener("click", undoSplit);
   document.getElementById("advanceCurrentBtn")?.addEventListener("click", completeSplit);
-
-  document.getElementById("settingsToggle")?.addEventListener("click", () => {
-    document.getElementById("settingsPanel")?.classList.toggle("open");
-  });
+  document.getElementById("settingsToggle")?.addEventListener("click", toggleSettings);
 
   document.getElementById("difficultySelect")?.addEventListener("change", (event) => {
-    const state = getCurrentState();
+    const state = getState();
     state.settings.difficulty = event.target.value;
-    persistAndRender(state);
+    setState(state);
+    render();
   });
 
   document.getElementById("act1TargetMinutes")?.addEventListener("change", (event) => {
-    const state = getCurrentState();
+    const state = getState();
     state.settings.act1TargetMinutes = Math.max(0, Number(event.target.value || 0));
-    persistAndRender(state);
+    setState(state);
+    render();
   });
 
   document.getElementById("remoteCode")?.addEventListener("input", (event) => {
-    const state = getCurrentState();
+    const state = getState();
     state.settings.remoteCode = event.target.value || "";
     setState(state);
   });
 
   document.getElementById("dirgeCheckbox")?.addEventListener("change", (event) => {
-    const state = getCurrentState();
+    const state = getState();
     state.miscChecks.dirge = !!event.target.checked;
-    persistAndRender(state);
+    setState(state);
+    render();
   });
 
   document.getElementById("exportTimesBtn")?.addEventListener("click", exportTimes);
@@ -495,9 +499,9 @@ function setupSplitEditor() {
     saveBtn: document.getElementById("saveSplitEditorBtn"),
     downloadBtn: document.getElementById("downloadSplitBackupBtn"),
     copyBtn: document.getElementById("copySplitBackupBtn"),
-    getSplits: () => clone(getCurrentState().splits || []),
+    getSplits: () => clone(getState().splits || []),
     setSplits: (splits) => {
-      const state = getCurrentState();
+      const state = getState();
       state.splits = normalizeSplits(splits);
       state.currentSplitIndex = clamp(state.currentSplitIndex, 0, state.splits.length);
       setState(state);
@@ -559,7 +563,7 @@ async function boot() {
 
   debug.setSnapshotBuilder(() => ({
     gameData,
-    state: getCurrentState()
+    state: getState()
   }));
 
   render();
