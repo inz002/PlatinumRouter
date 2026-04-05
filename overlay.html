@@ -3,136 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ghost of Tsushima Plain Overlay</title>
-  <style>
-    :root {
-      --bg: rgba(0, 0, 0, 0.88);
-      --border: rgba(255, 255, 255, 0.12);
-      --text: #f8fafc;
-      --muted: rgba(255, 255, 255, 0.64);
-      --pill: rgba(255, 255, 255, 0.08);
-      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    }
+  <title>Ghost of Tsushima Overlay</title>
 
-    * { box-sizing: border-box; }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: transparent;
-      color: var(--text);
-      font-family: Inter, system-ui, sans-serif;
-      overflow: hidden;
-    }
-
-    .overlay {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-height: 48px;
-      max-height: 48px;
-      padding: 6px 10px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      width: fit-content;
-      max-width: 100vw;
-      overflow: hidden;
-      backdrop-filter: blur(8px);
-    }
-
-    .timer {
-      flex: 0 0 auto;
-      font-family: var(--mono);
-      font-size: 24px;
-      font-weight: 900;
-      line-height: 1;
-      letter-spacing: -0.03em;
-      white-space: nowrap;
-    }
-
-    .divider {
-      width: 1px;
-      align-self: stretch;
-      background: var(--border);
-      flex: 0 0 auto;
-    }
-
-    .items {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      min-width: 0;
-      overflow-x: auto;
-      overflow-y: hidden;
-      scrollbar-width: none;
-    }
-
-    .items::-webkit-scrollbar {
-      display: none;
-    }
-
-    .item {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      height: 34px;
-      padding: 0 10px;
-      border-radius: 999px;
-      background: var(--pill);
-      border: 1px solid var(--border);
-      white-space: nowrap;
-      flex: 0 0 auto;
-    }
-
-    .icon {
-      font-size: 18px;
-      line-height: 1;
-    }
-
-    .count {
-      font-size: 14px;
-      font-weight: 800;
-      line-height: 1;
-    }
-
-    .meta {
-      flex: 0 0 auto;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 0 10px;
-      height: 34px;
-      border-radius: 999px;
-      background: var(--pill);
-      border: 1px solid var(--border);
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--muted);
-      white-space: nowrap;
-    }
-
-    .empty {
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-  </style>
+  <link rel="stylesheet" href="./overlay.css" />
 </head>
+
 <body>
-  <div class="overlay">
+  <div class="overlay" id="overlay">
     <div class="timer" id="timer">00:00:00</div>
+
     <div class="divider"></div>
+
     <div class="items" id="items">
       <div class="empty">Waiting for controller state…</div>
     </div>
+
     <div class="divider"></div>
+
     <div class="meta" id="meta">Lethal</div>
   </div>
 
-  <script>
+  <script type="module">
+    import { createDebugger } from "./js/debug.js";
+
     const STORAGE_KEY = "platinumrouter_state_v1";
+
+    const debug = createDebugger({ name: "overlay" });
 
     function formatMs(ms) {
       const totalSeconds = Math.max(0, Math.floor((ms || 0) / 1000));
@@ -150,102 +46,108 @@
       }
     }
 
-    async function loadGameData(gameId = "ghost-of-tsushima") {
-      const registryRes = await fetch("./data/games.json");
-      const registry = await registryRes.json();
-      const game = (registry.games || []).find((entry) => entry.id === gameId) || registry.games?.[0];
+    function normalizeSplit(split) {
+      return {
+        phaseId: "",
+        isPhaseStart: false,
+        ...split
+      };
+    }
 
-      if (!game) {
-        throw new Error("No game config found");
+    function getActivePhaseId(splits, currentSplitIndex, phases) {
+      let active = "legacy_all";
+
+      for (let i = 0; i <= currentSplitIndex && i < splits.length; i++) {
+        const split = normalizeSplit(splits[i]);
+        if (split.isPhaseStart && split.phaseId && phases[split.phaseId]) {
+          active = split.phaseId;
+        }
       }
 
-      const basePath = normalizePath(game.path);
+      return active;
+    }
 
-      const [meta, counters] = await Promise.all([
-        fetchJson(`${basePath}/meta.json`),
-        fetchJson(`${basePath}/counters.json`)
+    async function loadGameData(gameId = "ghost-of-tsushima") {
+      const registry = await fetch("./data/games.json").then(r => r.json());
+      const game = registry.games.find(g => g.id === gameId);
+
+      const base = game.path;
+
+      const [meta, counters, phases] = await Promise.all([
+        fetch(`${base}/meta.json`).then(r => r.json()),
+        fetch(`${base}/counters.json`).then(r => r.json()),
+        fetch(`${base}/phases.json`).then(r => r.json())
       ]);
 
-      return { game, meta, counters };
+      return { meta, counters, phases };
     }
 
-    async function fetchJson(path) {
-      const response = await fetch(path);
-      if (!response.ok) {
-        throw new Error(`Failed to load ${path}`);
-      }
-      return response.json();
-    }
-
-    function normalizePath(path) {
-      if (!path) return "./data/ghost-of-tsushima";
-      if (path.startsWith("./")) return path;
-      if (path.startsWith("/")) return `.${path}`;
-      return `./${path}`;
-    }
-
-    function buildNormalizedCounters(counterDefs, savedCounters) {
+    function buildCounters(defs, saved) {
       const result = {};
-      const source = savedCounters && typeof savedCounters === "object" ? savedCounters : {};
 
-      Object.entries(counterDefs || {}).forEach(([key, def]) => {
-        const saved = source[key] || {};
+      Object.entries(defs || {}).forEach(([key, def]) => {
         result[key] = {
           ...def,
-          value: Number.isFinite(Number(saved.value)) ? Number(saved.value) : 0,
-          manualDelta: Number.isFinite(Number(saved.manualDelta)) ? Number(saved.manualDelta) : 0
+          value: Number(saved?.[key]?.value || 0)
         };
       });
 
       return result;
     }
 
-    let cachedGameData = null;
+    let cache = null;
 
     async function render() {
       const state = loadState();
       const gameId = state.gameId || "ghost-of-tsushima";
 
-      if (!cachedGameData || cachedGameData.game.id !== gameId) {
-        cachedGameData = await loadGameData(gameId);
+      if (!cache) {
+        cache = await loadGameData(gameId);
       }
 
-      const { counters: counterDefs, meta } = cachedGameData;
-      const counters = buildNormalizedCounters(counterDefs, state.counters);
+      const { counters: defs, phases, meta } = cache;
 
-      document.getElementById("timer").textContent = formatMs(state.elapsedMs || 0);
+      const counters = buildCounters(defs, state.counters);
+      const splits = state.splits || [];
+      const index = state.currentSplitIndex || 0;
+
+      const phaseId = getActivePhaseId(splits, index, phases);
+      const phase = phases[phaseId] || { visible: [] };
+
+      document.getElementById("timer").textContent = formatMs(state.elapsedMs);
       document.getElementById("meta").textContent =
-        state.settings?.difficulty || meta?.defaultDifficulty || "Lethal";
+        state.settings?.difficulty || meta.defaultDifficulty || "Lethal";
 
       const itemsEl = document.getElementById("items");
       itemsEl.innerHTML = "";
 
+      const visible = phase.visible || [];
+
       const items = [];
 
-      Object.entries(counterDefs || {}).forEach(([key, def]) => {
+      visible.forEach((key) => {
+        if (key === "dirge") {
+          if (!state.miscChecks?.dirge) {
+            items.push({ icon: "🎵", text: "Dirge" });
+          }
+          return;
+        }
+
+        const def = defs[key];
         const counter = counters[key];
-        if (!counter) return;
 
-        const value = Number(counter.value || 0);
-        const max = Number(def.max || 0);
+        if (!def || !counter) return;
 
-        if (value >= max) return;
+        if (counter.value >= def.max) return;
 
         items.push({
           icon: def.icon,
-          text: `${value}/${max}`
+          text: `${counter.value}/${def.max}`
         });
       });
 
-      if (!state.miscChecks?.dirge) {
-        items.push({
-          icon: "🎵",
-          text: "Dirge"
-        });
-      }
-
       if (!items.length) {
-        itemsEl.innerHTML = '<div class="empty">Everything complete</div>';
+        itemsEl.innerHTML = '<div class="empty">All objectives complete</div>';
         return;
       }
 
@@ -257,15 +159,8 @@
       });
     }
 
-    window.addEventListener("storage", () => {
-      render().catch(console.error);
-    });
-
-    setInterval(() => {
-      render().catch(console.error);
-    }, 500);
-
-    render().catch(console.error);
+    setInterval(render, 500);
+    render();
   </script>
 </body>
 </html>
