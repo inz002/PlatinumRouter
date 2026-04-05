@@ -34,6 +34,14 @@ export function createDebugger({
     }
   }
 
+  function escapeHtml(value) {
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+  }
+
   function renderStatus() {
     if (!statusEl) return;
 
@@ -87,8 +95,10 @@ export function createDebugger({
   }
 
   function render() {
-    if (!panel) return;
-    panel.classList.toggle("open", state.open);
+    if (panel) {
+      panel.classList.toggle("open", state.open);
+    }
+
     renderStatus();
     renderLogs();
 
@@ -161,12 +171,6 @@ export function createDebugger({
   clearBtn?.addEventListener("click", clear);
   copyBtn?.addEventListener("click", copySnapshot);
 
-  window.addEventListener("keydown", (e) => {
-    if (e.key === "`" && e.shiftKey) {
-      toggle();
-    }
-  });
-
   render();
 
   return {
@@ -177,12 +181,4 @@ export function createDebugger({
     setSnapshotBuilder,
     render
   };
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }
