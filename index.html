@@ -11,7 +11,7 @@
     <div class="top">
       <div>
         <div class="eyebrow">Run Control Overlay</div>
-        <div id="runTitle" class="title">Ghost of Tsushima Platinum</div>
+        <div id="runTitle" class="title">Ghost of Tsushima Platinum Lethal</div>
         <div class="subtitle">Main controller with phase-based objective visibility.</div>
       </div>
       <div id="difficultyBadge" class="badge lethal">Lethal</div>
@@ -46,19 +46,19 @@
 
         <div class="panel">
           <div class="compact">
-            <div class="card">
+            <div class="card statCard">
               <div class="eyebrow">Overall</div>
               <div id="overallPercent" class="big">0%</div>
               <div class="bar"><span id="overallBar" style="width:0%"></span></div>
             </div>
-            <div class="card">
-              <div class="eyebrow">Act Quota</div>
+            <div class="card statCard">
+              <div class="eyebrow" id="actQuotaLabel">Act 1</div>
               <div id="act1SummaryValue" class="big">0%</div>
               <div class="bar">
                 <span id="act1SummaryBar" style="width:0%;background:var(--blue)"></span>
               </div>
             </div>
-            <div class="card">
+            <div class="card statCard">
               <div class="eyebrow">Pace</div>
               <div id="pacePill" class="mid" style="margin-top:6px">On fresh air</div>
             </div>
@@ -87,22 +87,22 @@
                 <label for="remoteCode">Remote control code</label>
                 <input id="remoteCode" type="text" placeholder="Optional remote room code" />
               </div>
+            </div>
 
-              <div class="row">
-                <button id="openSplitEditorBtn" class="btn">🧩 Split Editor</button>
-                <button id="openActsEditorBtn" class="btn">🧭 Acts Editor</button>
-                <button id="exportTimesBtn" class="btn">⬇ Times</button>
-                <label class="btn">
-                  ⬆ Times
-                  <input id="importTimesInput" type="file" accept="application/json" hidden />
-                </label>
-                <button id="exportSplitsBtn" class="btn">⬇ Splits</button>
-                <label class="btn">
-                  ⬆ Splits
-                  <input id="importSplitsInput" type="file" accept="application/json" hidden />
-                </label>
-                <button id="resetBtn" class="btn danger">↺ Reset</button>
-              </div>
+            <div class="row">
+              <button id="openSplitEditorBtn" class="btn">🧩 Split Editor</button>
+              <button id="openActsEditorBtn" class="btn">🧭 Acts Editor</button>
+              <button id="exportTimesBtn" class="btn">⬇ Times</button>
+              <label class="btn">
+                ⬆ Times
+                <input id="importTimesInput" type="file" accept="application/json" hidden />
+              </label>
+              <button id="exportSplitsBtn" class="btn">⬇ Splits</button>
+              <label class="btn">
+                ⬆ Splits
+                <input id="importSplitsInput" type="file" accept="application/json" hidden />
+              </label>
+              <button id="resetBtn" class="btn danger">↺ Reset</button>
             </div>
 
             <div class="debugDock">
@@ -133,8 +133,8 @@
           <div class="panel">
             <div class="mainTop">
               <div class="card">
-                <div class="eyebrow">Phase Quota</div>
-                <div id="act1QuotaText" class="mid" style="margin-top:8px">
+                <div class="eyebrow" id="act1QuotaTitle">Act 1 Quota</div>
+                <div id="act1QuotaText" class="mid quotaInline" style="margin-top:8px">
                   No quota targets for this phase
                 </div>
               </div>
@@ -195,7 +195,7 @@
       </div>
     </div>
 
-    <div id="splitEditorOverlay" class="overlay">
+    <div id="splitEditorOverlay" class="overlayModal">
       <div class="editor">
         <div class="editorHead">
           <div>
@@ -222,7 +222,7 @@
       </div>
     </div>
 
-    <div id="actsEditorOverlay" class="overlay">
+    <div id="actsEditorOverlay" class="overlayModal">
       <div class="editor">
         <div class="editorHead">
           <div>
