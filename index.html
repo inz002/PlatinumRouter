@@ -3,73 +3,77 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Run Control Overlay</title>
+  <title>Ghost of Tsushima Controller</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <main class="app-shell">
     <header class="hero">
-      <div class="hero-copy">
+      <div>
         <p class="eyebrow">Run Control Overlay</p>
         <h1>Ghost of Tsushima Platinum</h1>
         <p class="hero-note">Main controller with phase-based objective visibility.</p>
       </div>
-      <div class="hero-mode">
-        <span id="difficultyBadge" class="mode-badge">Lethal</span>
+      <div class="hero-badge-row">
+        <span id="difficultyBadge" class="pill pill-accent">Lethal</span>
+        <span id="activePhaseBadge" class="pill">Legacy All</span>
       </div>
     </header>
 
     <section class="top-grid">
-      <article class="panel timer-panel">
-        <div class="panel-title">⏱️ Run Timer</div>
+      <article class="panel">
+        <div class="panel-title">⏱ Run Timer</div>
         <div id="timerDisplay" class="timer-display">00:00:00</div>
-        <div class="timer-actions">
-          <button id="startPauseBtn" type="button">▶ Start</button>
-          <button id="undoBtn" type="button">↶ Undo</button>
+        <div class="button-row">
+          <button id="startPauseBtn" class="btn btn-primary" type="button">▶ Start</button>
+          <button id="undoBtn" class="btn" type="button">↶ Undo</button>
         </div>
       </article>
 
-      <article class="panel split-panel">
+      <article class="panel">
         <div class="panel-title">Current Split</div>
         <div id="currentSplitLabel" class="current-split-label">No split</div>
         <div id="splitCountLabel" class="muted-line">0 splits logged</div>
-
-        <div class="split-complete-row">
-          <span id="runDifficultyInline" class="inline-badge">Lethal</span>
-          <button id="completeSplitBtn" type="button" class="primary-btn">▶ Complete Current Split</button>
+        <div class="split-action-row">
+          <span id="runDifficultyInline" class="pill">Lethal</span>
+          <button id="completeSplitBtn" class="btn btn-primary" type="button">▶ Complete Current Split</button>
         </div>
       </article>
 
-      <article class="panel progress-panel">
-        <div class="progress-card-grid">
-          <div class="progress-card">
-            <div class="progress-label">Overall Progress</div>
-            <div id="overallPct" class="progress-value">0%</div>
-            <div class="progress-bar-track">
-              <div id="overallPctBar" class="progress-bar-fill" style="width: 0%;"></div>
-            </div>
-          </div>
+      <article class="panel">
+        <div class="panel-title">Progress</div>
 
-          <div class="progress-card">
-            <div class="progress-label">Act Quota</div>
-            <div id="quotaPct" class="progress-value">0%</div>
-            <div class="progress-bar-track">
-              <div id="quotaPctBar" class="progress-bar-fill" style="width: 0%;"></div>
-            </div>
+        <div class="stat-block">
+          <div class="stat-top">
+            <span>Overall Progress</span>
+            <strong id="overallPct">0%</strong>
           </div>
+          <div class="bar-track">
+            <div id="overallPctBar" class="bar-fill" style="width: 0%;"></div>
+          </div>
+        </div>
 
-          <div class="progress-card">
-            <div class="progress-label">Pace</div>
-            <div id="paceText" class="pace-value">On fresh air</div>
+        <div class="stat-block">
+          <div class="stat-top">
+            <span>Act Quota</span>
+            <strong id="quotaPct">0%</strong>
           </div>
+          <div class="bar-track">
+            <div id="quotaPctBar" class="bar-fill" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div class="pace-box">
+          <span class="muted-line">Pace</span>
+          <strong id="paceText">On fresh air</strong>
         </div>
       </article>
     </section>
 
-    <section class="settings-row">
-      <button id="toggleSettingsBtn" type="button">⚙ Show Settings</button>
+    <section class="settings-wrap">
+      <button id="toggleSettingsBtn" class="btn" type="button">⚙ Show Settings</button>
 
-      <div id="settingsPanel" class="panel settings-panel hidden">
+      <div id="settingsPanel" class="panel hidden">
         <div class="settings-grid">
           <label class="field">
             <span>Difficulty</span>
@@ -81,29 +85,29 @@
 
           <label class="field">
             <span>Act target minutes</span>
-            <input id="actTargetMinutesInput" type="number" min="1" step="1" />
+            <input id="actTargetMinutesInput" type="number" min="1" step="1" placeholder="e.g. 480" />
           </label>
 
           <label class="field">
             <span>Remote control code</span>
-            <input id="remoteCodeInput" type="text" autocomplete="off" />
+            <input id="remoteCodeInput" type="text" autocomplete="off" placeholder="optional" />
           </label>
         </div>
 
-        <div class="settings-actions">
-          <button id="openSplitEditorBtn" type="button">Split Editor</button>
-          <button id="openActsEditorBtn" type="button">Acts Editor</button>
-          <button id="downloadTimesBtn" type="button">⬇ Times</button>
-          <button id="uploadTimesBtn" type="button">⬆ Times</button>
-          <button id="downloadSplitsBtn" type="button">⬇ Splits</button>
-          <button id="uploadSplitsBtn" type="button">⬆ Splits</button>
-          <button id="resetRunBtn" type="button">↺ Reset</button>
+        <div class="button-row wrap">
+          <button id="openSplitEditorBtn" class="btn" type="button">Split Editor</button>
+          <button id="openActsEditorBtn" class="btn" type="button">Acts Editor</button>
+          <button id="downloadTimesBtn" class="btn" type="button">⬇ Times</button>
+          <button id="uploadTimesBtn" class="btn" type="button">⬆ Times</button>
+          <button id="downloadSplitsBtn" class="btn" type="button">⬇ Splits</button>
+          <button id="uploadSplitsBtn" class="btn" type="button">⬆ Splits</button>
+          <button id="resetRunBtn" class="btn btn-danger" type="button">↺ Reset</button>
         </div>
 
-        <div class="settings-actions secondary">
-          <button id="toggleDebugBtn" type="button">Show Debug</button>
-          <button id="clearLogsBtn" type="button">Clear Logs</button>
-          <button id="copySnapshotBtn" type="button">Copy Snapshot</button>
+        <div class="button-row wrap top-gap">
+          <button id="toggleDebugBtn" class="btn" type="button">Show Debug</button>
+          <button id="clearLogsBtn" class="btn" type="button">Clear Logs</button>
+          <button id="copySnapshotBtn" class="btn" type="button">Copy Snapshot</button>
         </div>
       </div>
     </section>
@@ -111,7 +115,7 @@
     <section class="middle-grid">
       <article class="panel">
         <div class="panel-title">Status</div>
-        <div id="statusText" class="status-box"></div>
+        <div id="statusText" class="status-box">Booting…</div>
       </article>
 
       <article class="panel">
@@ -128,13 +132,11 @@
 
       <article class="panel">
         <div class="panel-title">Misc Checklist</div>
-        <div class="checklist-box">
-          <label class="checkbox-row">
-            <input id="dirgeCheckbox" type="checkbox" />
-            <span>Dirge of the Fallen</span>
-          </label>
-          <p class="small-note">Monochrome and Cooper are tracked as counters. Dirge is a one-time checkbox.</p>
-        </div>
+        <label class="checkbox-row">
+          <input id="dirgeCheckbox" type="checkbox" />
+          <span>Dirge of the Fallen</span>
+        </label>
+        <p class="small-note">Monochrome and Cooper are tracked as counters. Dirge is a one-time checkbox.</p>
       </article>
     </section>
 
@@ -155,14 +157,11 @@
       <article class="panel">
         <div class="panel-title">Tracked Totals</div>
         <div id="trackedTotalsGrid" class="tracked-totals-grid"></div>
-        <p class="small-note">
-          Visible objectives, including lighthouses, come from the active phase configuration.
-        </p>
+        <p class="small-note">Visible objectives come from the active phase, including lighthouses.</p>
       </article>
 
       <article class="panel">
         <div class="panel-title">Split Queue</div>
-        <div class="muted-line">Only current split is clickable.</div>
         <div id="splitQueueCount" class="muted-line">0 total splits</div>
         <div id="splitQueue" class="split-queue"></div>
       </article>
@@ -171,62 +170,71 @@
         <div class="panel-title">Split History</div>
         <div id="historyCount" class="muted-line">0 saved</div>
         <div id="splitHistory" class="split-history"></div>
-        <p class="small-note">Undo reverses the latest split and its auto-progress.</p>
       </article>
     </section>
-
-    <section id="splitEditorModal" class="editor-modal hidden" aria-hidden="true">
-      <div class="editor-card">
-        <div class="editor-header">
-          <div>
-            <h2>Split Editor</h2>
-            <p>Edit split names, notes, phase starts, and auto-progress values.</p>
-          </div>
-          <div class="editor-actions">
-            <button id="addSplitBtn" type="button">＋ Add Split</button>
-            <button id="downloadSplitBackupBtn" type="button">⬇ Download Split Backup</button>
-            <button id="copySplitBackupBtn" type="button">Copy Split Backup</button>
-            <button id="resetSplitEditorBtn" type="button">Reset</button>
-            <button id="closeSplitEditorBtn" type="button">Close</button>
-          </div>
-        </div>
-
-        <p class="small-note">Old split JSON stays compatible because phase fields are optional.</p>
-        <div id="splitEditorList" class="editor-list"></div>
-
-        <div class="editor-footer">
-          <button id="saveSplitSetupBtn" type="button" class="primary-btn">Save Split Setup</button>
-        </div>
-      </div>
-    </section>
-
-    <section id="actsEditorModal" class="editor-modal hidden" aria-hidden="true">
-      <div class="editor-card">
-        <div class="editor-header">
-          <div>
-            <h2>Acts Editor</h2>
-            <p>Edit phase labels, notes, visible objectives, and quota targets.</p>
-          </div>
-          <div class="editor-actions">
-            <button id="addPhaseBtn" type="button">＋ Add Phase</button>
-            <button id="exportActsBtn" type="button">⬇ Export Acts</button>
-            <button id="importActsBtn" type="button">⬆ Import Acts</button>
-            <button id="copyActsBtn" type="button">Copy Acts</button>
-            <button id="resetActsBtn" type="button">Reset</button>
-            <button id="closeActsEditorBtn" type="button">Close</button>
-          </div>
-        </div>
-
-        <div class="panel-title">Phases</div>
-        <p class="small-note">Phase visibility and quotas are edited together here.</p>
-        <div id="actsEditorList" class="editor-list"></div>
-
-        <div class="editor-footer">
-          <button id="saveActsSetupBtn" type="button" class="primary-btn">Save Acts Setup</button>
-        </div>
-      </div>
-    </section>
   </main>
+
+  <div id="splitEditorModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card modal-wide">
+      <div class="modal-header">
+        <div>
+          <h2>Split Editor</h2>
+          <p>Edit the raw split JSON.</p>
+        </div>
+        <div class="button-row wrap">
+          <button id="addSplitBtn" class="btn" type="button">＋ Add Split</button>
+          <button id="downloadSplitBackupBtn" class="btn" type="button">⬇ Download Split Backup</button>
+          <button id="copySplitBackupBtn" class="btn" type="button">Copy Split Backup</button>
+          <button id="resetSplitEditorBtn" class="btn" type="button">Reset</button>
+          <button id="closeSplitEditorBtn" class="btn btn-danger" type="button">Close</button>
+        </div>
+      </div>
+
+      <textarea id="splitEditorTextarea" class="editor-textarea" spellcheck="false"></textarea>
+
+      <div class="modal-footer">
+        <button id="saveSplitSetupBtn" class="btn btn-primary" type="button">Save Split Setup</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="actsEditorModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card modal-wide">
+      <div class="modal-header">
+        <div>
+          <h2>Acts Editor</h2>
+          <p>Edit phases and quotas JSON.</p>
+        </div>
+        <div class="button-row wrap">
+          <button id="addPhaseBtn" class="btn" type="button">＋ Add Phase</button>
+          <button id="exportActsBtn" class="btn" type="button">⬇ Export Acts</button>
+          <button id="importActsBtn" class="btn" type="button">⬆ Import Acts</button>
+          <button id="copyActsBtn" class="btn" type="button">Copy Acts</button>
+          <button id="resetActsBtn" class="btn" type="button">Reset</button>
+          <button id="closeActsEditorBtn" class="btn btn-danger" type="button">Close</button>
+        </div>
+      </div>
+
+      <div class="editor-two-col">
+        <div>
+          <div class="panel-title">Phases JSON</div>
+          <textarea id="actsEditorPhasesTextarea" class="editor-textarea" spellcheck="false"></textarea>
+        </div>
+        <div>
+          <div class="panel-title">Quotas JSON</div>
+          <textarea id="actsEditorQuotasTextarea" class="editor-textarea" spellcheck="false"></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="saveActsSetupBtn" class="btn btn-primary" type="button">Save Acts Setup</button>
+      </div>
+    </div>
+  </div>
+
+  <input id="timesUploadInput" type="file" accept="application/json" hidden />
+  <input id="splitsUploadInput" type="file" accept="application/json" hidden />
+  <input id="actsUploadInput" type="file" accept="application/json" hidden />
 
   <script src="./controller.js"></script>
 </body>
