@@ -2,8 +2,8 @@
 
 import { loadState, saveState } from "./js/storage.js";
 import { createDebugger } from "./js/debug.js";
-import { createSplitEditor } from "./js/splitEditor.js";
-import { createActsEditor } from "./js/actsEditor.js";
+import { createSplitEditor } from "./js/split-editor.js";
+import { createActsEditor } from "./js/acts-editor.js";
 
 const STORAGE_KEY = "platinumrouter_state_v1";
 
