@@ -6,7 +6,7 @@
   <title>Ghost of Tsushima Plain Overlay</title>
   <style>
     :root {
-      --bg: rgba(12, 18, 30, 0.92);
+      --bg: rgba(0, 0, 0, 0.88);
       --border: rgba(255, 255, 255, 0.12);
       --text: #f8fafc;
       --muted: rgba(255, 255, 255, 0.64);
@@ -25,158 +25,122 @@
       overflow: hidden;
     }
 
-    body {
-      display: flex;
-      align-items: flex-start;
-      justify-content: flex-start;
-      min-height: 100vh;
-      padding: 16px;
-    }
-
     .overlay {
-      width: 380px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 48px;
+      max-height: 48px;
+      padding: 6px 10px;
       background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 18px;
+      border-radius: 14px;
+      width: fit-content;
+      max-width: 100vw;
+      overflow: hidden;
       backdrop-filter: blur(8px);
-      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
     }
 
     .timer {
+      flex: 0 0 auto;
       font-family: var(--mono);
-      font-size: 50px;
+      font-size: 24px;
+      font-weight: 900;
       line-height: 1;
-      font-weight: 800;
-      letter-spacing: 0.02em;
-      margin-bottom: 14px;
-    }
-
-    .status-row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 14px;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 10px;
-      border-radius: 999px;
-      background: var(--pill);
-      border: 1px solid var(--border);
-      font-size: 13px;
-      line-height: 1;
+      letter-spacing: -0.03em;
       white-space: nowrap;
     }
 
-    .section-label {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-
-    .progress-wrap {
-      margin-bottom: 14px;
-    }
-
-    .progress-track {
-      width: 100%;
-      height: 10px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      overflow: hidden;
-    }
-
-    .progress-bar {
-      height: 100%;
-      width: 0%;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.9);
-      transition: width 120ms linear;
-    }
-
-    .items {
-      display: grid;
-      gap: 8px;
-    }
-
-    .item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 10px 12px;
-      border-radius: 14px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      font-size: 14px;
-    }
-
-    .item-left {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 0;
-      flex: 1 1 auto;
-    }
-
-    .item-icon {
-      width: 20px;
-      text-align: center;
-      flex: 0 0 20px;
-    }
-
-    .item-label {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .item-value {
-      font-family: var(--mono);
-      color: var(--muted);
+    .divider {
+      width: 1px;
+      align-self: stretch;
+      background: var(--border);
       flex: 0 0 auto;
     }
 
-    .empty {
-      padding: 12px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: var(--muted);
+    .items {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+    }
+
+    .items::-webkit-scrollbar {
+      display: none;
+    }
+
+    .item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 34px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: var(--pill);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .icon {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .count {
       font-size: 14px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .meta {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 10px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--pill);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
     }
   </style>
 </head>
 <body>
   <div class="overlay">
-    <div id="timer" class="timer">00:00:00</div>
-
-    <div class="status-row">
-      <div class="pill"><strong>Phase:</strong> <span id="phaseLabel">—</span></div>
-      <div class="pill"><strong>Progress:</strong> <span id="progressText">0%</span></div>
-    </div>
-
-    <div class="progress-wrap">
-      <div class="progress-track">
-        <div id="progressBar" class="progress-bar"></div>
-      </div>
-    </div>
-
-    <div class="section-label">Visible objectives</div>
-    <div id="items" class="items">
+    <div class="timer" id="timer">00:00:00</div>
+    <div class="divider"></div>
+    <div class="items" id="items">
       <div class="empty">Waiting for controller state…</div>
     </div>
+    <div class="divider"></div>
+    <div class="meta" id="meta">Lethal</div>
   </div>
 
   <script>
     const STORAGE_KEY = "platinumrouter_state_v1";
+
+    function formatMs(ms) {
+      const totalSeconds = Math.max(0, Math.floor((ms || 0) / 1000));
+      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+      const seconds = String(totalSeconds % 60).padStart(2, "0");
+      return `${hours}:${minutes}:${seconds}`;
+    }
 
     function loadState() {
       try {
@@ -186,107 +150,122 @@
       }
     }
 
-    function formatMs(ms) {
-      const totalSeconds = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
-      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
-      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
-      const seconds = String(totalSeconds % 60).padStart(2, "0");
-      return `${hours}:${minutes}:${seconds}`;
-    }
+    async function loadGameData(gameId = "ghost-of-tsushima") {
+      const registryRes = await fetch("./data/games.json");
+      const registry = await registryRes.json();
+      const game = (registry.games || []).find((entry) => entry.id === gameId) || registry.games?.[0];
 
-    function clamp(value, min, max) {
-      return Math.max(min, Math.min(max, value));
-    }
-
-    function computeProgressPercent(values, counters) {
-      const trophyCurrent = Number(values.trophies || 0);
-      const trophyMax = Number(counters.trophies?.max || 52);
-
-      if (trophyMax > 0) {
-        return clamp((trophyCurrent / trophyMax) * 100, 0, 100);
+      if (!game) {
+        throw new Error("No game config found");
       }
 
-      let current = 0;
-      let max = 0;
-      for (const [key, meta] of Object.entries(counters || {})) {
-        const localMax = Number(meta?.max || 0);
-        if (localMax <= 0) continue;
-        current += Number(values[key] || 0);
-        max += localMax;
+      const basePath = normalizePath(game.path);
+
+      const [meta, counters] = await Promise.all([
+        fetchJson(`${basePath}/meta.json`),
+        fetchJson(`${basePath}/counters.json`)
+      ]);
+
+      return { game, meta, counters };
+    }
+
+    async function fetchJson(path) {
+      const response = await fetch(path);
+      if (!response.ok) {
+        throw new Error(`Failed to load ${path}`);
       }
-
-      if (!max) return 0;
-      return clamp((current / max) * 100, 0, 100);
+      return response.json();
     }
 
-    function createItem(key, meta, value) {
-      const row = document.createElement("div");
-      row.className = "item";
-
-      const left = document.createElement("div");
-      left.className = "item-left";
-
-      const icon = document.createElement("div");
-      icon.className = "item-icon";
-      icon.textContent = meta.icon || "";
-
-      const label = document.createElement("div");
-      label.className = "item-label";
-      label.textContent = meta.label || key;
-
-      const right = document.createElement("div");
-      right.className = "item-value";
-      right.textContent = `${value}/${meta.max ?? 0}`;
-
-      left.appendChild(icon);
-      left.appendChild(label);
-      row.appendChild(left);
-      row.appendChild(right);
-      return row;
+    function normalizePath(path) {
+      if (!path) return "./data/ghost-of-tsushima";
+      if (path.startsWith("./")) return path;
+      if (path.startsWith("/")) return `.${path}`;
+      return `./${path}`;
     }
 
-    function render() {
+    function buildNormalizedCounters(counterDefs, savedCounters) {
+      const result = {};
+      const source = savedCounters && typeof savedCounters === "object" ? savedCounters : {};
+
+      Object.entries(counterDefs || {}).forEach(([key, def]) => {
+        const saved = source[key] || {};
+        result[key] = {
+          ...def,
+          value: Number.isFinite(Number(saved.value)) ? Number(saved.value) : 0,
+          manualDelta: Number.isFinite(Number(saved.manualDelta)) ? Number(saved.manualDelta) : 0
+        };
+      });
+
+      return result;
+    }
+
+    let cachedGameData = null;
+
+    async function render() {
       const state = loadState();
-      const timerEl = document.getElementById("timer");
-      const phaseLabelEl = document.getElementById("phaseLabel");
-      const progressTextEl = document.getElementById("progressText");
-      const progressBarEl = document.getElementById("progressBar");
+      const gameId = state.gameId || "ghost-of-tsushima";
+
+      if (!cachedGameData || cachedGameData.game.id !== gameId) {
+        cachedGameData = await loadGameData(gameId);
+      }
+
+      const { counters: counterDefs, meta } = cachedGameData;
+      const counters = buildNormalizedCounters(counterDefs, state.counters);
+
+      document.getElementById("timer").textContent = formatMs(state.elapsedMs || 0);
+      document.getElementById("meta").textContent =
+        state.settings?.difficulty || meta?.defaultDifficulty || "Lethal";
+
       const itemsEl = document.getElementById("items");
-
-      const counters = state.counters || {};
-      const counts = state.counts || {};
-      const visibleKeys = Array.isArray(state.visibleCounters) ? state.visibleCounters : [];
-      const phaseId = state.activePhaseId || "legacy_all";
-      const phaseLabel = state.phases?.[phaseId]?.label || phaseId;
-
-      timerEl.textContent = formatMs(state.elapsedMs || 0);
-      phaseLabelEl.textContent = phaseLabel;
-
-      const progress = Math.round(computeProgressPercent(counts, counters));
-      progressTextEl.textContent = `${progress}%`;
-      progressBarEl.style.width = `${progress}%`;
-
       itemsEl.innerHTML = "";
 
-      if (!visibleKeys.length) {
-        const empty = document.createElement("div");
-        empty.className = "empty";
-        empty.textContent = "No visible objectives.";
-        itemsEl.appendChild(empty);
+      const items = [];
+
+      Object.entries(counterDefs || {}).forEach(([key, def]) => {
+        const counter = counters[key];
+        if (!counter) return;
+
+        const value = Number(counter.value || 0);
+        const max = Number(def.max || 0);
+
+        if (value >= max) return;
+
+        items.push({
+          icon: def.icon,
+          text: `${value}/${max}`
+        });
+      });
+
+      if (!state.miscChecks?.dirge) {
+        items.push({
+          icon: "🎵",
+          text: "Dirge"
+        });
+      }
+
+      if (!items.length) {
+        itemsEl.innerHTML = '<div class="empty">Everything complete</div>';
         return;
       }
 
-      for (const key of visibleKeys) {
-        if (!counters[key]) continue;
-        itemsEl.appendChild(createItem(key, counters[key], Number(counts[key] || 0)));
-      }
+      items.forEach((item) => {
+        const el = document.createElement("div");
+        el.className = "item";
+        el.innerHTML = `<span class="icon">${item.icon}</span><span class="count">${item.text}</span>`;
+        itemsEl.appendChild(el);
+      });
     }
 
-    render();
-    setInterval(render, 250);
-    window.addEventListener("storage", (event) => {
-      if (event.key === STORAGE_KEY) render();
+    window.addEventListener("storage", () => {
+      render().catch(console.error);
     });
+
+    setInterval(() => {
+      render().catch(console.error);
+    }, 500);
+
+    render().catch(console.error);
   </script>
 </body>
 </html>
