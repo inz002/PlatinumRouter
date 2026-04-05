@@ -37,6 +37,7 @@ function renderDifficulty(settings, meta) {
   const value = settings?.difficulty || meta?.defaultDifficulty || "Lethal";
   const difficultyBadge = document.getElementById("difficultyBadge");
   const modePill = document.getElementById("modePill");
+
   if (difficultyBadge) difficultyBadge.textContent = value;
   if (modePill) modePill.textContent = value;
 }
@@ -44,16 +45,17 @@ function renderDifficulty(settings, meta) {
 function renderSplit(currentSplit, splits, currentSplitIndex) {
   const label = document.getElementById("currentSplitLabel");
   const historyCount = document.getElementById("historyCount");
+  const queuePill = document.getElementById("queuePill");
+
   if (label) label.textContent = currentSplit?.label || "Run complete";
   if (historyCount) historyCount.textContent = `${currentSplitIndex} splits logged`;
-
-  const queuePill = document.getElementById("queuePill");
   if (queuePill) queuePill.textContent = `${splits.length} total splits`;
 }
 
 function renderPhase(activePhaseId, activePhase) {
   const nameEl = document.getElementById("activePhaseName");
   const noteEl = document.getElementById("activePhaseNote");
+
   if (nameEl) nameEl.textContent = activePhase?.label || activePhaseId;
   if (noteEl) noteEl.textContent = activePhase?.note || "No phase note.";
 }
@@ -265,7 +267,7 @@ function normalizeCounters(defs, saved) {
 
 function getActivePhaseId(splits, index, phases) {
   let active = "legacy_all";
-  for (let i = 0; i <= index; i++) {
+  for (let i = 0; i <= index; i += 1) {
     const split = splits[i];
     if (split?.isPhaseStart && split.phaseId && phases[split.phaseId]) {
       active = split.phaseId;
