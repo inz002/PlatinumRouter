@@ -1,0 +1,111 @@
+:root {
+  --bg: rgba(0, 0, 0, 0.88);
+  --border: rgba(255, 255, 255, 0.12);
+  --text: #f8fafc;
+  --muted: rgba(255, 255, 255, 0.64);
+  --pill: rgba(255, 255, 255, 0.08);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: Inter, system-ui, sans-serif;
+  overflow: hidden;
+}
+
+body {
+  padding: 10px;
+}
+
+/* MAIN OVERLAY */
+.overlay {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 6px 10px;
+
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+
+  backdrop-filter: blur(8px);
+}
+
+/* TIMER */
+.timer {
+  font-family: var(--mono);
+  font-size: 24px;
+  font-weight: 900;
+}
+
+/* DIVIDER */
+.divider {
+  width: 1px;
+  background: var(--border);
+  align-self: stretch;
+}
+
+/* ITEMS */
+.items {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+
+.items::-webkit-scrollbar {
+  display: none;
+}
+
+/* ITEM CHIP */
+.item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 0 10px;
+  height: 34px;
+
+  border-radius: 999px;
+  background: var(--pill);
+  border: 1px solid var(--border);
+}
+
+.icon {
+  font-size: 18px;
+}
+
+.count {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+/* META */
+.meta {
+  padding: 0 10px;
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+
+  border-radius: 999px;
+  background: var(--pill);
+  border: 1px solid var(--border);
+
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* EMPTY */
+.empty {
+  color: var(--muted);
+  font-weight: 700;
+}
