@@ -1,169 +1,270 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-<title>Ghost of Tsushima Controller</title>
-<link rel="stylesheet" href="./styles.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ghost of Tsushima Controller</title>
+  <link rel="stylesheet" href="./styles.css" />
 </head>
-
 <body>
-<div class="app">
-
-  <!-- HEADER -->
-  <div class="top">
-    <div>
-      <div class="eyebrow">Run Control</div>
-      <div id="runTitle" class="title">Ghost of Tsushima Platinum</div>
-      <div class="subtitle">Phase-based routing controller</div>
-    </div>
-    <div id="difficultyBadge" class="badge lethal">Lethal</div>
-  </div>
-
-  <div class="layout">
-
-    <!-- LEFT COLUMN -->
-    <div class="stack">
-
-      <!-- TIMER -->
-      <div class="panel">
-        <div class="timerBox">
-          <div class="timerLabel">⏱️ Run Timer</div>
-          <div id="timer" class="timer">00:00:00</div>
-
-          <div class="row" style="justify-content:center;margin-top:12px">
-            <button id="startPauseBtn" class="btn primary">▶ Start</button>
-            <button id="undoBtn" class="btn">↶ Undo</button>
-          </div>
-        </div>
+  <div class="app">
+    <div class="top">
+      <div>
+        <div class="eyebrow">Run Control Overlay</div>
+        <div id="runTitle" class="title">Ghost of Tsushima Platinum</div>
+        <div class="subtitle">Main controller with phase-based objective visibility.</div>
       </div>
-
-      <!-- CURRENT SPLIT -->
-      <div class="panel">
-        <div class="card">
-          <div class="eyebrow">Current Split</div>
-          <div id="currentSplitLabel" class="mid" style="margin-top:6px">No split</div>
-
-          <div class="row" style="margin-top:8px">
-            <div id="historyCount" class="pill">0 splits</div>
-            <div id="modePill" class="pill">Lethal</div>
-          </div>
-
-          <button id="advanceCurrentBtn" class="btn primary full" style="margin-top:12px">
-            ▶ Complete Split
-          </button>
-        </div>
-      </div>
-
-      <!-- PROGRESS -->
-      <div class="panel">
-        <div class="compact">
-
-          <div class="card">
-            <div class="eyebrow">Overall</div>
-            <div id="overallPercent" class="big">0%</div>
-            <div class="bar">
-              <span id="overallBar" style="width:0%"></span>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="eyebrow">Act</div>
-            <div id="act1SummaryValue" class="big">0%</div>
-            <div class="bar">
-              <span id="act1SummaryBar" style="width:0%"></span>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="eyebrow">Pace</div>
-            <div id="pacePill" class="mid">—</div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- SETTINGS -->
-      <div class="panel">
-        <button id="settingsToggle" class="btn full">⚙ Settings</button>
-
-        <div id="settingsPanel" class="settings">
-          <div class="fields">
-
-            <div class="field">
-              <label>Difficulty</label>
-              <select id="difficultySelect">
-                <option value="Lethal">Lethal</option>
-                <option value="Easy">Easy</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label>Act Target (minutes)</label>
-              <input id="act1TargetMinutes" type="number" value="180" />
-            </div>
-
-          </div>
-        </div>
-      </div>
-
+      <div id="difficultyBadge" class="badge lethal">Lethal</div>
     </div>
 
-    <!-- RIGHT COLUMN -->
-    <div class="stack">
-
-      <!-- OBJECTIVES -->
-      <div class="panel">
-
-        <div class="phaseBox">
-          <div class="eyebrow">Active Phase</div>
-          <div id="activePhaseName" class="mid">—</div>
-          <div id="activePhaseNote" class="objectiveText"></div>
+    <div class="layout">
+      <div class="stack">
+        <div class="panel">
+          <div class="timerBox">
+            <div class="timerLabel">⏱️ Run Timer</div>
+            <div id="timer" class="timer">00:00:00</div>
+            <div class="row" style="justify-content:center;margin-top:12px">
+              <button id="startPauseBtn" class="btn primary">▶ Start</button>
+              <button id="undoBtn" class="btn">↶ Undo</button>
+            </div>
+          </div>
         </div>
 
-        <div class="objectiveNote">
-          <div class="eyebrow">Current Objective</div>
-          <div id="currentObjectiveText" class="objectiveText"></div>
+        <div class="panel">
+          <div class="card">
+            <div class="eyebrow">Current Split</div>
+            <div id="currentSplitLabel" class="mid" style="margin-top:6px">No split</div>
+            <div class="row" style="margin-top:8px">
+              <div id="historyCount" class="pill">0 splits logged</div>
+              <div id="modePill" class="pill">Lethal</div>
+            </div>
+            <button id="advanceCurrentBtn" class="btn primary full" style="margin-top:12px">
+              ▶ Complete Current Split
+            </button>
+          </div>
         </div>
 
-        <div class="eyebrow" style="margin-top:10px">Tracked Totals</div>
-        <div id="progressGrid" class="progressGrid"></div>
+        <div class="panel">
+          <div class="compact">
+            <div class="card">
+              <div class="eyebrow">Overall</div>
+              <div id="overallPercent" class="big">0%</div>
+              <div class="bar">
+                <span id="overallBar" style="width:0%"></span>
+              </div>
+            </div>
 
+            <div class="card">
+              <div class="eyebrow">Act Quota</div>
+              <div id="act1SummaryValue" class="big">0%</div>
+              <div class="bar">
+                <span id="act1SummaryBar" style="width:0%;background:var(--blue)"></span>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="eyebrow">Pace</div>
+              <div id="pacePill" class="mid" style="margin-top:6px">On fresh air</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <button id="settingsToggle" class="btn full">⚙ Show Settings</button>
+
+          <div id="settingsPanel" class="settings">
+            <div class="fields">
+              <div class="field">
+                <label for="difficultySelect">Difficulty</label>
+                <select id="difficultySelect">
+                  <option value="Lethal">Lethal</option>
+                  <option value="Easy">Easy</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="act1TargetMinutes">Act target minutes</label>
+                <input id="act1TargetMinutes" type="number" value="180" />
+              </div>
+
+              <div class="field">
+                <label for="remoteCode">Remote control code</label>
+                <input id="remoteCode" type="text" placeholder="Optional remote room code" />
+              </div>
+            </div>
+
+            <div class="row">
+              <button id="openSplitEditorBtn" class="btn">🧩 Split Editor</button>
+              <button id="openActsEditorBtn" class="btn">🧭 Acts Editor</button>
+              <button id="exportTimesBtn" class="btn">⬇ Times</button>
+              <label class="btn">
+                ⬆ Times
+                <input id="importTimesInput" type="file" accept="application/json" hidden />
+              </label>
+              <button id="exportSplitsBtn" class="btn">⬇ Splits</button>
+              <label class="btn">
+                ⬆ Splits
+                <input id="importSplitsInput" type="file" accept="application/json" hidden />
+              </label>
+              <button id="resetBtn" class="btn danger">↺ Reset</button>
+            </div>
+
+            <div class="debugDock">
+              <div class="row">
+                <button id="debugToggle" class="btn">🐞 Show Debug</button>
+                <button id="debugClear" class="btn">Clear Logs</button>
+                <button id="debugCopy" class="btn">Copy Snapshot</button>
+              </div>
+
+              <div id="debugPanel" class="debugPanel">
+                <div class="debugSection">
+                  <div class="eyebrow">Status</div>
+                  <div id="debugStatus"></div>
+                </div>
+
+                <div class="debugSection">
+                  <div class="eyebrow">Logs</div>
+                  <div id="debugBody" class="debugBody"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- SPLITS -->
-      <div class="panel">
+      <div class="stack">
+        <div class="goalsQueue">
+          <div class="panel">
+            <div class="mainTop">
+              <div class="card">
+                <div class="eyebrow">Phase Quota</div>
+                <div id="act1QuotaText" class="mid" style="margin-top:8px">
+                  No quota targets for this phase
+                </div>
+              </div>
 
-        <div class="row between">
+              <div class="card">
+                <div class="eyebrow">Misc Checklist</div>
+                <label class="row" style="margin-top:10px;justify-content:flex-start;gap:8px;cursor:pointer">
+                  <input id="dirgeCheckbox" type="checkbox" />
+                  <span>🎵 Dirge of the Fallen</span>
+                </label>
+                <div class="subtitle" style="margin-top:10px;color:white">
+                  Monochrome and Cooper are tracked as counters. Dirge is a one-time checkbox.
+                </div>
+              </div>
+            </div>
+
+            <div class="phaseBox">
+              <div class="eyebrow">Active Objective Set</div>
+              <div id="activePhaseName" class="mid" style="margin-top:6px">Legacy All</div>
+              <div id="activePhaseNote" class="objectiveText">No phase note.</div>
+              <div id="visibleObjectives" class="visibleList"></div>
+            </div>
+
+            <div class="objectiveNote">
+              <div class="eyebrow">Current Objective Note</div>
+              <div id="currentObjectiveText" class="objectiveText">No note for this split yet.</div>
+            </div>
+
+            <div class="eyebrow" style="margin-top:10px">Tracked Totals</div>
+            <div id="progressGrid" class="progressGrid"></div>
+          </div>
+
+          <div class="panel">
+            <div class="row between" style="margin-bottom:10px">
+              <div>
+                <div class="mid">Split Queue</div>
+                <div class="subtitle">Only current split is clickable.</div>
+              </div>
+              <div id="queuePill" class="pill">0 total splits</div>
+            </div>
+
+            <div class="queueWrap">
+              <div id="splitButtons" class="splitList"></div>
+
+              <div class="card">
+                <div class="row between">
+                  <div class="eyebrow">Split History</div>
+                  <div id="historySaved" class="subtitle">0 saved</div>
+                </div>
+                <div id="historyList" class="history" style="margin-top:8px"></div>
+                <div class="subtitle" style="margin-top:10px">
+                  Undo reverses the latest split and its auto-progress.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="splitEditorOverlay" class="overlay">
+      <div class="editor">
+        <div class="editorHead">
           <div>
-            <div class="mid">Split Queue</div>
-            <div class="subtitle">Only current split is clickable</div>
-          </div>
-          <div id="queuePill" class="pill">0 splits</div>
-        </div>
-
-        <div class="queueWrap">
-          <div id="splitButtons" class="splitList"></div>
-
-          <div class="card">
-            <div class="row between">
-              <div class="eyebrow">History</div>
-              <div id="historySaved" class="subtitle">0</div>
+            <h2 style="margin:0">Split Editor</h2>
+            <div class="subtitle">
+              Edit split names, notes, phase starts, and auto-progress values.
             </div>
-
-            <div id="historyList" class="history"></div>
+          </div>
+          <div class="row">
+            <button id="addSplitEditorBtn" class="btn">＋ Add Split</button>
+            <button id="downloadSplitBackupBtn" class="btn">⬇ Download Split Backup</button>
+            <button id="copySplitBackupBtn" class="btn">📋 Copy Split Backup</button>
+            <button id="resetSplitEditorBtn" class="btn">Reset</button>
+            <button id="closeSplitEditorBtn" class="btn">Close</button>
           </div>
         </div>
 
-      </div>
+        <div id="splitEditorGrid" class="editorGrid"></div>
 
+        <div class="editorHead" style="border-top:1px solid var(--border);border-bottom:0;top:auto;bottom:0">
+          <div class="subtitle">Old split JSON stays compatible because phase fields are optional.</div>
+          <button id="saveSplitEditorBtn" class="btn primary">Save Split Setup</button>
+        </div>
+      </div>
     </div>
 
-  </div>
-</div>
+    <div id="actsEditorOverlay" class="overlay">
+      <div class="editor">
+        <div class="editorHead">
+          <div>
+            <h2 style="margin:0">Acts Editor</h2>
+            <div class="subtitle">
+              Edit phase labels, notes, visible objectives, and quota targets.
+            </div>
+          </div>
+          <div class="row">
+            <button id="addActsEditorBtn" class="btn">＋ Add Phase</button>
+            <button id="exportActsEditorBtn" class="btn">⬇ Export Acts</button>
+            <label class="btn">
+              ⬆ Import Acts
+              <input id="importActsEditorInput" type="file" accept="application/json" hidden />
+            </label>
+            <button id="copyActsEditorBtn" class="btn">📋 Copy Acts</button>
+            <button id="resetActsEditorBtn" class="btn">Reset</button>
+            <button id="closeActsEditorBtn" class="btn">Close</button>
+          </div>
+        </div>
 
-<!-- CONTROLLER LOGIC -->
-<script type="module" src="./controller.js"></script>
+        <div class="editorGrid" style="grid-template-columns: 320px 1fr;">
+          <div class="editorCard">
+            <div class="eyebrow" style="margin-bottom:10px">Phases</div>
+            <div id="actsEditorPhaseList" class="splitList"></div>
+          </div>
+
+          <div id="actsEditorForm"></div>
+        </div>
+
+        <div class="editorHead" style="border-top:1px solid var(--border);border-bottom:0;top:auto;bottom:0">
+          <div class="subtitle">Phase visibility and quotas are edited together here.</div>
+          <button id="saveActsEditorBtn" class="btn primary">Save Acts Setup</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./controller.js"></script>
 </body>
 </html>
