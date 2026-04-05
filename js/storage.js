@@ -1,71 +1,27 @@
-export const STORAGE_KEY = "platinumrouter_state_v1";
+const STORAGE_KEY = "platinumrouter_state_v1";
 
-export function buildDefaultStoredState() {
-  return {
-    gameId: "ghost-of-tsushima",
-    elapsedMs: 0,
-    currentSplitIndex: 0,
-    history: [],
-    counters: {},
-    miscChecks: { dirge: false },
-    settings: {
-      difficulty: "Lethal",
-      act1TargetMinutes: 180,
-      showSettings: false,
-      remoteCode: ""
-    },
-    splits: []
-  };
-}
-
-export function loadStoredState() {
+export function loadState(customKey = STORAGE_KEY) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return buildDefaultStoredState();
-
-    const parsed = JSON.parse(raw);
-    return mergeStoredState(buildDefaultStoredState(), parsed);
+    const raw = localStorage.getItem(customKey);
+    return raw ? JSON.parse(raw) : {};
   } catch (error) {
-    console.error("Failed to load stored state", error);
-    return buildDefaultStoredState();
+    console.error("Failed to load state from localStorage", error);
+    return {};
   }
 }
 
-export function saveStoredState(state) {
+export function saveState(customKey = STORAGE_KEY, state = {}) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(customKey, JSON.stringify(state));
   } catch (error) {
-    console.error("Failed to save stored state", error);
+    console.error("Failed to save state to localStorage", error);
   }
 }
 
-export function clearStoredState() {
+export function clearState(customKey = STORAGE_KEY) {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(customKey);
   } catch (error) {
-    console.error("Failed to clear stored state", error);
+    console.error("Failed to clear state from localStorage", error);
   }
-}
-
-export function mergeStoredState(baseState, incomingState) {
-  const incoming = incomingState || {};
-
-  return {
-    ...baseState,
-    ...incoming,
-    miscChecks: {
-      ...baseState.miscChecks,
-      ...(incoming.miscChecks || {})
-    },
-    settings: {
-      ...baseState.settings,
-      ...(incoming.settings || {})
-    },
-    history: Array.isArray(incoming.history) ? incoming.history : baseState.history,
-    splits: Array.isArray(incoming.splits) ? incoming.splits : baseState.splits,
-    counters:
-      incoming.counters && typeof incoming.counters === "object"
-        ? incoming.counters
-        : baseState.counters
-  };
 }
