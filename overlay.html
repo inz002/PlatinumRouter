@@ -25,122 +25,278 @@
       overflow: hidden;
     }
 
-    .overlay {
+    body {
       display: flex;
-      align-items: center;
-      gap: 10px;
-      min-height: 48px;
-      max-height: 48px;
-      padding: 6px 10px;
+      align-items: flex-start;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .overlay {
+      width: 380px;
       background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      width: fit-content;
-      max-width: 100vw;
-      overflow: hidden;
+      border-radius: 20px;
+      padding: 16px;
       backdrop-filter: blur(8px);
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
     }
 
     .timer {
-      flex: 0 0 auto;
       font-family: var(--mono);
-      font-size: 24px;
-      font-weight: 900;
+      font-size: 40px;
       line-height: 1;
-      letter-spacing: -0.03em;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      margin-bottom: 12px;
+    }
+
+    .status-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: var(--pill);
+      border: 1px solid var(--border);
+      font-size: 13px;
+      line-height: 1;
       white-space: nowrap;
     }
 
-    .divider {
-      width: 1px;
-      align-self: stretch;
-      background: var(--border);
-      flex: 0 0 auto;
+    .pill strong {
+      font-weight: 700;
+    }
+
+    .section-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 8px;
     }
 
     .items {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      min-width: 0;
-      overflow-x: auto;
-      overflow-y: hidden;
-      scrollbar-width: none;
-    }
-
-    .items::-webkit-scrollbar {
-      display: none;
+      display: grid;
+      gap: 8px;
     }
 
     .item {
-      display: inline-flex;
+      display: flex;
       align-items: center;
-      gap: 6px;
-      height: 34px;
-      padding: 0 10px;
-      border-radius: 999px;
-      background: var(--pill);
-      border: 1px solid var(--border);
-      white-space: nowrap;
-      flex: 0 0 auto;
-    }
-
-    .icon {
-      font-size: 18px;
-      line-height: 1;
-    }
-
-    .count {
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       font-size: 14px;
-      font-weight: 800;
-      line-height: 1;
     }
 
-    .meta {
-      flex: 0 0 auto;
+    .item-left {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 0 10px;
-      height: 34px;
-      border-radius: 999px;
-      background: var(--pill);
-      border: 1px solid var(--border);
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--muted);
+      gap: 8px;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .item-icon {
+      width: 20px;
+      text-align: center;
+      flex: 0 0 20px;
+    }
+
+    .item-label {
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .item-value {
+      font-family: var(--mono);
+      color: var(--muted);
+      flex: 0 0 auto;
     }
 
     .empty {
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       color: var(--muted);
-      font-size: 13px;
-      font-weight: 700;
-      white-space: nowrap;
+      font-size: 14px;
+    }
+
+    .progress-wrap {
+      margin-bottom: 14px;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.9);
+      transition: width 120ms linear;
+    }
+
+    .subtle {
+      color: var(--muted);
     }
   </style>
 </head>
 <body>
   <div class="overlay">
-    <div class="timer" id="timer">00:00:00</div>
-    <div class="divider"></div>
-    <div class="items" id="items">
+    <div id="timer" class="timer">00:00:00</div>
+
+    <div class="status-row">
+      <div class="pill"><strong>Phase:</strong> <span id="phaseLabel">—</span></div>
+      <div class="pill"><strong>Progress:</strong> <span id="progressText">0%</span></div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-track">
+        <div id="progressBar" class="progress-bar"></div>
+      </div>
+    </div>
+
+    <div class="section-label">Visible objectives</div>
+    <div id="items" class="items">
       <div class="empty">Waiting for controller state…</div>
     </div>
-    <div class="divider"></div>
-    <div class="meta" id="meta">Lethal</div>
   </div>
 
   <script>
     const STORAGE_KEY = "platinumrouter_state_v1";
 
-    function formatMs(ms) {
-      const totalSeconds = Math.max(0, Math.floor((ms || 0) / 1000));
-      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
-      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
-      const seconds = String(totalSeconds % 60).padStart(2, "0");
-      return `${hours}:${minutes}:${seconds}`;
-    }
+    const FALLBACK_COUNTERS = {
+      trophies: { label: "Trophies", icon: "", max: 52, act1: 0 },
+      inari: { label: "Inari Shrines", icon: "", max: 49, act1: 22 },
+      hotsprings: { label: "Hot Springs", icon: "", max: 18, act1: 9 },
+      bamboo: { label: "Bamboo", icon: "", max: 16, act1: 6 },
+      haiku: { label: "Haiku", icon: "", max: 19, act1: 8 },
+      records: { label: "Records", icon: "", max: 20, act1: 0 },
+      artifacts: { label: "Artifacts", icon: "", max: 20, act1: 0 },
+      shrines: { label: "Shinto Shrines", icon: "⛩️", max: 16, act1: 7 },
+      lighthouses: { label: "Lighthouses", icon: "🔥", max: 8, act1: 3 },
+      crickets: { label: "Crickets", icon: "", max: 5, act1: 0 },
+      hiddenaltars: { label: "Hidden Altars", icon: "", max: 10, act1: 0 },
+      duels: { label: "Duels", icon: "⚔️", max: 25, act1: 0 },
+      territories: { label: "Mongol Territories", icon: "", max: 56, act1: 0 },
+      mythictales: { label: "Mythic Tales", icon: "", max: 7, act1: 0 },
+      sidetales: { label: "Side Tales", icon: "", max: 61, act1: 0 },
+      monochrome: { label: "Monochrome", icon: "", max: 2, act1: 0 },
+      cooper: { label: "Cooper", icon: "", max: 3, act1: 0 },
+      dirge: { label: "Dirge", icon: "", max: 1, act1: 0 }
+    };
+
+    const FALLBACK_PHASES = {
+      legacy_all: {
+        label: "Legacy All",
+        visible: [
+          "trophies",
+          "inari",
+          "hotsprings",
+          "bamboo",
+          "haiku",
+          "shrines",
+          "lighthouses",
+          "records",
+          "artifacts",
+          "crickets",
+          "hiddenaltars",
+          "monochrome",
+          "dirge",
+          "cooper",
+          "sidetales",
+          "duels",
+          "territories",
+          "mythictales"
+        ]
+      },
+      any_act1: {
+        label: "Any% Act 1",
+        visible: [
+          "trophies",
+          "inari",
+          "hotsprings",
+          "bamboo",
+          "haiku",
+          "shrines",
+          "lighthouses",
+          "records",
+          "artifacts",
+          "crickets",
+          "hiddenaltars",
+          "monochrome"
+        ]
+      },
+      any_act2: {
+        label: "Any% Act 2",
+        visible: [
+          "trophies",
+          "inari",
+          "hotsprings",
+          "bamboo",
+          "haiku",
+          "shrines",
+          "lighthouses",
+          "records",
+          "artifacts",
+          "crickets",
+          "hiddenaltars",
+          "monochrome",
+          "dirge"
+        ]
+      },
+      any_act3: {
+        label: "Any% Act 3",
+        visible: [
+          "trophies",
+          "inari",
+          "hotsprings",
+          "bamboo",
+          "haiku",
+          "shrines",
+          "lighthouses",
+          "records",
+          "artifacts",
+          "crickets",
+          "hiddenaltars",
+          "cooper"
+        ]
+      },
+      ngp_act1: {
+        label: "NG+ Act 1",
+        visible: ["trophies", "sidetales", "duels", "territories", "mythictales"]
+      },
+      ngp_act2: {
+        label: "NG+ Act 2",
+        visible: ["trophies", "sidetales", "duels", "territories", "mythictales"]
+      },
+      ngp_act3: {
+        label: "NG+ Act 3",
+        visible: ["trophies", "sidetales", "duels", "territories", "mythictales"]
+      }
+    };
 
     function loadState() {
       try {
@@ -150,122 +306,171 @@
       }
     }
 
-    async function loadGameData(gameId = "ghost-of-tsushima") {
-      const registryRes = await fetch("./data/games.json");
-      const registry = await registryRes.json();
-      const game = (registry.games || []).find((entry) => entry.id === gameId) || registry.games?.[0];
+    function formatMs(ms) {
+      const totalSeconds = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
+      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+      const seconds = String(totalSeconds % 60).padStart(2, "0");
+      return `${hours}:${minutes}:${seconds}`;
+    }
 
-      if (!game) {
-        throw new Error("No game config found");
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function getCounters(state) {
+      return state.counters && typeof state.counters === "object"
+        ? state.counters
+        : FALLBACK_COUNTERS;
+    }
+
+    function getPhases(state) {
+      return state.phases && typeof state.phases === "object"
+        ? state.phases
+        : FALLBACK_PHASES;
+    }
+
+    function getCurrentValues(state) {
+      if (state.counts && typeof state.counts === "object") return state.counts;
+      if (state.progress && typeof state.progress === "object") return state.progress;
+      if (state.values && typeof state.values === "object") return state.values;
+      return {};
+    }
+
+    function getActivePhaseId(state, phases) {
+      if (state.activePhaseId && phases[state.activePhaseId]) {
+        return state.activePhaseId;
       }
 
-      const basePath = normalizePath(game.path);
-
-      const [meta, counters] = await Promise.all([
-        fetchJson(`${basePath}/meta.json`),
-        fetchJson(`${basePath}/counters.json`)
-      ]);
-
-      return { game, meta, counters };
-    }
-
-    async function fetchJson(path) {
-      const response = await fetch(path);
-      if (!response.ok) {
-        throw new Error(`Failed to load ${path}`);
+      if (state.phaseId && phases[state.phaseId]) {
+        return state.phaseId;
       }
-      return response.json();
+
+      if (state.currentPhase && phases[state.currentPhase]) {
+        return state.currentPhase;
+      }
+
+      return "legacy_all";
     }
 
-    function normalizePath(path) {
-      if (!path) return "./data/ghost-of-tsushima";
-      if (path.startsWith("./")) return path;
-      if (path.startsWith("/")) return `.${path}`;
-      return `./${path}`;
+    function getVisibleKeys(state, phases) {
+      if (Array.isArray(state.visibleCounters) && state.visibleCounters.length) {
+        return state.visibleCounters;
+      }
+
+      const phaseId = getActivePhaseId(state, phases);
+      return phases[phaseId]?.visible || [];
     }
 
-    function buildNormalizedCounters(counterDefs, savedCounters) {
-      const result = {};
-      const source = savedCounters && typeof savedCounters === "object" ? savedCounters : {};
-
-      Object.entries(counterDefs || {}).forEach(([key, def]) => {
-        const saved = source[key] || {};
-        result[key] = {
-          ...def,
-          value: Number.isFinite(Number(saved.value)) ? Number(saved.value) : 0,
-          manualDelta: Number.isFinite(Number(saved.manualDelta)) ? Number(saved.manualDelta) : 0
-        };
-      });
-
-      return result;
+    function getPhaseLabel(state, phases) {
+      const phaseId = getActivePhaseId(state, phases);
+      return phases[phaseId]?.label || phaseId || "—";
     }
 
-    let cachedGameData = null;
+    function getElapsedMs(state) {
+      if (typeof state.elapsedMs === "number") return state.elapsedMs;
+      if (typeof state.timerMs === "number") return state.timerMs;
+      if (typeof state.timeMs === "number") return state.timeMs;
+      return 0;
+    }
 
-    async function render() {
+    function computeProgressPercent(values, counters) {
+      const trophyCurrent = Number(values.trophies || 0);
+      const trophyMax = Number(counters.trophies?.max || 52);
+
+      if (trophyMax > 0 && trophyCurrent > 0) {
+        return clamp((trophyCurrent / trophyMax) * 100, 0, 100);
+      }
+
+      let current = 0;
+      let max = 0;
+
+      for (const [key, meta] of Object.entries(counters)) {
+        const localMax = Number(meta?.max || 0);
+        if (localMax <= 0) continue;
+        current += Number(values[key] || 0);
+        max += localMax;
+      }
+
+      if (max <= 0) return 0;
+      return clamp((current / max) * 100, 0, 100);
+    }
+
+    function createItem(key, meta, value) {
+      const row = document.createElement("div");
+      row.className = "item";
+
+      const left = document.createElement("div");
+      left.className = "item-left";
+
+      const icon = document.createElement("div");
+      icon.className = "item-icon";
+      icon.textContent = meta.icon || "";
+
+      const label = document.createElement("div");
+      label.className = "item-label";
+      label.textContent = meta.label || key;
+
+      const right = document.createElement("div");
+      right.className = "item-value";
+      right.textContent = `${value}/${meta.max ?? 0}`;
+
+      left.appendChild(icon);
+      left.appendChild(label);
+      row.appendChild(left);
+      row.appendChild(right);
+
+      return row;
+    }
+
+    function render() {
       const state = loadState();
-      const gameId = state.gameId || "ghost-of-tsushima";
+      const counters = getCounters(state);
+      const phases = getPhases(state);
+      const values = getCurrentValues(state);
+      const visibleKeys = getVisibleKeys(state, phases);
 
-      if (!cachedGameData || cachedGameData.game.id !== gameId) {
-        cachedGameData = await loadGameData(gameId);
-      }
-
-      const { counters: counterDefs, meta } = cachedGameData;
-      const counters = buildNormalizedCounters(counterDefs, state.counters);
-
-      document.getElementById("timer").textContent = formatMs(state.elapsedMs || 0);
-      document.getElementById("meta").textContent =
-        state.settings?.difficulty || meta?.defaultDifficulty || "Lethal";
-
+      const timerEl = document.getElementById("timer");
       const itemsEl = document.getElementById("items");
+      const phaseLabelEl = document.getElementById("phaseLabel");
+      const progressTextEl = document.getElementById("progressText");
+      const progressBarEl = document.getElementById("progressBar");
+
+      timerEl.textContent = formatMs(getElapsedMs(state));
+      phaseLabelEl.textContent = getPhaseLabel(state, phases);
+
+      const progress = computeProgressPercent(values, counters);
+      const roundedProgress = `${Math.round(progress)}%`;
+      progressTextEl.textContent = roundedProgress;
+      progressBarEl.style.width = roundedProgress;
+
       itemsEl.innerHTML = "";
 
-      const items = [];
+      const finalVisibleKeys = visibleKeys.filter((key) => counters[key]);
 
-      Object.entries(counterDefs || {}).forEach(([key, def]) => {
-        const counter = counters[key];
-        if (!counter) return;
-
-        const value = Number(counter.value || 0);
-        const max = Number(def.max || 0);
-
-        if (value >= max) return;
-
-        items.push({
-          icon: def.icon,
-          text: `${value}/${max}`
-        });
-      });
-
-      if (!state.miscChecks?.dirge) {
-        items.push({
-          icon: "🎵",
-          text: "Dirge"
-        });
-      }
-
-      if (!items.length) {
-        itemsEl.innerHTML = '<div class="empty">Everything complete</div>';
+      if (!finalVisibleKeys.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "No visible objectives.";
+        itemsEl.appendChild(empty);
         return;
       }
 
-      items.forEach((item) => {
-        const el = document.createElement("div");
-        el.className = "item";
-        el.innerHTML = `<span class="icon">${item.icon}</span><span class="count">${item.text}</span>`;
-        itemsEl.appendChild(el);
-      });
+      for (const key of finalVisibleKeys) {
+        const meta = counters[key];
+        const value = Number(values[key] || 0);
+        itemsEl.appendChild(createItem(key, meta, value));
+      }
     }
 
-    window.addEventListener("storage", () => {
-      render().catch(console.error);
+    render();
+    setInterval(render, 250);
+
+    window.addEventListener("storage", (event) => {
+      if (event.key === STORAGE_KEY) {
+        render();
+      }
     });
-
-    setInterval(() => {
-      render().catch(console.error);
-    }, 500);
-
-    render().catch(console.error);
   </script>
 </body>
 </html>
