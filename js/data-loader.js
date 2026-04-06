@@ -1,38 +1,27 @@
-// data-loader.js
+// js/data-loader.js
 
-/**
- * Central loader for game data (splits, phases, counters, quotas)
- * Ensures everything is ALWAYS valid and never undefined
- */
+const BASE_PATH = "./data";
 
-export async function loadGameData(gameId) {
+async function fetchJson(path, fallback) {
   try {
-    const data = await import(`../data/${gameId}.js`);
-    return normalizeGameData(data.default || data);
-  } catch (error) {
-    console.error("Failed to load game data:", error);
+    const response = await fetch(path, { cache: "no-store" });
 
-    // fallback to empty safe structure (prevents crashes)
-    return normalizeGameData({});
+    if (!response.ok) {
+      console.warn(`Failed to load ${path}: ${response.status}`);
+      return structuredCloneSafe(fallback);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.warn(`Failed to fetch ${path}`, error);
+    return structuredCloneSafe(fallback);
   }
 }
 
-/**
- * Normalize entire game data object
- */
-function normalizeGameData(raw = {}) {
-  return {
-    meta: normalizeMeta(raw.meta),
-    counters: normalizeCounters(raw.counters),
-    defaultSplits: normalizeSplits(raw.defaultSplits),
-    phases: normalizePhases(raw.phases),
-    quotas: normalizeQuotas(raw.quotas)
-  };
+function structuredCloneSafe(value) {
+  return JSON.parse(JSON.stringify(value));
 }
 
-/**
- * META
- */
 function normalizeMeta(meta = {}) {
   return {
     title: meta.title || "Ghost of Tsushima",
@@ -40,87 +29,73 @@ function normalizeMeta(meta = {}) {
   };
 }
 
-/**
- * COUNTERS
- */
 function normalizeCounters(counters = {}) {
   const result = {};
 
-  Object.entries(counters).forEach(([key, def]) => {
+  Object.entries(counters || {}).forEach(([key, def]) => {
     result[key] = {
-      label: def.label || key,
-      shortLabel: def.shortLabel || def.label || key,
-      icon: def.icon || "",
-      max: Number(def.max || 0)
+      label: def?.label || key,
+      shortLabel: def?.shortLabel || def?.queueLabel || def?.label || key,
+      queueLabel: def?.queueLabel || def?.shortLabel || def?.label || key,
+      icon: def?.icon || "",
+      max: Number(def?.max || 0)
     };
   });
 
   return result;
 }
 
-/**
- * DEFAULT SPLITS
- */
-function normalizeSplits(splits = []) {
+function normalizeAuto(auto = {}) {
+  const result = {};
+
+  Object.entries(auto || {}).forEach(([key, value]) => {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n === 0) return;
+    result[key] = n;
+  });
+
+  return result;
+}
+
+function normalizeDefaultSplits(splits = []) {
   if (!Array.isArray(splits)) return [];
 
-  return splits.map((split, i) => ({
-    id: split.id || `split_${i}`,
-    label: split.label || `Split ${i + 1}`,
-
-    phase:
-      split.phase ||
-      split.phaseId ||
-      split.act ||
-      null,
-
-    note: split.note || "",
-
-    auto: normalizeAuto(split.auto)
+  return splits.map((split, index) => ({
+    id: split?.id || `split_${index}`,
+    label: split?.label || `Split ${index + 1}`,
+    phase: split?.phase || split?.phaseId || split?.act || null,
+    note: split?.note || "",
+    auto: normalizeAuto(split?.auto || {})
   }));
 }
 
-/**
- * PHASES
- */
 function normalizePhases(phases = {}) {
   const result = {};
 
-  Object.entries(phases).forEach(([key, def]) => {
-    result[key] = {
-      id: key,
-      label: def.label || key,
-      description: def.description || "",
-      note: def.note || "",
-
-      // visibility
-      visibleCounters: Array.isArray(def.visibleCounters)
-        ? def.visibleCounters
-        : [],
-
-      objectives: Array.isArray(def.objectives)
-        ? def.objectives
-        : []
+  Object.entries(phases || {}).forEach(([phaseId, def]) => {
+    result[phaseId] = {
+      id: phaseId,
+      label: def?.label || phaseId,
+      description: def?.description || "",
+      note: def?.note || "",
+      objectiveNote: def?.objectiveNote || def?.currentNote || def?.note || "",
+      visibleCounters: Array.isArray(def?.visibleCounters) ? def.visibleCounters : [],
+      objectives: Array.isArray(def?.objectives) ? def.objectives : []
     };
   });
 
   return result;
 }
 
-/**
- * QUOTAS
- */
 function normalizeQuotas(quotas = {}) {
   const result = {};
 
-  Object.entries(quotas).forEach(([phaseId, q]) => {
+  Object.entries(quotas || {}).forEach(([phaseId, value]) => {
     const normalized = {};
 
-    Object.entries(q || {}).forEach(([key, value]) => {
-      const n = Number(value);
-      if (!Number.isFinite(n)) return;
-      if (n <= 0) return;
-
+    Object.entries(value || {}).forEach(([key, raw]) => {
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n <= 0) return;
       normalized[key] = n;
     });
 
@@ -130,21 +105,44 @@ function normalizeQuotas(quotas = {}) {
   return result;
 }
 
-/**
- * AUTO NORMALIZER
- */
-function normalizeAuto(auto) {
-  if (!auto || typeof auto !== "object") return {};
+function normalizeGameData(raw = {}) {
+  return {
+    meta: normalizeMeta(raw.meta),
+    counters: normalizeCounters(raw.counters),
+    defaultSplits: normalizeDefaultSplits(raw.defaultSplits),
+    phases: normalizePhases(raw.phases),
+    quotas: normalizeQuotas(raw.quotas)
+  };
+}
 
-  const result = {};
+async function resolveGameFolder(gameId) {
+  const games = await fetchJson(`${BASE_PATH}/games.json`, {});
 
-  Object.entries(auto).forEach(([key, value]) => {
-    const n = Number(value);
-    if (!Number.isFinite(n)) return;
-    if (n === 0) return;
+  if (typeof games === "object" && games !== null) {
+    if (games[gameId]?.folder) return games[gameId].folder;
+    if (typeof games[gameId] === "string") return games[gameId];
+  }
 
-    result[key] = n;
+  return gameId;
+}
+
+export async function loadGameData(gameId) {
+  const folder = await resolveGameFolder(gameId);
+  const root = `${BASE_PATH}/${folder}`;
+
+  const [meta, counters, defaultSplits, phases, quotas] = await Promise.all([
+    fetchJson(`${root}/meta.json`, {}),
+    fetchJson(`${root}/counters.json`, {}),
+    fetchJson(`${root}/default-splits.json`, []),
+    fetchJson(`${root}/phases.json`, {}),
+    fetchJson(`${root}/quotas.json`, {})
+  ]);
+
+  return normalizeGameData({
+    meta,
+    counters,
+    defaultSplits,
+    phases,
+    quotas
   });
-
-  return result;
 }
