@@ -2,144 +2,39 @@
 
 const STORAGE_KEY = "tsushima-router-state";
 
-/**
- * Internal state cache (single source of truth in memory)
- */
 let state = null;
-
-/**
- * Subscribers (UI + overlay listeners)
- */
 const listeners = new Set();
 
-/**
- * Deep clone helper (prevents mutation bugs)
- */
-function clone(obj) {
-  return JSON.parse(JSON.stringify(obj));
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
 }
 
-/**
- * Load from localStorage (once)
- */
-function loadState() {
-  if (state) return state;
-
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    state = raw ? JSON.parse(raw) : getDefaultState();
-  } catch (e) {
-    console.error("Failed to parse state, resetting:", e);
-    state = getDefaultState();
-  }
-
-  return state;
-}
-
-/**
- * Save to localStorage
- */
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
-/**
- * Emit updates to all listeners
- */
-function emit() {
-  const snapshot = clone(state);
-  listeners.forEach((fn) => fn(snapshot));
-}
-
-/**
- * Public: get current state
- */
-export function getState() {
-  return clone(loadState());
-}
-
-/**
- * Public: subscribe to state changes
- */
-export function subscribe(fn) {
-  listeners.add(fn);
-
-  // immediate sync
-  fn(getState());
-
-  return () => listeners.delete(fn);
-}
-
-/**
- * Public: update state safely
- */
-export function updateState(updater) {
-  const current = loadState();
-  const next = updater(clone(current));
-
-  if (!next) {
-    console.warn("updateState returned nothing — ignoring");
-    return;
-  }
-
-  state = next;
-  saveState();
-  emit();
-}
-
-/**
- * Public: hard reset (useful for debug)
- */
-export function resetState() {
-  state = getDefaultState();
-  saveState();
-  emit();
-}
-
-/**
- * Cross-tab sync (CRITICAL for overlay)
- */
-window.addEventListener("storage", (e) => {
-  if (e.key !== STORAGE_KEY) return;
-
-  try {
-    state = e.newValue ? JSON.parse(e.newValue) : getDefaultState();
-    emit();
-  } catch (err) {
-    console.error("Storage sync failed:", err);
-  }
-});
-
-/**
- * Default state generator
- * (KEEP THIS SIMPLE — expand only if needed)
- */
 function getDefaultState() {
   return {
     timer: {
       startTime: null,
       elapsed: 0,
-      running: false,
+      running: false
     },
 
     counters: {
-      inari: 0,
-      haiku: 0,
-      hotSpring: 0,
-      bamboo: 0,
-      shinto: 0,
-      lighthouse: 0,
-      artifacts: 0,
-      records: 0,
-      crickets: 0,
-      hiddenAltars: 0,
-      mongolTerritories: 0,
-      duels: 0,
-      mythic: 0,
-      sideTales: 0,
-      trophies: 0,
-      coOp: 0,
-      monochrome: 0,
+      inari: { value: 0, manualDelta: 0 },
+      haiku: { value: 0, manualDelta: 0 },
+      hotSpring: { value: 0, manualDelta: 0 },
+      bamboo: { value: 0, manualDelta: 0 },
+      shinto: { value: 0, manualDelta: 0 },
+      lighthouse: { value: 0, manualDelta: 0 },
+      artifacts: { value: 0, manualDelta: 0 },
+      records: { value: 0, manualDelta: 0 },
+      crickets: { value: 0, manualDelta: 0 },
+      hiddenAltars: { value: 0, manualDelta: 0 },
+      mongolTerritories: { value: 0, manualDelta: 0 },
+      duels: { value: 0, manualDelta: 0 },
+      mythic: { value: 0, manualDelta: 0 },
+      sideTales: { value: 0, manualDelta: 0 },
+      trophies: { value: 0, manualDelta: 0 },
+      coOp: { value: 0, manualDelta: 0 },
+      monochrome: { value: 0, manualDelta: 0 }
     },
 
     totals: {
@@ -159,22 +54,147 @@ function getDefaultState() {
       sideTales: 61,
       trophies: 52,
       coOp: 3,
-      monochrome: 2,
+      monochrome: 2
     },
 
     splits: {
       currentIndex: 0,
       completed: [],
+      items: []
     },
 
-    phase: "act1",
+    phase: "legacy_all",
+
+    settings: {
+      difficulty: "Lethal",
+      act1TargetMinutes: 180,
+      remoteCode: ""
+    },
 
     misc: {
-      dirgeDone: false,
+      dirgeDone: false
     },
 
     ui: {
-      settingsOpen: false,
+      settingsOpen: false
     },
+
+    gameId: "ghost-of-tsushima"
   };
 }
+
+function sanitizeLoadedState(raw) {
+  const fallback = getDefaultState();
+
+  if (!raw || typeof raw !== "object") {
+    return fallback;
+  }
+
+  return {
+    timer: {
+      startTime: raw.timer?.startTime ?? fallback.timer.startTime,
+      elapsed: Number(raw.timer?.elapsed || 0),
+      running: !!raw.timer?.running
+    },
+
+    counters: typeof raw.counters === "object" && raw.counters !== null
+      ? raw.counters
+      : fallback.counters,
+
+    totals: typeof raw.totals === "object" && raw.totals !== null
+      ? raw.totals
+      : fallback.totals,
+
+    splits: {
+      currentIndex: Number(raw.splits?.currentIndex || 0),
+      completed: Array.isArray(raw.splits?.completed) ? raw.splits.completed : [],
+      items: Array.isArray(raw.splits?.items) ? raw.splits.items : []
+    },
+
+    phase: raw.phase || fallback.phase,
+
+    settings: {
+      ...fallback.settings,
+      ...(raw.settings || {})
+    },
+
+    misc: {
+      ...fallback.misc,
+      ...(raw.misc || {})
+    },
+
+    ui: {
+      ...fallback.ui,
+      ...(raw.ui || {})
+    },
+
+    gameId: raw.gameId || fallback.gameId
+  };
+}
+
+function loadState() {
+  if (state) return state;
+
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    state = raw ? sanitizeLoadedState(JSON.parse(raw)) : getDefaultState();
+  } catch (error) {
+    console.error("Failed to parse state, resetting:", error);
+    state = getDefaultState();
+  }
+
+  return state;
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function emit() {
+  const snapshot = clone(state);
+  listeners.forEach((fn) => fn(snapshot));
+}
+
+export function getState() {
+  return clone(loadState());
+}
+
+export function subscribe(fn) {
+  listeners.add(fn);
+  fn(getState());
+  return () => listeners.delete(fn);
+}
+
+export function updateState(updater) {
+  const current = loadState();
+  const next = updater(clone(current));
+
+  if (!next || typeof next !== "object") {
+    console.warn("updateState returned invalid state — ignoring");
+    return;
+  }
+
+  state = sanitizeLoadedState(next);
+  saveState();
+  emit();
+}
+
+export function resetState() {
+  state = getDefaultState();
+  saveState();
+  emit();
+}
+
+window.addEventListener("storage", (event) => {
+  if (event.key !== STORAGE_KEY) return;
+
+  try {
+    state = event.newValue
+      ? sanitizeLoadedState(JSON.parse(event.newValue))
+      : getDefaultState();
+
+    emit();
+  } catch (error) {
+    console.error("Storage sync failed:", error);
+  }
+});
