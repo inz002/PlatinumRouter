@@ -84,6 +84,14 @@ function normalizePhasesFile(raw) {
   const result = {};
 
   Object.entries(source).forEach(([phaseId, def]) => {
+    const rawTargetMinutes =
+      def?.targetMinutes ??
+      def?.paceTargetMinutes ??
+      def?.actTargetMinutes ??
+      0;
+
+    const targetMinutes = Number(rawTargetMinutes);
+
     result[phaseId] = {
       id: phaseId,
       label: def?.label || phaseId,
@@ -101,7 +109,8 @@ function normalizePhasesFile(raw) {
         ? def.objectives
         : Array.isArray(def?.visible)
           ? def.visible
-          : []
+          : [],
+      targetMinutes: Number.isFinite(targetMinutes) && targetMinutes > 0 ? targetMinutes : 0
     };
   });
 
