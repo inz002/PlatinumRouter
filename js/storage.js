@@ -9,6 +9,10 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function safeObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
 function getDefaultState() {
   return {
     timer: {
@@ -65,6 +69,10 @@ function getDefaultState() {
 
     phase: "legacy_all",
 
+    phases: {},
+
+    quotas: {},
+
     settings: {
       difficulty: "Lethal",
       act1TargetMinutes: 180,
@@ -112,6 +120,10 @@ function sanitizeLoadedState(raw) {
     },
 
     phase: raw.phase || fallback.phase,
+
+    phases: safeObject(raw.phases),
+
+    quotas: safeObject(raw.quotas),
 
     settings: {
       ...fallback.settings,
