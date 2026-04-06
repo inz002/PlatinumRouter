@@ -2,11 +2,7 @@
 
 import { clamp, normalizeSplits, getActivePhaseId } from "./split-logic.js";
 
-export const DEFAULT_SETTINGS = {
-  difficulty: "Lethal",
-  act1TargetMinutes: 180,
-  remoteCode: ""
-};
+export const DEFAULT_SETTINGS = {};
 
 export const DEFAULT_MISC = {
   dirgeDone: false
@@ -66,6 +62,24 @@ export function getRawSplitItems(raw = {}) {
   return [];
 }
 
+export function getActivePhase(state, gameData = {}) {
+  const items = state?.splits?.items || [];
+  const currentIndex = Number(state?.splits?.currentIndex || 0);
+  return getActivePhaseId(items, currentIndex, gameData?.phases || {});
+}
+
+export function getPhaseTargetMinutes(phaseId, gameData = {}) {
+  const phase = gameData?.phases?.[phaseId];
+  const rawValue =
+    phase?.targetMinutes ??
+    phase?.paceTargetMinutes ??
+    phase?.actTargetMinutes ??
+    null;
+
+  const minutes = Number(rawValue);
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : null;
+}
+
 export function buildInitialState(raw = {}, gameData = {}, gameId = "ghost-of-tsushima") {
   const normalized = normalizeCounterState(
     gameData?.counters || {},
@@ -115,7 +129,6 @@ export function buildInitialState(raw = {}, gameData = {}, gameId = "ghost-of-ts
     phase: raw.phase || "legacy_all",
 
     settings: {
-      ...DEFAULT_SETTINGS,
       ...(raw.settings || {})
     },
 
@@ -136,23 +149,21 @@ export function buildInitialState(raw = {}, gameData = {}, gameId = "ghost-of-ts
   return state;
 }
 
-export function getActivePhase(state, gameData = {}) {
-  const items = state?.splits?.items || [];
-  const currentIndex = Number(state?.splits?.currentIndex || 0);
-  return getActivePhaseId(items, currentIndex, gameData?.phases || {});
-}
-
 export function getCurrentStateFactory({ getState, gameData, gameId }) {
   return function getCurrentState() {
     return buildInitialState(getState(), gameData, gameId);
   };
 }
 
-export function computePaceText(state) {
-  const actTargetMinutes = Number(state?.settings?.act1TargetMinutes || 0);
-  if (!actTargetMinutes) return "No target";
+export function computePaceText(state, gameData = {}) {
+  const phaseId = state?.phase || "legacy_all";
+  const phaseTargetMinutes = getPhaseTargetMinutes(phaseId, gameData);
 
-  const targetMs = actTargetMinutes * 60 * 1000;
+  if (!phaseTargetMinutes) {
+    return "No target";
+  }
+
+  const targetMs = phaseTargetMinutes * 60 * 1000;
   const diff = Number(state?.timer?.elapsed || 0) - targetMs;
 
   if (Math.abs(diff) < 1000) return "On pace";
