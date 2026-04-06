@@ -59,7 +59,7 @@ export function createRenderController({ gameData, debug, getCurrentState }) {
 
     const pacePill = document.getElementById("pacePill");
     if (pacePill) {
-      pacePill.textContent = computePaceText(state);
+      pacePill.textContent = computePaceText(state, gameData);
     }
 
     const startPauseBtn = document.getElementById("startPauseBtn");
