@@ -1,61 +1,150 @@
-export async function loadGamesRegistry() {
-  const response = await fetch("./data/games.json");
-  if (!response.ok) {
-    throw new Error("Failed to load games registry");
-  }
-  return response.json();
-}
+// data-loader.js
+
+/**
+ * Central loader for game data (splits, phases, counters, quotas)
+ * Ensures everything is ALWAYS valid and never undefined
+ */
 
 export async function loadGameData(gameId) {
-  const registry = await loadGamesRegistry();
-  const game = (registry.games || []).find((entry) => entry.id === gameId);
+  try {
+    const data = await import(`../data/${gameId}.js`);
+    return normalizeGameData(data.default || data);
+  } catch (error) {
+    console.error("Failed to load game data:", error);
 
-  if (!game) {
-    throw new Error(`Game not found: ${gameId}`);
+    // fallback to empty safe structure (prevents crashes)
+    return normalizeGameData({});
   }
+}
 
-  const basePath = normalizePath(game.path);
-
-  const [meta, counters, phases, defaultSplits, quotas] = await Promise.all([
-    fetchJson(`${basePath}/meta.json`, `meta.json for ${gameId}`),
-    fetchJson(`${basePath}/counters.json`, `counters.json for ${gameId}`),
-    fetchJson(`${basePath}/phases.json`, `phases.json for ${gameId}`),
-    fetchJson(`${basePath}/default-splits.json`, `default-splits.json for ${gameId}`),
-    fetchOptionalJson(`${basePath}/quotas.json`, { quotas: {} })
-  ]);
-
+/**
+ * Normalize entire game data object
+ */
+function normalizeGameData(raw = {}) {
   return {
-    registry,
-    game,
-    meta,
-    counters,
-    phases,
-    defaultSplits,
-    quotas: quotas?.quotas || {}
+    meta: normalizeMeta(raw.meta),
+    counters: normalizeCounters(raw.counters),
+    defaultSplits: normalizeSplits(raw.defaultSplits),
+    phases: normalizePhases(raw.phases),
+    quotas: normalizeQuotas(raw.quotas)
   };
 }
 
-async function fetchJson(path, label) {
-  const response = await fetch(path);
-  if (!response.ok) {
-    throw new Error(`Failed to load ${label}`);
-  }
-  return response.json();
+/**
+ * META
+ */
+function normalizeMeta(meta = {}) {
+  return {
+    title: meta.title || "Ghost of Tsushima",
+    subtitle: meta.subtitle || "Speedrun Controller"
+  };
 }
 
-async function fetchOptionalJson(path, fallback) {
-  try {
-    const response = await fetch(path);
-    if (!response.ok) return fallback;
-    return await response.json();
-  } catch {
-    return fallback;
-  }
+/**
+ * COUNTERS
+ */
+function normalizeCounters(counters = {}) {
+  const result = {};
+
+  Object.entries(counters).forEach(([key, def]) => {
+    result[key] = {
+      label: def.label || key,
+      shortLabel: def.shortLabel || def.label || key,
+      icon: def.icon || "",
+      max: Number(def.max || 0)
+    };
+  });
+
+  return result;
 }
 
-function normalizePath(path) {
-  if (!path) return "./data/ghost-of-tsushima";
-  if (path.startsWith("./")) return path;
-  if (path.startsWith("/")) return `.${path}`;
-  return `./${path}`;
+/**
+ * DEFAULT SPLITS
+ */
+function normalizeSplits(splits = []) {
+  if (!Array.isArray(splits)) return [];
+
+  return splits.map((split, i) => ({
+    id: split.id || `split_${i}`,
+    label: split.label || `Split ${i + 1}`,
+
+    phase:
+      split.phase ||
+      split.phaseId ||
+      split.act ||
+      null,
+
+    note: split.note || "",
+
+    auto: normalizeAuto(split.auto)
+  }));
+}
+
+/**
+ * PHASES
+ */
+function normalizePhases(phases = {}) {
+  const result = {};
+
+  Object.entries(phases).forEach(([key, def]) => {
+    result[key] = {
+      id: key,
+      label: def.label || key,
+      description: def.description || "",
+      note: def.note || "",
+
+      // visibility
+      visibleCounters: Array.isArray(def.visibleCounters)
+        ? def.visibleCounters
+        : [],
+
+      objectives: Array.isArray(def.objectives)
+        ? def.objectives
+        : []
+    };
+  });
+
+  return result;
+}
+
+/**
+ * QUOTAS
+ */
+function normalizeQuotas(quotas = {}) {
+  const result = {};
+
+  Object.entries(quotas).forEach(([phaseId, q]) => {
+    const normalized = {};
+
+    Object.entries(q || {}).forEach(([key, value]) => {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return;
+      if (n <= 0) return;
+
+      normalized[key] = n;
+    });
+
+    result[phaseId] = normalized;
+  });
+
+  return result;
+}
+
+/**
+ * AUTO NORMALIZER
+ */
+function normalizeAuto(auto) {
+  if (!auto || typeof auto !== "object") return {};
+
+  const result = {};
+
+  Object.entries(auto).forEach(([key, value]) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return;
+    if (n === 0) return;
+
+    result[key] = n;
+  });
+
+  return result;
 }
