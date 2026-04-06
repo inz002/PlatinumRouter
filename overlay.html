@@ -45,7 +45,7 @@
   <script type="module">
     import { createDebugger } from "./js/debug.js";
 
-    const STORAGE_KEY = "platinumrouter_state_v1";
+    const STORAGE_KEY = "tsushima-router-state";
     const debug = createDebugger({ name: "overlay" });
 
     let cache = null;
@@ -64,31 +64,6 @@
       } catch {
         return {};
       }
-    }
-
-    function normalizeSplit(split) {
-      return {
-        id: "",
-        label: "",
-        note: "",
-        phaseId: "",
-        isPhaseStart: false,
-        auto: {},
-        ...split
-      };
-    }
-
-    function getActivePhaseId(splits, currentSplitIndex, phases) {
-      let active = "legacy_all";
-
-      for (let i = 0; i <= currentSplitIndex && i < splits.length; i += 1) {
-        const split = normalizeSplit(splits[i]);
-        if (split.isPhaseStart && split.phaseId && phases[split.phaseId]) {
-          active = split.phaseId;
-        }
-      }
-
-      return active;
     }
 
     function normalizePath(path) {
@@ -161,6 +136,14 @@
       return Math.floor((done / total) * 100);
     }
 
+    function getVisibleKeysFromPhase(activePhase) {
+      if (!activePhase || typeof activePhase !== "object") return [];
+      if (Array.isArray(activePhase.visibleCounters)) return activePhase.visibleCounters;
+      if (Array.isArray(activePhase.visible)) return activePhase.visible;
+      if (Array.isArray(activePhase.objectives)) return activePhase.objectives;
+      return [];
+    }
+
     async function render() {
       const state = loadState();
       const gameId = state.gameId || "ghost-of-tsushima";
@@ -171,11 +154,14 @@
 
       const { counters: counterDefs, phases, meta } = cache;
       const counters = buildNormalizedCounters(counterDefs, state.counters);
-      const splits = Array.isArray(state.splits) ? state.splits : [];
-      const currentSplitIndex = Number.isFinite(state.currentSplitIndex) ? state.currentSplitIndex : 0;
 
-      const activePhaseId = getActivePhaseId(splits, currentSplitIndex, phases);
-      const activePhase = phases[activePhaseId] || phases.legacy_all || { visible: [] };
+      const splits = Array.isArray(state?.splits?.items) ? state.splits.items : [];
+      const currentSplitIndex = Number.isFinite(Number(state?.splits?.currentIndex))
+        ? Number(state.splits.currentIndex)
+        : 0;
+
+      const activePhaseId = state.phase || "legacy_all";
+      const activePhase = phases[activePhaseId] || phases.legacy_all || {};
 
       const timerEl = document.getElementById("timer");
       const metaEl = document.getElementById("meta");
@@ -183,27 +169,31 @@
       const dirgeChipEl = document.getElementById("dirgeChip");
       const progressChipEl = document.getElementById("progressChip");
 
-      timerEl.textContent = formatMs(state.elapsedMs || 0);
-      timerEl.classList.toggle("running", !!state.running);
-      metaEl.textContent = state.settings?.difficulty || meta?.defaultDifficulty || "Lethal";
-      dirgeChipEl.hidden = !state.miscChecks?.dirge;
+      const elapsedMs = Number(state?.timer?.elapsed || 0);
+      const running = !!state?.timer?.running;
+
+      timerEl.textContent = formatMs(elapsedMs);
+      timerEl.classList.toggle("running", running);
+      metaEl.textContent =
+        state?.settings?.difficulty ||
+        meta?.defaultDifficulty ||
+        meta?.difficulty ||
+        "Lethal";
+
+      dirgeChipEl.hidden = !state?.misc?.dirgeDone;
 
       const overallPercent = computeOverallPercent(counterDefs, counters);
       progressChipEl.textContent = `${overallPercent}%`;
 
-      const visibleKeys = Array.isArray(activePhase.visible) ? activePhase.visible : [];
+      const visibleKeys = getVisibleKeysFromPhase(activePhase);
       const orderedKeys = [
         ...visibleKeys,
         ...Object.keys(counterDefs).filter((key) => !visibleKeys.includes(key))
       ];
 
-      itemsEl.innerHTML = "";
-
       const fragments = [];
 
       orderedKeys.forEach((key) => {
-        if (key === "dirge") return;
-
         const def = counterDefs[key];
         const counter = counters[key];
         if (!def || !counter) return;
@@ -230,9 +220,11 @@
       debug.setStatus("activePhase", activePhaseId);
       debug.setStatus("visibleObjectives", visibleKeys.length);
       debug.setStatus("splitCount", splits.length);
+      debug.setStatus("currentSplitIndex", currentSplitIndex);
       debug.setStatus("counterCount", Object.keys(counters).length);
-      debug.setStatus("difficulty", state.settings?.difficulty || "Lethal");
-      debug.setStatus("elapsedMs", state.elapsedMs || 0);
+      debug.setStatus("difficulty", metaEl.textContent);
+      debug.setStatus("elapsedMs", elapsedMs);
+      debug.setStatus("running", running);
       debug.setStatus("overallPercent", `${overallPercent}%`);
     }
 
@@ -240,6 +232,31 @@
       cache,
       saved: loadState()
     }));
+
+    const debugToggle = document.getElementById("debugToggle");
+    const debugClear = document.getElementById("debugClear");
+    const debugCopy = document.getElementById("debugCopy");
+    const debugPanel = document.getElementById("debugPanel");
+
+    debugToggle?.addEventListener("click", () => {
+      const open = debugPanel.classList.toggle("open");
+      debugToggle.textContent = open ? "🐞 Hide Debug" : "🐞 Show Debug";
+    });
+
+    debugClear?.addEventListener("click", () => {
+      debug.clear();
+    });
+
+    debugCopy?.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(JSON.stringify({
+          cache,
+          saved: loadState()
+        }, null, 2));
+      } catch (error) {
+        console.error("Copy snapshot failed", error);
+      }
+    });
 
     window.addEventListener("storage", (event) => {
       if (event.key === STORAGE_KEY) {
