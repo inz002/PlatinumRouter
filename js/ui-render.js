@@ -1,4 +1,4 @@
-// ui-render.js
+// js/ui-render.js
 
 function escapeHtml(value) {
   return String(value ?? "")
