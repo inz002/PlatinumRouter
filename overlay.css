@@ -1,19 +1,14 @@
-/* overlay.css */
-
 :root {
-  --bg: rgba(8, 12, 18, 0.78);
-  --bg-strong: rgba(8, 12, 18, 0.9);
-  --surface: rgba(255, 255, 255, 0.06);
-  --surface-soft: rgba(255, 255, 255, 0.04);
-  --surface-active: rgba(255, 255, 255, 0.1);
-  --border: rgba(255, 255, 255, 0.08);
-  --border-active: rgba(255, 255, 255, 0.16);
-  --text: rgba(255, 255, 255, 0.96);
-  --muted: rgba(255, 255, 255, 0.78);
-  --green: #22c55e;
-  --green-bg: rgba(34, 197, 94, 0.14);
-  --green-border: rgba(34, 197, 94, 0.28);
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  --bg: rgba(8, 10, 16, 0.84);
+  --bg2: rgba(18, 20, 28, 0.88);
+  --border: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --text: #f8fafc;
+  --muted: rgba(255, 255, 255, 0.68);
+  --pill: rgba(255, 255, 255, 0.06);
+  --pill-active: rgba(255, 255, 255, 0.1);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --timer-green: #22c55e;
 }
 
 * {
@@ -26,177 +21,135 @@ body {
   padding: 0;
   background: transparent;
   color: var(--text);
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: Inter, system-ui, sans-serif;
   overflow: hidden;
 }
 
 body {
-  min-height: 100vh;
+  padding: 8px;
 }
 
 .overlayShell {
   display: flex;
   flex-direction: column;
+  gap: 10px;
   align-items: flex-start;
-  gap: 8px;
-  padding: 8px;
 }
 
 .overlayBar {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 6px;
   max-width: calc(100vw - 16px);
-  min-height: 38px;
-  padding: 4px 8px;
-  border-radius: 14px;
+  padding: 4px 6px;
+  border-radius: 16px;
   background: var(--bg);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  white-space: nowrap;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.28);
 }
 
-.timerChip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 30px;
-  padding: 4px 10px;
-  border-radius: 10px;
-  background: var(--green-bg);
-  border: 1px solid var(--green-border);
-  color: var(--green);
-  font-size: 15px;
-  line-height: 1;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
-}
-
-.timerChip.running {
-  color: #32d46d;
-  background: rgba(34, 197, 94, 0.18);
-  border-color: rgba(34, 197, 94, 0.36);
-}
-
+.timerChip,
+.counterChip,
 .metaChip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 30px;
-  padding: 4px 9px;
-  border-radius: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-size: 11px;
-  line-height: 1;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.progressChip {
-  background: rgba(255, 255, 255, 0.07);
-}
-
-.chipsWrap {
+  min-height: 32px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-width: 0;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--pill);
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
-.counterChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 30px;
-  padding: 4px 8px;
-  border-radius: 10px;
-  background: var(--surface-soft);
-  border: 1px solid transparent;
+.timerChip {
+  font-family: var(--mono);
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  color: var(--timer-green);
+}
+
+.metaChip {
+  font-size: 12px;
+  font-weight: 800;
   color: var(--muted);
-  transition: opacity 120ms ease, background 120ms ease, border-color 120ms ease;
 }
 
-.activePhaseChip {
-  background: var(--surface-active);
-  border-color: var(--border-active);
-  color: var(--text);
+.chipsWrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.chipsWrap::-webkit-scrollbar {
+  display: none;
+}
+
+.counterChip.activePhaseChip {
+  background: var(--pill-active);
+  border-color: var(--border-strong);
 }
 
 .chipIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 14px;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1;
-  opacity: 0.95;
 }
 
 .chipText {
-  font-size: 11px;
-  line-height: 1;
+  font-size: 13px;
   font-weight: 800;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .empty {
-  padding: 4px 2px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
+  padding: 0 6px;
+  white-space: nowrap;
 }
 
 .debugDock {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  width: min(1000px, calc(100vw - 16px));
 }
 
 .debugRow {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
   flex-wrap: wrap;
 }
 
 .debugBtn {
-  appearance: none;
   border: 1px solid var(--border);
-  background: var(--bg-strong);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text);
-  padding: 7px 10px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 700;
+  padding: 8px 10px;
+  border-radius: 12px;
   cursor: pointer;
-  box-shadow: var(--shadow);
+  font-weight: 700;
+  font-size: 12px;
 }
 
 .debugBtn:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.debugBtn:active {
-  transform: translateY(1px);
-}
-
 .debugPanel {
   display: none;
-  width: min(820px, calc(100vw - 16px));
+  margin-top: 10px;
   padding: 12px;
-  border-radius: 14px;
-  background: var(--bg-strong);
+  background: rgba(0, 0, 0, 0.55);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  border-radius: 16px;
+  max-width: 1000px;
 }
 
 .debugPanel.open {
@@ -208,100 +161,102 @@ body {
 }
 
 .eyebrow {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
   text-transform: uppercase;
-  margin-bottom: 8px;
-}
-
-#debugStatus {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 8px;
-}
-
-#debugStatus > * {
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: var(--surface-soft);
-  border: 1px solid var(--border);
-  font-size: 12px;
-  line-height: 1.35;
+  letter-spacing: 0.16em;
+  font-size: 11px;
+  color: var(--muted);
 }
 
 .debugBody {
-  max-height: 240px;
+  max-height: 320px;
   overflow: auto;
-  padding: 10px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.debugLog {
   border: 1px solid var(--border);
-  font-size: 12px;
-  line-height: 1.45;
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.debugLog-info {
+  border-color: rgba(97, 168, 255, 0.25);
+}
+
+.debugLog-warn {
+  border-color: rgba(255, 196, 0, 0.28);
+}
+
+.debugLog-error {
+  border-color: rgba(255, 93, 115, 0.28);
+}
+
+.debugLogTop {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.debugLogName,
+.debugLogLevel {
+  font-weight: 800;
+}
+
+.debugLogMsg {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.debugLogData {
+  margin: 6px 0 0;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  font-family: var(--mono);
+  font-size: 11px;
   white-space: pre-wrap;
   word-break: break-word;
+  color: #dbeafe;
 }
 
-@media (max-width: 1200px) {
-  .overlayBar {
-    gap: 5px;
-    padding: 4px 7px;
-  }
-
-  .timerChip,
-  .metaChip,
-  .counterChip {
-    min-height: 28px;
-  }
-
-  .timerChip {
-    font-size: 14px;
-    padding: 4px 9px;
-  }
-
-  .chipIcon {
-    font-size: 12px;
-  }
-
-  .chipText,
-  .metaChip {
-    font-size: 10px;
-  }
+.debugStatusRow {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-@media (max-width: 900px) {
-  .overlayShell {
-    padding: 6px;
-  }
+.debugStatusRow:first-child {
+  border-top: 0;
+}
 
-  .overlayBar {
+.debugStatusKey {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.debugStatusValue {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.debugEmpty {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 8px 0;
+}
+
+@media (max-width: 760px) {
+  .debugStatusRow {
+    grid-template-columns: 1fr;
     gap: 4px;
-    padding: 4px 6px;
-    border-radius: 12px;
-    max-width: calc(100vw - 12px);
-  }
-
-  .timerChip {
-    font-size: 13px;
-    padding: 4px 8px;
-    border-radius: 9px;
-  }
-
-  .metaChip,
-  .counterChip {
-    padding: 4px 7px;
-    border-radius: 9px;
-  }
-
-  .chipText,
-  .metaChip {
-    font-size: 10px;
-  }
-
-  .chipIcon {
-    min-width: 12px;
-    font-size: 11px;
   }
 }
