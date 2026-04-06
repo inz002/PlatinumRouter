@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ghost of Tsushima Split Editor</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app">
+    <div class="top">
+      <div>
+        <div class="eyebrow">Route Editing</div>
+        <div class="title">Ghost of Tsushima Split Editor</div>
+        <div class="subtitle">Edit split names, notes, phase assignments, and auto-progress values.</div>
+      </div>
+      <div class="badge">Splits</div>
+    </div>
+
+    <div class="panel">
+      <div class="row between" style="gap:12px;flex-wrap:wrap">
+        <div>
+          <div class="eyebrow">Navigation</div>
+          <div class="subtitle">Move between the controller, overlay, and route tools.</div>
+        </div>
+
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <a href="./index.html" class="btn">🎮 Controller</a>
+          <a href="./overlay.html" class="btn">🖥 Overlay</a>
+          <a href="./phases.html" class="btn">🧭 Phase Editor</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="row between" style="gap:12px;flex-wrap:wrap">
+        <div>
+          <div class="mid">Split Setup</div>
+          <div class="subtitle">These splits should drive current split, queue, phase visibility, and auto-progress.</div>
+        </div>
+
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <button id="addSplitEditorBtn" class="btn">＋ Add Split</button>
+          <button id="downloadSplitBackupBtn" class="btn">⬇ Download Split Backup</button>
+          <button id="copySplitBackupBtn" class="btn">📋 Copy Split Backup</button>
+          <button id="resetSplitEditorBtn" class="btn">Reset</button>
+          <button id="saveSplitEditorBtn" class="btn primary">Save Split Setup</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="card">
+        <div class="eyebrow">Editor Notes</div>
+        <div class="subtitle" style="margin-top:8px">
+          Keep phases optional for compatibility. Auto-progress values should match your tracked counters,
+          including lighthouses.
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div id="splitEditorGrid" class="editorGrid"></div>
+    </div>
+
+    <footer class="panel" style="margin-top:12px">
+      <div class="row between" style="gap:12px;flex-wrap:wrap">
+        <div>
+          <div class="eyebrow">Back to Run Pages</div>
+          <div class="subtitle">Use controller during the run. Use editors here, away from the live dashboard.</div>
+        </div>
+
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <a href="./index.html" class="btn">🎮 Controller</a>
+          <a href="./overlay.html" class="btn">🖥 Overlay</a>
+          <a href="./phases.html" class="btn">🧭 Phase Editor</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script type="module" src="./splits-page.js"></script>
+</body>
+</html>
