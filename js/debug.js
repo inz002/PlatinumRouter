@@ -1,3 +1,5 @@
+// js/debug.js
+
 export function createDebugger({
   name = "app",
   panelId = "debugPanel",
@@ -35,17 +37,34 @@ export function createDebugger({
   }
 
   function escapeHtml(value) {
-    return String(value)
+    return String(value ?? "")
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;");
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function renderPanelVisibility() {
+    if (!panel) return;
+
+    panel.classList.toggle("open", state.open);
+    panel.hidden = !state.open;
+    panel.style.display = state.open ? "block" : "none";
+  }
+
+  function renderToggleButton() {
+    if (!toggleBtn) return;
+
+    toggleBtn.textContent = state.open ? "🐞 Hide Debug" : "🐞 Show Debug";
+    toggleBtn.setAttribute("aria-expanded", String(state.open));
   }
 
   function renderStatus() {
     if (!statusEl) return;
 
     const entries = Object.entries(state.status);
+
     if (!entries.length) {
       statusEl.innerHTML = `<div class="debugEmpty">No status yet</div>`;
       return;
@@ -95,16 +114,10 @@ export function createDebugger({
   }
 
   function render() {
-    if (panel) {
-      panel.classList.toggle("open", state.open);
-    }
-
+    renderPanelVisibility();
+    renderToggleButton();
     renderStatus();
     renderLogs();
-
-    if (toggleBtn) {
-      toggleBtn.textContent = state.open ? "🐞 Hide Debug" : "🐞 Show Debug";
-    }
   }
 
   function push(level, message, data) {
@@ -119,7 +132,7 @@ export function createDebugger({
       state.logs.splice(0, state.logs.length - maxLogs);
     }
 
-    render();
+    renderLogs();
   }
 
   function log(message, data) {
@@ -139,9 +152,27 @@ export function createDebugger({
     renderStatus();
   }
 
+  function removeStatus(key) {
+    delete state.status[key];
+    renderStatus();
+  }
+
   function toggle() {
     state.open = !state.open;
-    render();
+    renderPanelVisibility();
+    renderToggleButton();
+  }
+
+  function open() {
+    state.open = true;
+    renderPanelVisibility();
+    renderToggleButton();
+  }
+
+  function close() {
+    state.open = false;
+    renderPanelVisibility();
+    renderToggleButton();
   }
 
   function clear() {
@@ -149,21 +180,37 @@ export function createDebugger({
     renderLogs();
   }
 
+  function clearAll() {
+    state.logs = [];
+    state.status = {};
+    render();
+  }
+
   function setSnapshotBuilder(fn) {
-    state.snapshotBuilder = fn;
+    state.snapshotBuilder = typeof fn === "function" ? fn : null;
   }
 
   async function copySnapshot() {
-    if (!state.snapshotBuilder) return;
+    if (!state.snapshotBuilder) {
+      warn("No snapshot builder registered");
+      return;
+    }
 
     const snapshot = state.snapshotBuilder();
     const text = safeStringify(snapshot);
 
     try {
+      if (!navigator.clipboard || !navigator.clipboard.writeText) {
+        throw new Error("Clipboard API unavailable");
+      }
+
       await navigator.clipboard.writeText(text);
       log("Debug snapshot copied");
-    } catch {
-      warn("Clipboard blocked", snapshot);
+    } catch (error) {
+      warn("Clipboard blocked, snapshot dumped to log", {
+        reason: error?.message || "unknown"
+      });
+      log("Debug snapshot", snapshot);
     }
   }
 
@@ -178,7 +225,13 @@ export function createDebugger({
     warn,
     error,
     setStatus,
+    removeStatus,
     setSnapshotBuilder,
-    render
+    render,
+    toggle,
+    open,
+    close,
+    clear,
+    clearAll
   };
 }
