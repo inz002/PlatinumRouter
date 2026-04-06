@@ -3,29 +3,41 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ghost of Tsushima Overlay</title>
+  <title>Overlay</title>
   <link rel="stylesheet" href="./overlay.css" />
 </head>
 <body>
   <div class="overlayShell">
-    <div class="overlayBar" id="overlayBar">
+
+    <!-- MAIN BAR -->
+    <div class="overlayBar">
+
+      <!-- TIMER -->
       <div class="timerChip" id="timer">00:00:00</div>
 
+      <!-- OVERALL % -->
       <div class="metaChip progressChip" id="progressChip">0%</div>
 
+      <!-- CURRENT SPLIT (NEW - BIG STREAM VALUE) -->
+      <div class="metaChip" id="currentSplit">Starting…</div>
+
+      <!-- COUNTERS -->
       <div class="chipsWrap" id="items">
-        <div class="empty">Waiting for controller state…</div>
+        <div class="empty">Waiting for controller…</div>
       </div>
 
+      <!-- OPTIONAL FLAGS -->
       <div class="metaChip" id="dirgeChip" hidden>🎵 Dirge</div>
-      <div class="metaChip" id="meta">Lethal</div>
+      <div class="metaChip" id="difficultyChip">Lethal</div>
+
     </div>
 
+    <!-- DEBUG (hidden unless toggled) -->
     <div class="debugDock">
       <div class="debugRow">
-        <button id="debugToggle" class="debugBtn">🐞 Show Debug</button>
-        <button id="debugClear" class="debugBtn">Clear Logs</button>
-        <button id="debugCopy" class="debugBtn">Copy Snapshot</button>
+        <button id="debugToggle" class="debugBtn">🐞 Debug</button>
+        <button id="debugClear" class="debugBtn">Clear</button>
+        <button id="debugCopy" class="debugBtn">Copy</button>
       </div>
 
       <div id="debugPanel" class="debugPanel">
@@ -40,6 +52,7 @@
         </div>
       </div>
     </div>
+
   </div>
 
   <script type="module">
@@ -51,11 +64,11 @@
     let cache = null;
 
     function formatMs(ms) {
-      const totalSeconds = Math.max(0, Math.floor((ms || 0) / 1000));
-      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
-      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
-      const seconds = String(totalSeconds % 60).padStart(2, "0");
-      return `${hours}:${minutes}:${seconds}`;
+      const total = Math.floor((ms || 0) / 1000);
+      const h = String(Math.floor(total / 3600)).padStart(2, "0");
+      const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+      const s = String(total % 60).padStart(2, "0");
+      return `${h}:${m}:${s}`;
     }
 
     function loadState() {
@@ -66,229 +79,141 @@
       }
     }
 
-    function normalizePath(path) {
-      if (!path) return "./data/ghost-of-tsushima";
-      if (path.startsWith("./")) return path;
-      if (path.startsWith("/")) return `.${path}`;
-      return `./${path}`;
-    }
-
     async function fetchJson(path) {
-      const response = await fetch(path, { cache: "no-store" });
-      if (!response.ok) throw new Error(`Failed to load ${path}`);
-      return response.json();
+      const res = await fetch(path, { cache: "no-store" });
+      return res.json();
     }
 
     async function loadGameData(gameId = "ghost-of-tsushima") {
       const registry = await fetchJson("./data/games.json");
-      const game = (registry.games || []).find((entry) => entry.id === gameId) || registry.games?.[0];
+      const game = registry.games.find(g => g.id === gameId);
 
-      if (!game) throw new Error("No game config found");
-
-      const basePath = normalizePath(game.path);
+      const base = game.path;
 
       const [meta, counters, phases] = await Promise.all([
-        fetchJson(`${basePath}/meta.json`),
-        fetchJson(`${basePath}/counters.json`),
-        fetchJson(`${basePath}/phases.json`)
+        fetchJson(`${base}/meta.json`),
+        fetchJson(`${base}/counters.json`),
+        fetchJson(`${base}/phases.json`)
       ]);
 
-      return { game, meta, counters, phases };
+      return { meta, counters, phases };
     }
 
-    function buildNormalizedCounters(counterDefs, savedCounters) {
-      const result = {};
-      const source = savedCounters && typeof savedCounters === "object" ? savedCounters : {};
-
-      Object.entries(counterDefs || {}).forEach(([key, def]) => {
-        const saved = source[key] || {};
-        result[key] = {
-          ...def,
-          value: Number.isFinite(Number(saved.value)) ? Number(saved.value) : 0,
-          manualDelta: Number.isFinite(Number(saved.manualDelta)) ? Number(saved.manualDelta) : 0
-        };
-      });
-
-      return result;
-    }
-
-    function chipHtml(icon, text, extraClass = "") {
-      return `<div class="counterChip ${extraClass}"><span class="chipIcon">${icon || "•"}</span><span class="chipText">${text}</span></div>`;
-    }
-
-    function computeOverallPercent(counterDefs, counters) {
+    function computePercent(defs, counters) {
       let total = 0;
       let done = 0;
 
-      Object.keys(counterDefs || {}).forEach((key) => {
-        const def = counterDefs[key];
-        const counter = counters[key];
-        if (!def || !counter) return;
-
-        const max = Number(def.max || 0);
-        const value = Number(counter.value || 0);
+      Object.keys(defs).forEach(key => {
+        const max = Number(defs[key].max || 0);
+        const val = Number(counters[key]?.value || 0);
 
         total += max;
-        done += Math.min(value, max);
+        done += Math.min(val, max);
       });
 
-      if (total <= 0) return 0;
-      return Math.floor((done / total) * 100);
+      return total > 0 ? Math.floor((done / total) * 100) : 0;
     }
 
-    function getVisibleKeysFromPhase(activePhase) {
-      if (!activePhase || typeof activePhase !== "object") return [];
-      if (Array.isArray(activePhase.visibleCounters)) return activePhase.visibleCounters;
-      if (Array.isArray(activePhase.visible)) return activePhase.visible;
-      if (Array.isArray(activePhase.objectives)) return activePhase.objectives;
-      return [];
+    function chip(icon, text, active = false) {
+      return `
+        <div class="counterChip ${active ? "activePhaseChip" : ""}">
+          <span class="chipIcon">${icon || "•"}</span>
+          <span class="chipText">${text}</span>
+        </div>
+      `;
     }
 
     async function render() {
       const state = loadState();
       const gameId = state.gameId || "ghost-of-tsushima";
 
-      if (!cache || cache.game.id !== gameId) {
+      if (!cache) {
         cache = await loadGameData(gameId);
       }
 
-      const { counters: counterDefs, phases, meta } = cache;
-      const counters = buildNormalizedCounters(counterDefs, state.counters);
+      const { counters: defs, phases, meta } = cache;
 
-      const splits = Array.isArray(state?.splits?.items) ? state.splits.items : [];
-      const currentSplitIndex = Number.isFinite(Number(state?.splits?.currentIndex))
-        ? Number(state.splits.currentIndex)
-        : 0;
+      const counters = state.counters || {};
+      const phase = phases[state.phase] || {};
 
-      const activePhaseId = state.phase || "legacy_all";
-      const activePhase = phases[activePhaseId] || phases.legacy_all || {};
+      const visible = phase.visible || phase.visibleCounters || [];
 
-      const timerEl = document.getElementById("timer");
-      const metaEl = document.getElementById("meta");
-      const itemsEl = document.getElementById("items");
-      const dirgeChipEl = document.getElementById("dirgeChip");
-      const progressChipEl = document.getElementById("progressChip");
-
-      const elapsedMs = Number(state?.timer?.elapsed || 0);
+      // TIMER
+      const elapsed = state?.timer?.elapsed || 0;
       const running = !!state?.timer?.running;
 
-      timerEl.textContent = formatMs(elapsedMs);
+      const timerEl = document.getElementById("timer");
+      timerEl.textContent = formatMs(elapsed);
       timerEl.classList.toggle("running", running);
-      metaEl.textContent =
-        state?.settings?.difficulty ||
-        meta?.defaultDifficulty ||
-        meta?.difficulty ||
-        "Lethal";
 
-      dirgeChipEl.hidden = !state?.misc?.dirgeDone;
+      // % PROGRESS
+      const percent = computePercent(defs, counters);
+      document.getElementById("progressChip").textContent = `${percent}%`;
 
-      const overallPercent = computeOverallPercent(counterDefs, counters);
-      progressChipEl.textContent = `${overallPercent}%`;
+      // CURRENT SPLIT
+      const currentSplit =
+        state?.splits?.items?.[state?.splits?.currentIndex];
 
-      const visibleKeys = getVisibleKeysFromPhase(activePhase);
-      const orderedKeys = [
-        ...visibleKeys,
-        ...Object.keys(counterDefs).filter((key) => !visibleKeys.includes(key))
-      ];
+      document.getElementById("currentSplit").textContent =
+        currentSplit?.label || "Run Complete";
 
+      // DIFFICULTY
+      document.getElementById("difficultyChip").textContent =
+        meta?.difficulty || "Lethal";
+
+      // DIRGE
+      document.getElementById("dirgeChip").hidden = !state?.misc?.dirgeDone;
+
+      // COUNTERS (HIDE COMPLETED)
       const fragments = [];
 
-orderedKeys.forEach((key) => {
-  const def = counterDefs[key];
-  const counter = counters[key];
-  if (!def || !counter) return;
+      Object.keys(defs).forEach(key => {
+        const def = defs[key];
+        const val = Number(counters[key]?.value || 0);
+        const max = Number(def.max || 0);
 
-  const value = Number(counter.value || 0);
-  const max = Number(def.max || 0);
+        if (max > 0 && val >= max) return;
 
-  // 🔥 HIDE COMPLETED
-  if (max > 0 && value >= max) return;
+        fragments.push(
+          chip(def.icon, `${val}/${max}`, visible.includes(key))
+        );
+      });
 
-  fragments.push(
-    chipHtml(
-      def.icon,
-      `${value}/${max}`,
-      visibleKeys.includes(key) ? "activePhaseChip" : ""
-    )
-  );
+      document.getElementById("items").innerHTML =
+        fragments.length ? fragments.join("") : `<div class="empty">All done 🎉</div>`;
 
-      if (!fragments.length) {
-        itemsEl.innerHTML = `<div class="empty">No counters loaded</div>`;
-      } else {
-        itemsEl.innerHTML = fragments.join("");
-      }
-
-      debug.setStatus("gameId", gameId);
-      debug.setStatus("activePhase", activePhaseId);
-      debug.setStatus("visibleObjectives", visibleKeys.length);
-      debug.setStatus("splitCount", splits.length);
-      debug.setStatus("currentSplitIndex", currentSplitIndex);
-      debug.setStatus("counterCount", Object.keys(counters).length);
-      debug.setStatus("difficulty", metaEl.textContent);
-      debug.setStatus("elapsedMs", elapsedMs);
-      debug.setStatus("running", running);
-      debug.setStatus("overallPercent", `${overallPercent}%`);
+      // DEBUG
+      debug.setStatus("phase", state.phase);
+      debug.setStatus("split", currentSplit?.label);
+      debug.setStatus("percent", percent);
     }
 
-    debug.setSnapshotBuilder(() => ({
-      cache,
-      saved: loadState()
-    }));
-
-    const debugToggle = document.getElementById("debugToggle");
-    const debugClear = document.getElementById("debugClear");
-    const debugCopy = document.getElementById("debugCopy");
-    const debugPanel = document.getElementById("debugPanel");
-
-    debugToggle?.addEventListener("click", () => {
-      const open = debugPanel.classList.toggle("open");
-      debugToggle.textContent = open ? "🐞 Hide Debug" : "🐞 Show Debug";
+    // storage sync
+    window.addEventListener("storage", (e) => {
+      if (e.key === STORAGE_KEY) render();
     });
 
-    debugClear?.addEventListener("click", () => {
+    // interval (for timer refresh)
+    setInterval(render, 500);
+
+    render();
+
+    // debug controls
+    const panel = document.getElementById("debugPanel");
+
+    document.getElementById("debugToggle").onclick = () => {
+      panel.classList.toggle("open");
+    };
+
+    document.getElementById("debugClear").onclick = () => {
       debug.clear();
-    });
+    };
 
-    debugCopy?.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(JSON.stringify({
-          cache,
-          saved: loadState()
-        }, null, 2));
-      } catch (error) {
-        console.error("Copy snapshot failed", error);
-      }
-    });
-
-    window.addEventListener("storage", (event) => {
-      if (event.key === STORAGE_KEY) {
-        render().catch((error) => {
-          debug.error("Overlay render failed on storage event", {
-            message: error.message,
-            stack: error.stack
-          });
-          console.error(error);
-        });
-      }
-    });
-
-    setInterval(() => {
-      render().catch((error) => {
-        debug.error("Overlay render failed on interval", {
-          message: error.message,
-          stack: error.stack
-        });
-        console.error(error);
-      });
-    }, 500);
-
-    render().catch((error) => {
-      debug.error("Overlay initial render failed", {
-        message: error.message,
-        stack: error.stack
-      });
-      console.error(error);
-    });
+    document.getElementById("debugCopy").onclick = async () => {
+      await navigator.clipboard.writeText(
+        JSON.stringify(loadState(), null, 2)
+      );
+    };
   </script>
 </body>
 </html>
