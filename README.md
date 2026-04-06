@@ -15,12 +15,12 @@ The UI is just a renderer of state.
 
 ## Structure
 
-- `/data` → Game definitions (splits, phases, counters)
-- `/js` → Logic (state, rendering, actions)
-- `/overlay.html` → Stream overlay
-- `/index.html` → Controller UI
-- `/splits.html` → Split editor (future)
-- `/phases.html` → Phase editor (future)
+- `/index.html` → Main controller UI
+- `/overlay.html` → Stream overlay UI
+- `/splits.html` → Split editor page
+- `/phases.html` → Phase editor page
+- `/js` → Shared application logic
+- `/data` → Game definitions and routing data
 
 ---
 
