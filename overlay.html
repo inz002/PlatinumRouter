@@ -193,22 +193,24 @@
 
       const fragments = [];
 
-      orderedKeys.forEach((key) => {
-        const def = counterDefs[key];
-        const counter = counters[key];
-        if (!def || !counter) return;
+orderedKeys.forEach((key) => {
+  const def = counterDefs[key];
+  const counter = counters[key];
+  if (!def || !counter) return;
 
-        const value = Number(counter.value || 0);
-        const max = Number(def.max || 0);
+  const value = Number(counter.value || 0);
+  const max = Number(def.max || 0);
 
-        fragments.push(
-          chipHtml(
-            def.icon,
-            `${value}/${max}`,
-            visibleKeys.includes(key) ? "activePhaseChip" : ""
-          )
-        );
-      });
+  // 🔥 HIDE COMPLETED
+  if (max > 0 && value >= max) return;
+
+  fragments.push(
+    chipHtml(
+      def.icon,
+      `${value}/${max}`,
+      visibleKeys.includes(key) ? "activePhaseChip" : ""
+    )
+  );
 
       if (!fragments.length) {
         itemsEl.innerHTML = `<div class="empty">No counters loaded</div>`;
