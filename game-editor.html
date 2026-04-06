@@ -12,38 +12,122 @@
       <div>
         <div class="eyebrow">Routing Tool</div>
         <div class="title">Game Editor</div>
-        <div class="subtitle">Generate new game entries</div>
+        <div class="subtitle">Generate scaffold files for a new game.</div>
+      </div>
+      <div class="badge">Games</div>
+    </div>
+
+    <div class="panel">
+      <div class="row between" style="gap:12px;flex-wrap:wrap">
+        <div>
+          <div class="eyebrow">Navigation</div>
+          <div class="subtitle">Move between controller and editors.</div>
+        </div>
+
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <a href="./index.html" class="btn">🎮 Controller</a>
+          <a href="./overlay.html" class="btn">🖥 Overlay</a>
+          <a href="./splits.html" class="btn">🧩 Split Editor</a>
+          <a href="./phases.html" class="btn">🧭 Phase Editor</a>
+        </div>
       </div>
     </div>
 
     <div class="panel">
-      <div class="fields">
+      <div class="mid">Game Setup</div>
+      <div class="subtitle" style="margin-top:6px">
+        This generates JSON files you can paste into your repo for a new game.
+      </div>
+
+      <div class="fields" style="margin-top:16px">
         <label class="field">
           <span>Game ID</span>
-          <input id="gameId" placeholder="ghost-of-tsushima" />
+          <input id="gameIdInput" type="text" placeholder="ghost-of-tsushima" />
         </label>
 
         <label class="field">
-          <span>Title</span>
-          <input id="gameTitle" placeholder="Ghost of Tsushima" />
+          <span>Game Title</span>
+          <input id="gameTitleInput" type="text" placeholder="Ghost of Tsushima" />
         </label>
 
         <label class="field">
-          <span>Path (optional)</span>
-          <input id="gamePath" placeholder="./data/ghost-of-tsushima" />
+          <span>Subtitle</span>
+          <input id="gameSubtitleInput" type="text" placeholder="Speedrun Controller" />
+        </label>
+
+        <label class="field">
+          <span>Difficulty</span>
+          <input id="gameDifficultyInput" type="text" placeholder="Lethal" />
+        </label>
+
+        <label class="field">
+          <span>Default Phase ID</span>
+          <input id="defaultPhaseIdInput" type="text" placeholder="legacy_all" />
+        </label>
+
+        <label class="field">
+          <span>Default Phase Label</span>
+          <input id="defaultPhaseLabelInput" type="text" placeholder="Legacy All" />
         </label>
       </div>
 
-      <div class="row" style="margin-top:12px;gap:8px;">
-        <button id="generateBtn" class="btn primary">Generate Entry</button>
-        <button id="copyBtn" class="btn">Copy JSON</button>
-        <button id="downloadBtn" class="btn">Download</button>
+      <div class="fields" style="margin-top:12px">
+        <label class="field" style="grid-column:1 / -1">
+          <span>Counters</span>
+          <textarea
+            id="countersInput"
+            rows="12"
+            placeholder="One per line. Format: key | Label | max | icon
+
+Example:
+trophies | Trophies | 52 | 🏆
+inari | Inari Shrines | 49 | 🦊
+hotsprings | Hot Springs | 18 | ♨️"
+          ></textarea>
+        </label>
+      </div>
+
+      <div class="row" style="margin-top:14px;gap:8px;flex-wrap:wrap">
+        <button id="loadExampleBtn" class="btn">Load Example</button>
+        <button id="generateBtn" class="btn primary">Generate Scaffold</button>
+        <button id="copyGamesBtn" class="btn">Copy games.json</button>
+        <button id="copyPackageBtn" class="btn">Copy Full Package</button>
+        <button id="downloadPackageBtn" class="btn">Download Package</button>
       </div>
     </div>
 
     <div class="panel">
-      <div class="eyebrow">Output</div>
-      <pre id="output" class="card" style="overflow:auto;"></pre>
+      <div class="editorGrid" style="grid-template-columns: 1fr 1fr;">
+        <div class="editorCard">
+          <div class="eyebrow">games.json Entry</div>
+          <pre id="gamesJsonOutput" class="codeBlock" style="white-space:pre-wrap;overflow:auto;margin-top:10px;"></pre>
+        </div>
+
+        <div class="editorCard">
+          <div class="eyebrow">meta.json</div>
+          <pre id="metaJsonOutput" class="codeBlock" style="white-space:pre-wrap;overflow:auto;margin-top:10px;"></pre>
+        </div>
+
+        <div class="editorCard">
+          <div class="eyebrow">counters.json</div>
+          <pre id="countersJsonOutput" class="codeBlock" style="white-space:pre-wrap;overflow:auto;margin-top:10px;"></pre>
+        </div>
+
+        <div class="editorCard">
+          <div class="eyebrow">phases.json</div>
+          <pre id="phasesJsonOutput" class="codeBlock" style="white-space:pre-wrap;overflow:auto;margin-top:10px;"></pre>
+        </div>
+
+        <div class="editorCard">
+          <div class="eyebrow">quotas.json</div>
+          <pre id="quotasJsonOutput" class="codeBlock" style="white-space:pre-wrap;overflow:auto;margin-top:10px;"></pre>
+        </div>
+
+        <div class="editorCard">
+          <div class="eyebrow">default-splits.json</div>
+          <pre id="splitsJsonOutput" class="codeBlock" style="white-space:pre-wrap;overflow:auto;margin-top:10px;"></pre>
+        </div>
+      </div>
     </div>
   </div>
 
