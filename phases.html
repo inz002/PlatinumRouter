@@ -56,7 +56,7 @@
     <div class="panel">
       <div class="card">
         <div class="eyebrow">Editor Notes</div>
-        <div class="subtitle" style="margin-top:8px">
+        <div id="editorNotesText" class="subtitle" style="margin-top:8px">
           Use this page to define what the controller shows during each section of the run.
           Visible objectives and quotas should match your split flow, including lighthouse support.
         </div>
@@ -90,6 +90,223 @@
     </footer>
   </div>
 
-  <script type="module" src="./phases-page.js"></script>
+  <script type="module">
+    import { loadGameData } from "./js/data-loader.js";
+    import { getState, updateState, subscribe } from "./js/storage.js";
+    import { createActsEditor } from "./js/acts-editor.js";
+    import { clamp, normalizeSplits, getActivePhaseId } from "./js/split-logic.js";
+
+    const GAME_ID = "ghost-of-tsushima";
+
+    let gameData = null;
+    let actsEditorApi = null;
+
+    function clone(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function normalizeCounterState(counterDefs, rawCounters = {}, rawTotals = {}) {
+      const counters = {};
+      const totals = {};
+
+      Object.entries(counterDefs || {}).forEach(([key, def]) => {
+        const rawValue =
+          typeof rawCounters[key] === "object"
+            ? Number(rawCounters[key]?.value || 0)
+            : Number(rawCounters[key] || 0);
+
+        const rawManualDelta =
+          typeof rawCounters[key] === "object"
+            ? Number(rawCounters[key]?.manualDelta || 0)
+            : 0;
+
+        const max = Number(rawTotals[key] || def.max || 0);
+
+        counters[key] = {
+          value: Number.isFinite(rawValue) ? clamp(rawValue, 0, max) : 0,
+          manualDelta: Number.isFinite(rawManualDelta) ? rawManualDelta : 0
+        };
+
+        totals[key] = max;
+      });
+
+      return { counters, totals };
+    }
+
+    function buildInitialState(raw = {}) {
+      const normalized = normalizeCounterState(
+        gameData?.counters || {},
+        raw.counters || {},
+        raw.totals || {}
+      );
+
+      const splitItems = normalizeSplits(raw.splits, gameData?.defaultSplits || []);
+      const currentIndex = clamp(Number(raw.splits?.currentIndex || 0), 0, splitItems.length);
+
+      const phase =
+        raw.phase ||
+        getActivePhaseId(splitItems, currentIndex, gameData?.phases || {}) ||
+        "legacy_all";
+
+      return {
+        timer: {
+          startTime: raw.timer?.startTime ?? null,
+          elapsed: Math.max(0, Number(raw.timer?.elapsed || 0)),
+          running: !!raw.timer?.running
+        },
+
+        counters: normalized.counters,
+        totals: normalized.totals,
+
+        splits: {
+          currentIndex,
+          completed: Array.isArray(raw.splits?.completed) ? raw.splits.completed : [],
+          items: splitItems
+        },
+
+        phase,
+
+        settings: {
+          ...(raw.settings || {})
+        },
+
+        misc: {
+          dirgeDone: !!raw.misc?.dirgeDone
+        },
+
+        ui: {
+          settingsOpen: !!raw.ui?.settingsOpen
+        },
+
+        gameId: GAME_ID
+      };
+    }
+
+    function getCurrentState() {
+      return buildInitialState(getState());
+    }
+
+    function renderHeader() {
+      const title = document.querySelector(".title");
+      if (title) {
+        title.textContent = "Ghost of Tsushima Phase Editor";
+      }
+    }
+
+    function renderSummary(state) {
+      const subtitles = document.querySelectorAll(".subtitle");
+      const phaseCount = Object.keys(gameData?.phases || {}).length;
+      const activePhase = state.phase || "legacy_all";
+
+      if (subtitles[0]) {
+        subtitles[0].textContent = `${phaseCount} phases loaded. Edit labels, notes, visible objectives, quota targets, and pacing here.`;
+      }
+
+      const notesText = document.getElementById("editorNotesText");
+      if (notesText) {
+        notesText.textContent =
+          `Current active phase: ${activePhase}. Visible objectives, quotas, and target minutes should match your split flow, including lighthouse support.`;
+      }
+    }
+
+    function syncPhaseToCurrentSplits(nextState) {
+      nextState.phase =
+        getActivePhaseId(
+          nextState.splits?.items || [],
+          Number(nextState.splits?.currentIndex || 0),
+          gameData?.phases || {}
+        ) || "legacy_all";
+
+      return nextState;
+    }
+
+    function bindStandaloneButtons() {
+      const addBtn = document.getElementById("addActsEditorBtn");
+      const resetBtn = document.getElementById("resetActsEditorBtn");
+      const saveBtn = document.getElementById("saveActsEditorBtn");
+      const exportBtn = document.getElementById("exportActsEditorBtn");
+      const copyBtn = document.getElementById("copyActsEditorBtn");
+
+      addBtn?.addEventListener("click", () => actsEditorApi?.addPhase?.());
+      resetBtn?.addEventListener("click", () => actsEditorApi?.reset?.());
+      saveBtn?.addEventListener("click", () => actsEditorApi?.save?.());
+      exportBtn?.addEventListener("click", () => actsEditorApi?.exportJson?.());
+      copyBtn?.addEventListener("click", () => actsEditorApi?.copyJson?.());
+    }
+
+    function setupActsEditor() {
+      actsEditorApi = createActsEditor({
+        overlayEl: null,
+        phaseListEl: document.getElementById("actsEditorPhaseList"),
+        formEl: document.getElementById("actsEditorForm"),
+        addBtn: document.getElementById("addActsEditorBtn"),
+        closeBtn: null,
+        saveBtn: document.getElementById("saveActsEditorBtn"),
+        resetBtn: document.getElementById("resetActsEditorBtn"),
+        exportBtn: document.getElementById("exportActsEditorBtn"),
+        importInput: document.getElementById("importActsEditorInput"),
+        copyBtn: document.getElementById("copyActsEditorBtn"),
+
+        getPhases: () => clone(gameData?.phases || {}),
+        getQuotas: () => clone(gameData?.quotas || {}),
+        getCounterDefs: () => gameData?.counters || {},
+
+        setPhases: (phases) => {
+          gameData.phases = clone(phases || {});
+
+          updateState((raw) => {
+            const state = buildInitialState(raw);
+            return syncPhaseToCurrentSplits(state);
+          });
+        },
+
+        setQuotas: (quotas) => {
+          gameData.quotas = clone(quotas || {});
+        },
+
+        onAfterSave: () => {
+          const state = getCurrentState();
+          renderSummary(state);
+        }
+      });
+
+      if (typeof actsEditorApi?.open === "function") {
+        actsEditorApi.open();
+      }
+    }
+
+    function setupSubscriptions() {
+      subscribe((raw) => {
+        const state = buildInitialState(raw);
+        renderSummary(state);
+      });
+    }
+
+    async function boot() {
+      gameData = await loadGameData(GAME_ID);
+
+      updateState((raw) => {
+        const state = buildInitialState(raw);
+        return syncPhaseToCurrentSplits(state);
+      });
+
+      renderHeader();
+      setupActsEditor();
+      bindStandaloneButtons();
+      setupSubscriptions();
+
+      const state = getCurrentState();
+      renderSummary(state);
+    }
+
+    boot().catch((error) => {
+      console.error("Phase editor page failed:", error);
+
+      const notesText = document.getElementById("editorNotesText");
+      if (notesText) {
+        notesText.textContent = `Phase editor failed to boot: ${error?.message || "Unknown error"}`;
+      }
+    });
+  </script>
 </body>
 </html>
