@@ -8,17 +8,17 @@ async function fetchJson(path, fallback) {
 
     if (!response.ok) {
       console.warn(`Failed to load ${path}: ${response.status}`);
-      return structuredCloneSafe(fallback);
+      return clone(fallback);
     }
 
     return await response.json();
   } catch (error) {
     console.warn(`Failed to fetch ${path}`, error);
-    return structuredCloneSafe(fallback);
+    return clone(fallback);
   }
 }
 
-function structuredCloneSafe(value) {
+function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
@@ -57,10 +57,14 @@ function normalizeAuto(auto = {}) {
   return result;
 }
 
-function normalizeDefaultSplits(splits = []) {
-  if (!Array.isArray(splits)) return [];
+function normalizeDefaultSplitsFile(raw) {
+  const source = Array.isArray(raw)
+    ? raw
+    : Array.isArray(raw?.splits)
+      ? raw.splits
+      : [];
 
-  return splits.map((split, index) => ({
+  return source.map((split, index) => ({
     id: split?.id || `split_${index}`,
     label: split?.label || `Split ${index + 1}`,
     phase: split?.phase || split?.phaseId || split?.act || null,
@@ -69,32 +73,63 @@ function normalizeDefaultSplits(splits = []) {
   }));
 }
 
-function normalizePhases(phases = {}) {
+function normalizePhasesFile(raw) {
+  const source =
+    raw && typeof raw === "object" && raw.phases && typeof raw.phases === "object"
+      ? raw.phases
+      : raw && typeof raw === "object"
+        ? raw
+        : {};
+
   const result = {};
 
-  Object.entries(phases || {}).forEach(([phaseId, def]) => {
+  Object.entries(source).forEach(([phaseId, def]) => {
     result[phaseId] = {
       id: phaseId,
       label: def?.label || phaseId,
       description: def?.description || "",
       note: def?.note || "",
       objectiveNote: def?.objectiveNote || def?.currentNote || def?.note || "",
-      visibleCounters: Array.isArray(def?.visibleCounters) ? def.visibleCounters : [],
-      objectives: Array.isArray(def?.objectives) ? def.objectives : []
+      visibleCounters: Array.isArray(def?.visibleCounters)
+        ? def.visibleCounters
+        : Array.isArray(def?.visible)
+          ? def.visible
+          : Array.isArray(def?.objectives)
+            ? def.objectives
+            : [],
+      objectives: Array.isArray(def?.objectives)
+        ? def.objectives
+        : Array.isArray(def?.visible)
+          ? def.visible
+          : []
     };
   });
 
   return result;
 }
 
-function normalizeQuotas(quotas = {}) {
+function normalizeQuotasFile(raw) {
+  const source =
+    raw && typeof raw === "object" && raw.quotas && typeof raw.quotas === "object"
+      ? raw.quotas
+      : raw && typeof raw === "object"
+        ? raw
+        : {};
+
   const result = {};
 
-  Object.entries(quotas || {}).forEach(([phaseId, value]) => {
+  Object.entries(source).forEach(([phaseId, value]) => {
+    const targets =
+      value && typeof value === "object" && value.targets && typeof value.targets === "object"
+        ? value.targets
+        : value && typeof value === "object"
+          ? value
+          : {};
+
     const normalized = {};
 
-    Object.entries(value || {}).forEach(([key, raw]) => {
-      const n = Number(raw);
+    Object.entries(targets).forEach(([key, rawValue]) => {
+      const n = Number(rawValue);
       if (!Number.isFinite(n) || n <= 0) return;
       normalized[key] = n;
     });
@@ -103,16 +138,6 @@ function normalizeQuotas(quotas = {}) {
   });
 
   return result;
-}
-
-function normalizeGameData(raw = {}) {
-  return {
-    meta: normalizeMeta(raw.meta),
-    counters: normalizeCounters(raw.counters),
-    defaultSplits: normalizeDefaultSplits(raw.defaultSplits),
-    phases: normalizePhases(raw.phases),
-    quotas: normalizeQuotas(raw.quotas)
-  };
 }
 
 function normalizeResolvedPath(pathValue, gameId) {
@@ -151,19 +176,19 @@ async function resolveGameFolder(gameId) {
 export async function loadGameData(gameId) {
   const root = await resolveGameFolder(gameId);
 
-  const [meta, counters, defaultSplits, phases, quotas] = await Promise.all([
+  const [meta, counters, defaultSplitsRaw, phasesRaw, quotasRaw] = await Promise.all([
     fetchJson(`${root}/meta.json`, {}),
     fetchJson(`${root}/counters.json`, {}),
-    fetchJson(`${root}/default-splits.json`, []),
-    fetchJson(`${root}/phases.json`, {}),
-    fetchJson(`${root}/quotas.json`, {})
+    fetchJson(`${root}/default-splits.json`, { splits: [] }),
+    fetchJson(`${root}/phases.json`, { phases: {} }),
+    fetchJson(`${root}/quotas.json`, { quotas: {} })
   ]);
 
-  return normalizeGameData({
-    meta,
-    counters,
-    defaultSplits,
-    phases,
-    quotas
-  });
+  return {
+    meta: normalizeMeta(meta),
+    counters: normalizeCounters(counters),
+    defaultSplits: normalizeDefaultSplitsFile(defaultSplitsRaw),
+    phases: normalizePhasesFile(phasesRaw),
+    quotas: normalizeQuotasFile(quotasRaw)
+  };
 }
