@@ -22,43 +22,43 @@ function getDefaultState() {
     },
 
     counters: {
-      inari: { value: 0, manualDelta: 0 },
-      haiku: { value: 0, manualDelta: 0 },
-      hotSpring: { value: 0, manualDelta: 0 },
-      bamboo: { value: 0, manualDelta: 0 },
-      shinto: { value: 0, manualDelta: 0 },
-      lighthouse: { value: 0, manualDelta: 0 },
-      artifacts: { value: 0, manualDelta: 0 },
-      records: { value: 0, manualDelta: 0 },
-      crickets: { value: 0, manualDelta: 0 },
-      hiddenAltars: { value: 0, manualDelta: 0 },
-      mongolTerritories: { value: 0, manualDelta: 0 },
-      duels: { value: 0, manualDelta: 0 },
-      mythic: { value: 0, manualDelta: 0 },
-      sideTales: { value: 0, manualDelta: 0 },
       trophies: { value: 0, manualDelta: 0 },
-      coOp: { value: 0, manualDelta: 0 },
-      monochrome: { value: 0, manualDelta: 0 }
+      inari: { value: 0, manualDelta: 0 },
+      hotsprings: { value: 0, manualDelta: 0 },
+      bamboo: { value: 0, manualDelta: 0 },
+      haiku: { value: 0, manualDelta: 0 },
+      records: { value: 0, manualDelta: 0 },
+      artifacts: { value: 0, manualDelta: 0 },
+      shrines: { value: 0, manualDelta: 0 },
+      lighthouses: { value: 0, manualDelta: 0 },
+      crickets: { value: 0, manualDelta: 0 },
+      hiddenaltars: { value: 0, manualDelta: 0 },
+      duels: { value: 0, manualDelta: 0 },
+      territories: { value: 0, manualDelta: 0 },
+      mythictales: { value: 0, manualDelta: 0 },
+      sidetales: { value: 0, manualDelta: 0 },
+      monochrome: { value: 0, manualDelta: 0 },
+      cooper: { value: 0, manualDelta: 0 }
     },
 
     totals: {
-      inari: 49,
-      haiku: 19,
-      hotSpring: 18,
-      bamboo: 16,
-      shinto: 16,
-      lighthouse: 8,
-      artifacts: 20,
-      records: 20,
-      crickets: 5,
-      hiddenAltars: 10,
-      mongolTerritories: 56,
-      duels: 25,
-      mythic: 7,
-      sideTales: 61,
       trophies: 52,
-      coOp: 3,
-      monochrome: 2
+      inari: 49,
+      hotsprings: 18,
+      bamboo: 16,
+      haiku: 19,
+      records: 20,
+      artifacts: 20,
+      shrines: 16,
+      lighthouses: 8,
+      crickets: 5,
+      hiddenaltars: 10,
+      duels: 25,
+      territories: 56,
+      mythictales: 7,
+      sidetales: 61,
+      monochrome: 2,
+      cooper: 3
     },
 
     splits: {
@@ -91,6 +91,68 @@ function getDefaultState() {
   };
 }
 
+function normalizeCounterEntry(value) {
+  if (value && typeof value === "object") {
+    return {
+      value: Number(value.value || 0),
+      manualDelta: Number(value.manualDelta || 0)
+    };
+  }
+
+  return {
+    value: Number(value || 0),
+    manualDelta: 0
+  };
+}
+
+function migrateCounters(rawCounters = {}) {
+  const source = safeObject(rawCounters);
+
+  return {
+    trophies: normalizeCounterEntry(source.trophies),
+    inari: normalizeCounterEntry(source.inari),
+    hotsprings: normalizeCounterEntry(source.hotsprings ?? source.hotSpring),
+    bamboo: normalizeCounterEntry(source.bamboo),
+    haiku: normalizeCounterEntry(source.haiku),
+    records: normalizeCounterEntry(source.records),
+    artifacts: normalizeCounterEntry(source.artifacts),
+    shrines: normalizeCounterEntry(source.shrines ?? source.shinto),
+    lighthouses: normalizeCounterEntry(source.lighthouses ?? source.lighthouse),
+    crickets: normalizeCounterEntry(source.crickets),
+    hiddenaltars: normalizeCounterEntry(source.hiddenaltars ?? source.hiddenAltars),
+    duels: normalizeCounterEntry(source.duels),
+    territories: normalizeCounterEntry(source.territories ?? source.mongolTerritories),
+    mythictales: normalizeCounterEntry(source.mythictales ?? source.mythic),
+    sidetales: normalizeCounterEntry(source.sidetales ?? source.sideTales),
+    monochrome: normalizeCounterEntry(source.monochrome),
+    cooper: normalizeCounterEntry(source.cooper ?? source.coOp)
+  };
+}
+
+function migrateTotals(rawTotals = {}) {
+  const source = safeObject(rawTotals);
+
+  return {
+    trophies: Number(source.trophies || 52),
+    inari: Number(source.inari || 49),
+    hotsprings: Number(source.hotsprings ?? source.hotSpring ?? 18),
+    bamboo: Number(source.bamboo || 16),
+    haiku: Number(source.haiku || 19),
+    records: Number(source.records || 20),
+    artifacts: Number(source.artifacts || 20),
+    shrines: Number(source.shrines ?? source.shinto ?? 16),
+    lighthouses: Number(source.lighthouses ?? source.lighthouse ?? 8),
+    crickets: Number(source.crickets || 5),
+    hiddenaltars: Number(source.hiddenaltars ?? source.hiddenAltars ?? 10),
+    duels: Number(source.duels || 25),
+    territories: Number(source.territories ?? source.mongolTerritories ?? 56),
+    mythictales: Number(source.mythictales ?? source.mythic ?? 7),
+    sidetales: Number(source.sidetales ?? source.sideTales ?? 61),
+    monochrome: Number(source.monochrome || 2),
+    cooper: Number(source.cooper ?? source.coOp ?? 3)
+  };
+}
+
 function sanitizeLoadedState(raw) {
   const fallback = getDefaultState();
 
@@ -101,17 +163,13 @@ function sanitizeLoadedState(raw) {
   return {
     timer: {
       startTime: raw.timer?.startTime ?? fallback.timer.startTime,
-      elapsed: Number(raw.timer?.elapsed || 0),
+      elapsed: Math.max(0, Number(raw.timer?.elapsed || 0)),
       running: !!raw.timer?.running
     },
 
-    counters: typeof raw.counters === "object" && raw.counters !== null
-      ? raw.counters
-      : fallback.counters,
+    counters: migrateCounters(raw.counters),
 
-    totals: typeof raw.totals === "object" && raw.totals !== null
-      ? raw.totals
-      : fallback.totals,
+    totals: migrateTotals(raw.totals),
 
     splits: {
       currentIndex: Number(raw.splits?.currentIndex || 0),
