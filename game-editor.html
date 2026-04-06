@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Game Editor</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app">
+    <div class="top">
+      <div>
+        <div class="eyebrow">Routing Tool</div>
+        <div class="title">Game Editor</div>
+        <div class="subtitle">Generate new game entries</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="fields">
+        <label class="field">
+          <span>Game ID</span>
+          <input id="gameId" placeholder="ghost-of-tsushima" />
+        </label>
+
+        <label class="field">
+          <span>Title</span>
+          <input id="gameTitle" placeholder="Ghost of Tsushima" />
+        </label>
+
+        <label class="field">
+          <span>Path (optional)</span>
+          <input id="gamePath" placeholder="./data/ghost-of-tsushima" />
+        </label>
+      </div>
+
+      <div class="row" style="margin-top:12px;gap:8px;">
+        <button id="generateBtn" class="btn primary">Generate Entry</button>
+        <button id="copyBtn" class="btn">Copy JSON</button>
+        <button id="downloadBtn" class="btn">Download</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="eyebrow">Output</div>
+      <pre id="output" class="card" style="overflow:auto;"></pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/game-editor.js"></script>
+</body>
+</html>
