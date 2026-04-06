@@ -1,10 +1,10 @@
-// phases-page.js
+// js/phases-page.js
 
-import { loadGameData } from "./js/data-loader.js";
-import { getState, updateState, subscribe } from "./js/storage.js";
-import { createActsEditor } from "./js/acts-editor.js";
-import { createDebugger } from "./js/debug.js";
-import { clamp, normalizeSplits, getActivePhaseId } from "./js/split-logic.js";
+import { loadGameData } from "./data-loader.js";
+import { getState, updateState, subscribe } from "./storage.js";
+import { createActsEditor } from "./acts-editor.js";
+import { createDebugger } from "./debug.js";
+import { clamp, normalizeSplits, getActivePhaseId } from "./split-logic.js";
 
 const GAME_ID = "ghost-of-tsushima";
 
@@ -15,6 +15,10 @@ let actsEditorApi = null;
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function safeObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 
 function normalizeCounterState(counterDefs, rawCounters = {}, rawTotals = {}) {
@@ -52,12 +56,25 @@ function buildInitialState(raw = {}) {
     raw.totals || {}
   );
 
-  const splitItems = normalizeSplits(raw.splits, gameData?.defaultSplits || []);
-  const currentIndex = clamp(Number(raw.splits?.currentIndex || 0), 0, splitItems.length);
+  const rawSplitBlock = raw?.splits;
+  const rawSplitItems =
+    Array.isArray(rawSplitBlock?.items)
+      ? rawSplitBlock.items
+      : Array.isArray(rawSplitBlock)
+        ? rawSplitBlock
+        : [];
+
+  const splitItems = normalizeSplits(rawSplitItems, gameData?.defaultSplits || []);
+  const currentIndex = clamp(Number(raw?.splits?.currentIndex || 0), 0, splitItems.length);
+
+  const phaseSource =
+    Object.keys(safeObject(raw?.phases)).length > 0
+      ? raw.phases
+      : gameData?.phases || {};
 
   const phase =
     raw.phase ||
-    getActivePhaseId(splitItems, currentIndex, gameData?.phases || {}) ||
+    getActivePhaseId(splitItems, currentIndex, phaseSource) ||
     "legacy_all";
 
   return {
@@ -72,11 +89,14 @@ function buildInitialState(raw = {}) {
 
     splits: {
       currentIndex,
-      completed: Array.isArray(raw.splits?.completed) ? raw.splits.completed : [],
+      completed: Array.isArray(raw?.splits?.completed) ? raw.splits.completed : [],
       items: splitItems
     },
 
     phase,
+
+    phases: safeObject(raw?.phases),
+    quotas: safeObject(raw?.quotas),
 
     settings: {
       difficulty: raw.settings?.difficulty || "Lethal",
@@ -92,12 +112,30 @@ function buildInitialState(raw = {}) {
       settingsOpen: !!raw.ui?.settingsOpen
     },
 
-    gameId: GAME_ID
+    gameId: raw.gameId || GAME_ID
   };
 }
 
 function getCurrentState() {
   return buildInitialState(getState());
+}
+
+function getEffectivePhases(rawState = null) {
+  const source = rawState || getState();
+  const stored = safeObject(source?.phases);
+  return Object.keys(stored).length ? stored : safeObject(gameData?.phases);
+}
+
+function getEffectiveQuotas(rawState = null) {
+  const source = rawState || getState();
+  const stored = safeObject(source?.quotas);
+  return Object.keys(stored).length ? stored : safeObject(gameData?.quotas);
+}
+
+function syncGameDataFromState(rawState = null) {
+  const source = rawState || getState();
+  gameData.phases = clone(getEffectivePhases(source));
+  gameData.quotas = clone(getEffectiveQuotas(source));
 }
 
 function renderHeader() {
@@ -113,22 +151,27 @@ function renderSummary(state) {
   const activePhase = state.phase || "legacy_all";
 
   if (subtitles[0]) {
-    subtitles[0].textContent = `${phaseCount} phases loaded. Edit labels, notes, visible objectives, and quota targets here.`;
+    subtitles[0].textContent = `${phaseCount} phases loaded. Edit labels, notes, visible objectives, quota targets, and pacing here.`;
   }
 
   const notesCard = document.querySelector(".panel .card .subtitle");
   if (notesCard) {
     notesCard.textContent =
-      `Current active phase: ${activePhase}. Visible objectives and quotas should match your split flow, including lighthouse support.`;
+      `Current active phase: ${activePhase}. Visible objectives, quotas, and target minutes should match your split flow, including lighthouse support.`;
   }
 }
 
 function syncPhaseToCurrentSplits(nextState) {
+  const phaseSource =
+    Object.keys(safeObject(nextState?.phases)).length > 0
+      ? nextState.phases
+      : gameData?.phases || {};
+
   nextState.phase =
     getActivePhaseId(
       nextState.splits?.items || [],
       Number(nextState.splits?.currentIndex || 0),
-      gameData?.phases || {}
+      phaseSource
     ) || "legacy_all";
 
   return nextState;
@@ -166,19 +209,31 @@ function setupActsEditor() {
     getCounterDefs: () => gameData?.counters || {},
 
     setPhases: (phases) => {
-      gameData.phases = clone(phases || {});
+      const nextPhases = clone(phases || {});
+      gameData.phases = nextPhases;
 
       updateState((raw) => {
         const state = buildInitialState(raw);
+        state.phases = nextPhases;
         return syncPhaseToCurrentSplits(state);
       });
     },
 
     setQuotas: (quotas) => {
-      gameData.quotas = clone(quotas || {});
+      const nextQuotas = clone(quotas || {});
+      gameData.quotas = nextQuotas;
+
+      updateState((raw) => {
+        const state = buildInitialState(raw);
+        state.quotas = nextQuotas;
+        return state;
+      });
     },
 
     onAfterSave: () => {
+      const rawState = getState();
+      syncGameDataFromState(rawState);
+
       const state = getCurrentState();
       renderSummary(state);
 
@@ -196,6 +251,8 @@ function setupActsEditor() {
 
 function setupSubscriptions() {
   subscribe((raw) => {
+    syncGameDataFromState(raw);
+
     const state = buildInitialState(raw);
     renderSummary(state);
 
@@ -210,8 +267,27 @@ function setupSubscriptions() {
 async function boot() {
   gameData = await loadGameData(GAME_ID);
 
+  const rawState = getState();
+
+  if (Object.keys(safeObject(rawState?.phases)).length > 0) {
+    gameData.phases = clone(rawState.phases);
+  }
+
+  if (Object.keys(safeObject(rawState?.quotas)).length > 0) {
+    gameData.quotas = clone(rawState.quotas);
+  }
+
   updateState((raw) => {
     const state = buildInitialState(raw);
+
+    if (!Object.keys(safeObject(state.phases)).length && Object.keys(safeObject(gameData?.phases)).length) {
+      state.phases = clone(gameData.phases);
+    }
+
+    if (!Object.keys(safeObject(state.quotas)).length && Object.keys(safeObject(gameData?.quotas)).length) {
+      state.quotas = clone(gameData.quotas);
+    }
+
     return syncPhaseToCurrentSplits(state);
   });
 
