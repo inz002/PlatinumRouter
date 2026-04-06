@@ -43,6 +43,7 @@ export function createRenderController({ gameData, debug, getCurrentState }) {
 
     const routeDifficulty =
       gameData?.meta?.difficulty ||
+      gameData?.meta?.defaultDifficulty ||
       state?.settings?.difficulty ||
       "Lethal";
 
