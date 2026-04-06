@@ -1,10 +1,10 @@
-// splits-page.js
+// js/splits-page.js
 
-import { loadGameData } from "./js/data-loader.js";
-import { getState, updateState, subscribe } from "./js/storage.js";
-import { createSplitEditor } from "./js/split-editor.js";
-import { createDebugger } from "./js/debug.js";
-import { clamp, normalizeSplits } from "./js/split-logic.js";
+import { loadGameData } from "./data-loader.js";
+import { getState, updateState, subscribe } from "./storage.js";
+import { createSplitEditor } from "./split-editor.js";
+import { createDebugger } from "./debug.js";
+import { clamp, normalizeSplits } from "./split-logic.js";
 
 const GAME_ID = "ghost-of-tsushima";
 
@@ -15,6 +15,10 @@ let splitEditorApi = null;
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function safeObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 
 function normalizeCounterState(counterDefs, rawCounters = {}, rawTotals = {}) {
@@ -52,7 +56,15 @@ function buildInitialState(raw = {}) {
     raw.totals || {}
   );
 
-  const splits = normalizeSplits(raw.splits, gameData?.defaultSplits || []);
+  const rawSplitBlock = raw?.splits;
+  const rawSplitItems =
+    Array.isArray(rawSplitBlock?.items)
+      ? rawSplitBlock.items
+      : Array.isArray(rawSplitBlock)
+        ? rawSplitBlock
+        : [];
+
+  const splits = normalizeSplits(rawSplitItems, gameData?.defaultSplits || []);
   const splitCount = splits.length;
 
   return {
@@ -73,6 +85,9 @@ function buildInitialState(raw = {}) {
 
     phase: raw.phase || "legacy_all",
 
+    phases: safeObject(raw?.phases),
+    quotas: safeObject(raw?.quotas),
+
     settings: {
       difficulty: raw.settings?.difficulty || "Lethal",
       act1TargetMinutes: Number(raw.settings?.act1TargetMinutes || 180),
@@ -87,12 +102,23 @@ function buildInitialState(raw = {}) {
       settingsOpen: !!raw.ui?.settingsOpen
     },
 
-    gameId: GAME_ID
+    gameId: raw.gameId || GAME_ID
   };
 }
 
 function getCurrentState() {
   return buildInitialState(getState());
+}
+
+function getEffectivePhases(rawState = null) {
+  const source = rawState || getState();
+  const stored = safeObject(source?.phases);
+  return Object.keys(stored).length ? stored : safeObject(gameData?.phases);
+}
+
+function syncGameDataFromState(rawState = null) {
+  const source = rawState || getState();
+  gameData.phases = clone(getEffectivePhases(source));
 }
 
 function renderHeader() {
@@ -103,11 +129,12 @@ function renderHeader() {
 }
 
 function renderSummary(state) {
-  const subtitle = document.querySelector(".subtitle");
-  if (!subtitle) return;
-
+  const subtitles = document.querySelectorAll(".subtitle");
   const splitCount = state.splits?.items?.length || 0;
-  subtitle.textContent = `${splitCount} splits loaded. Edit names, phases, notes, and auto-progress here.`;
+
+  if (subtitles[0]) {
+    subtitles[0].textContent = `${splitCount} splits loaded. Edit names, phases, notes, and auto-progress here.`;
+  }
 }
 
 function bindStandaloneButtons() {
@@ -176,6 +203,8 @@ function setupSplitEditor() {
 
 function setupSubscriptions() {
   subscribe((raw) => {
+    syncGameDataFromState(raw);
+
     const state = buildInitialState(raw);
     renderSummary(state);
 
@@ -188,6 +217,8 @@ function setupSubscriptions() {
 
 async function boot() {
   gameData = await loadGameData(GAME_ID);
+
+  syncGameDataFromState(getState());
 
   updateState((raw) => buildInitialState(raw));
 
