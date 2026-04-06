@@ -4,6 +4,15 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function normalizeId(value) {
   return String(value || "")
     .trim()
@@ -11,6 +20,19 @@ function normalizeId(value) {
     .replace(/['"]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+function normalizeCounterKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/['"]/g, "")
+    .replace(/[^a-z0-9]+/g, "")
+    .replace(/^-+|-+$/g, "");
+}
+
+function safeArray(value) {
+  return Array.isArray(value) ? value : [];
 }
 
 function prettyJson(value) {
@@ -45,33 +67,150 @@ async function copyText(text) {
   }
 }
 
-function parseCounters(text) {
-  const lines = String(text || "")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line) => !line.startsWith("//") && !line.startsWith("#"));
+function normalizeCounterRow(row = {}, index = 0) {
+  const key = normalizeCounterKey(row.key || `counter${index + 1}`);
+  const max = Number(row.max || 0);
+  const act1 = Number(row.act1 || 0);
 
-  const counters = {};
+  return {
+    key,
+    label: String(row.label || key || `Counter ${index + 1}`).trim(),
+    icon: String(row.icon || ""),
+    max: Number.isFinite(max) && max >= 0 ? max : 0,
+    act1: Number.isFinite(act1) && act1 >= 0 ? act1 : 0
+  };
+}
 
-  lines.forEach((line) => {
-    const parts = line.split("|").map((part) => part.trim());
-    const key = normalizeId(parts[0] || "");
-    const label = parts[1] || key;
-    const max = Number(parts[2] || 0);
-    const icon = parts[3] || "";
+function buildCounterRowHtml(row, index) {
+  const item = normalizeCounterRow(row, index);
 
-    if (!key) return;
+  return `
+    <div class="editorCard" data-counter-row="${index}">
+      <div class="row between" style="margin-bottom:12px;gap:8px;align-items:flex-start">
+        <div>
+          <div class="eyebrow">Counter ${index + 1}</div>
+          <div class="mid">${escapeHtml(item.label || item.key || `Counter ${index + 1}`)}</div>
+        </div>
 
-    counters[key] = {
-      label,
-      icon,
-      max: Number.isFinite(max) && max > 0 ? max : 0,
-      act1: 0
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn" data-row-action="move-up">↑</button>
+          <button type="button" class="btn" data-row-action="move-down">↓</button>
+          <button type="button" class="btn danger" data-row-action="delete">Delete</button>
+        </div>
+      </div>
+
+      <div class="fields">
+        <label class="field">
+          <span>Key</span>
+          <input type="text" data-field="key" value="${escapeHtml(item.key)}" placeholder="trophies" />
+        </label>
+
+        <label class="field">
+          <span>Label</span>
+          <input type="text" data-field="label" value="${escapeHtml(item.label)}" placeholder="Trophies" />
+        </label>
+      </div>
+
+      <div class="fields">
+        <label class="field">
+          <span>Icon</span>
+          <input type="text" data-field="icon" value="${escapeHtml(item.icon)}" placeholder="🏆" />
+        </label>
+
+        <label class="field">
+          <span>Max</span>
+          <input type="number" min="0" step="1" data-field="max" value="${item.max}" />
+        </label>
+
+        <label class="field">
+          <span>Act 1</span>
+          <input type="number" min="0" step="1" data-field="act1" value="${item.act1}" />
+        </label>
+      </div>
+    </div>
+  `;
+}
+
+let workingCounters = [];
+let initialCounters = [];
+let currentPackage = null;
+
+function getFormValues() {
+  const rawGameId = document.getElementById("gameIdInput")?.value || "";
+  const gameId = normalizeId(rawGameId);
+  const title = String(document.getElementById("gameTitleInput")?.value || "").trim();
+  const subtitle = String(document.getElementById("gameSubtitleInput")?.value || "").trim();
+  const difficulty = String(document.getElementById("gameDifficultyInput")?.value || "").trim();
+  const defaultPhaseId = normalizeId(document.getElementById("defaultPhaseIdInput")?.value || "legacy_all");
+  const defaultPhaseLabel = String(document.getElementById("defaultPhaseLabelInput")?.value || "").trim() || "Legacy All";
+
+  return {
+    gameId,
+    title,
+    subtitle,
+    difficulty,
+    defaultPhaseId,
+    defaultPhaseLabel
+  };
+}
+
+function refreshCounterHeaderTitles() {
+  const gridEl = document.getElementById("counterBuilderGrid");
+  if (!gridEl) return;
+
+  gridEl.querySelectorAll("[data-counter-row]").forEach((row, index) => {
+    row.dataset.counterRow = String(index);
+
+    const labelInput = row.querySelector('[data-field="label"]');
+    const keyInput = row.querySelector('[data-field="key"]');
+    const eyebrow = row.querySelector(".eyebrow");
+    const title = row.querySelector(".mid");
+
+    if (eyebrow) eyebrow.textContent = `Counter ${index + 1}`;
+    if (title) {
+      title.textContent =
+        labelInput?.value?.trim() ||
+        keyInput?.value?.trim() ||
+        `Counter ${index + 1}`;
+    }
+  });
+}
+
+function collectCountersFromDom() {
+  const gridEl = document.getElementById("counterBuilderGrid");
+  if (!gridEl) return [];
+
+  const rows = Array.from(gridEl.querySelectorAll("[data-counter-row]"));
+
+  workingCounters = rows.map((row, index) => {
+    return normalizeCounterRow({
+      key: row.querySelector('[data-field="key"]')?.value || "",
+      label: row.querySelector('[data-field="label"]')?.value || "",
+      icon: row.querySelector('[data-field="icon"]')?.value || "",
+      max: row.querySelector('[data-field="max"]')?.value || 0,
+      act1: row.querySelector('[data-field="act1"]')?.value || 0
+    }, index);
+  });
+
+  return clone(workingCounters);
+}
+
+function buildCountersJson(rows) {
+  const result = {};
+
+  rows.forEach((row, index) => {
+    const item = normalizeCounterRow(row, index);
+    if (!item.key) return;
+
+    result[item.key] = {
+      label: item.label || item.key,
+      icon: item.icon || "",
+      max: item.max,
+      act1: item.act1
     };
   });
 
-  return counters;
+  return result;
 }
 
 function buildGamesJsonEntry(gameId, title) {
@@ -122,16 +261,9 @@ function buildDefaultSplitsJson(defaultPhaseId) {
   };
 }
 
-function buildPackage({
-  gameId,
-  title,
-  subtitle,
-  difficulty,
-  defaultPhaseId,
-  defaultPhaseLabel,
-  counters
-}) {
-  const counterKeys = Object.keys(counters);
+function buildPackage({ gameId, title, subtitle, difficulty, defaultPhaseId, defaultPhaseLabel }, rows) {
+  const countersJson = buildCountersJson(rows);
+  const counterKeys = Object.keys(countersJson);
 
   return {
     gamesJson: {
@@ -145,7 +277,7 @@ function buildPackage({
 
     metaJson: buildMetaJson(title, subtitle, difficulty),
 
-    countersJson: counters,
+    countersJson,
 
     phasesJson: buildPhasesJson(defaultPhaseId, defaultPhaseLabel, counterKeys),
 
@@ -155,43 +287,35 @@ function buildPackage({
   };
 }
 
-function getFormValues() {
-  const rawGameId = document.getElementById("gameIdInput")?.value || "";
-  const gameId = normalizeId(rawGameId);
-  const title = String(document.getElementById("gameTitleInput")?.value || "").trim();
-  const subtitle = String(document.getElementById("gameSubtitleInput")?.value || "").trim();
-  const difficulty = String(document.getElementById("gameDifficultyInput")?.value || "").trim();
-  const defaultPhaseId = normalizeId(document.getElementById("defaultPhaseIdInput")?.value || "legacy_all");
-  const defaultPhaseLabel = String(document.getElementById("defaultPhaseLabelInput")?.value || "").trim() || "Legacy All";
-  const countersText = document.getElementById("countersInput")?.value || "";
+function renderCounterBuilder() {
+  const gridEl = document.getElementById("counterBuilderGrid");
+  if (!gridEl) return;
 
-  return {
-    gameId,
-    title,
-    subtitle,
-    difficulty,
-    defaultPhaseId,
-    defaultPhaseLabel,
-    counters: parseCounters(countersText)
-  };
+  if (!workingCounters.length) {
+    gridEl.innerHTML = `
+      <div class="editorCard">
+        <div class="mid">No counters yet.</div>
+        <div class="subtitle" style="margin-top:8px">Add a counter to begin.</div>
+      </div>
+    `;
+    renderLiveCountersPreview();
+    return;
+  }
+
+  gridEl.innerHTML = workingCounters
+    .map((row, index) => buildCounterRowHtml(row, index))
+    .join("");
+
+  refreshCounterHeaderTitles();
+  renderLiveCountersPreview();
 }
 
-function validateInput(values) {
-  if (!values.gameId) {
-    throw new Error("Game ID is required.");
-  }
+function renderLiveCountersPreview() {
+  const rows = document.querySelectorAll("[data-counter-row]").length
+    ? collectCountersFromDom()
+    : workingCounters;
 
-  if (!values.title) {
-    throw new Error("Game title is required.");
-  }
-
-  if (!values.defaultPhaseId) {
-    throw new Error("Default phase ID is required.");
-  }
-
-  if (!Object.keys(values.counters).length) {
-    throw new Error("Add at least one counter.");
-  }
+  setText("countersJsonOutput", prettyJson(buildCountersJson(rows)));
 }
 
 function renderPackage(pkg) {
@@ -236,18 +360,87 @@ function buildZiplessBundle(pkg, gameId) {
   };
 }
 
-let currentPackage = null;
+function validateInput(values, rows) {
+  if (!values.gameId) {
+    throw new Error("Game ID is required.");
+  }
+
+  if (!values.title) {
+    throw new Error("Game title is required.");
+  }
+
+  if (!values.defaultPhaseId) {
+    throw new Error("Default phase ID is required.");
+  }
+
+  if (!safeArray(rows).length) {
+    throw new Error("Add at least one counter.");
+  }
+
+  const keys = rows.map((row) => normalizeCounterRow(row).key).filter(Boolean);
+  const unique = new Set(keys);
+
+  if (keys.length !== unique.size) {
+    throw new Error("Counter keys must be unique.");
+  }
+}
 
 function generate() {
   try {
     const values = getFormValues();
-    validateInput(values);
+    const rows = collectCountersFromDom();
 
-    currentPackage = buildPackage(values);
+    validateInput(values, rows);
+
+    currentPackage = buildPackage(values, rows);
     renderPackage(currentPackage);
   } catch (error) {
     alert(error.message || "Failed to generate scaffold.");
   }
+}
+
+function addCounter() {
+  collectCountersFromDom();
+
+  workingCounters.push(normalizeCounterRow({
+    key: `counter${workingCounters.length + 1}`,
+    label: `Counter ${workingCounters.length + 1}`,
+    icon: "",
+    max: 0,
+    act1: 0
+  }, workingCounters.length));
+
+  renderCounterBuilder();
+}
+
+function resetCounters() {
+  workingCounters = clone(initialCounters);
+  renderCounterBuilder();
+}
+
+function moveCounterRow(index, direction) {
+  collectCountersFromDom();
+
+  const target = index + direction;
+  if (target < 0 || target >= workingCounters.length) return;
+
+  const next = [...workingCounters];
+  const temp = next[index];
+  next[index] = next[target];
+  next[target] = temp;
+
+  workingCounters = next.map((row, i) => normalizeCounterRow(row, i));
+  renderCounterBuilder();
+}
+
+function deleteCounterRow(index) {
+  collectCountersFromDom();
+
+  workingCounters = workingCounters
+    .filter((_, i) => i !== index)
+    .map((row, i) => normalizeCounterRow(row, i));
+
+  renderCounterBuilder();
 }
 
 function loadExample() {
@@ -257,7 +450,6 @@ function loadExample() {
   const gameDifficultyInput = document.getElementById("gameDifficultyInput");
   const defaultPhaseIdInput = document.getElementById("defaultPhaseIdInput");
   const defaultPhaseLabelInput = document.getElementById("defaultPhaseLabelInput");
-  const countersInput = document.getElementById("countersInput");
 
   if (gameIdInput) gameIdInput.value = "ghost-of-tsushima";
   if (gameTitleInput) gameTitleInput.value = "Ghost of Tsushima";
@@ -266,33 +458,37 @@ function loadExample() {
   if (defaultPhaseIdInput) defaultPhaseIdInput.value = "legacy_all";
   if (defaultPhaseLabelInput) defaultPhaseLabelInput.value = "Legacy All";
 
-  if (countersInput) {
-    countersInput.value = [
-      "trophies | Trophies | 52 | 🏆",
-      "inari | Inari Shrines | 49 | 🦊",
-      "hotsprings | Hot Springs | 18 | ♨️",
-      "bamboo | Bamboo Strikes | 16 | 🎋",
-      "haiku | Haiku | 19 | 📝",
-      "records | Records | 20 | 📜",
-      "artifacts | Artifacts | 20 | 🏺",
-      "shrines | Shinto Shrines | 16 | ⛩️",
-      "lighthouses | Lighthouses | 8 | 🔥",
-      "crickets | Crickets | 5 | 🦗",
-      "hiddenaltars | Hidden Altars | 10 | 🕯️",
-      "duels | Duels | 25 | ⚔️",
-      "territories | Mongol Territories | 56 | 🏕️",
-      "mythictales | Mythic Tales | 7 | 🌩️",
-      "sidetales | Side Tales | 61 | 📖",
-      "monochrome | Monochrome | 2 | 🎨",
-      "cooper | Cooper | 3 | 🦝"
-    ].join("\n");
-  }
+  workingCounters = [
+    { key: "trophies", label: "Trophies", icon: "🏆", max: 52, act1: 0 },
+    { key: "inari", label: "Inari Shrines", icon: "🦊", max: 49, act1: 22 },
+    { key: "hotsprings", label: "Hot Springs", icon: "♨️", max: 18, act1: 9 },
+    { key: "bamboo", label: "Bamboo Strikes", icon: "🎋", max: 16, act1: 6 },
+    { key: "haiku", label: "Haiku", icon: "📝", max: 19, act1: 8 },
+    { key: "records", label: "Records", icon: "📜", max: 20, act1: 0 },
+    { key: "artifacts", label: "Artifacts", icon: "🏺", max: 20, act1: 0 },
+    { key: "shrines", label: "Shinto Shrines", icon: "⛩️", max: 16, act1: 7 },
+    { key: "lighthouses", label: "Lighthouses", icon: "🔥", max: 8, act1: 3 },
+    { key: "crickets", label: "Crickets", icon: "🦗", max: 5, act1: 0 },
+    { key: "hiddenaltars", label: "Hidden Altars", icon: "🕯️", max: 10, act1: 0 },
+    { key: "duels", label: "Duels", icon: "⚔️", max: 25, act1: 0 },
+    { key: "territories", label: "Mongol Territories", icon: "🏕️", max: 56, act1: 0 },
+    { key: "mythictales", label: "Mythic Tales", icon: "🌩️", max: 7, act1: 0 },
+    { key: "sidetales", label: "Side Tales", icon: "📖", max: 61, act1: 0 },
+    { key: "monochrome", label: "Monochrome", icon: "🎨", max: 2, act1: 0 },
+    { key: "cooper", label: "Cooper", icon: "🦝", max: 3, act1: 0 }
+  ].map((row, index) => normalizeCounterRow(row, index));
 
+  initialCounters = clone(workingCounters);
+  renderCounterBuilder();
   generate();
 }
 
-function setup() {
+function setupEvents() {
+  const gridEl = document.getElementById("counterBuilderGrid");
+
   document.getElementById("loadExampleBtn")?.addEventListener("click", loadExample);
+  document.getElementById("addCounterBtn")?.addEventListener("click", addCounter);
+  document.getElementById("resetCountersBtn")?.addEventListener("click", resetCounters);
   document.getElementById("generateBtn")?.addEventListener("click", generate);
 
   document.getElementById("copyGamesBtn")?.addEventListener("click", async () => {
@@ -302,19 +498,66 @@ function setup() {
 
   document.getElementById("copyPackageBtn")?.addEventListener("click", async () => {
     if (!currentPackage) return;
-
     const values = getFormValues();
     await copyText(buildPackageText(currentPackage, values.gameId));
   });
 
   document.getElementById("downloadPackageBtn")?.addEventListener("click", () => {
     if (!currentPackage) return;
-
     const values = getFormValues();
     const bundle = buildZiplessBundle(currentPackage, values.gameId);
-
     downloadText(`${values.gameId}-package.json`, prettyJson(bundle));
+  });
+
+  gridEl?.addEventListener("input", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+
+    if (target.dataset.field === "key") {
+      target.value = normalizeCounterKey(target.value);
+    }
+
+    const row = target.closest("[data-counter-row]");
+    if (row) {
+      const title = row.querySelector(".mid");
+      const labelInput = row.querySelector('[data-field="label"]');
+      const keyInput = row.querySelector('[data-field="key"]');
+      const index = Number(row.dataset.counterRow || 0);
+
+      if (title) {
+        title.textContent =
+          labelInput?.value?.trim() ||
+          keyInput?.value?.trim() ||
+          `Counter ${index + 1}`;
+      }
+    }
+
+    renderLiveCountersPreview();
+  });
+
+  gridEl?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-row-action]");
+    if (!button) return;
+
+    const row = button.closest("[data-counter-row]");
+    if (!row) return;
+
+    const index = Number(row.dataset.counterRow || 0);
+    const action = button.dataset.rowAction;
+
+    if (action === "move-up") moveCounterRow(index, -1);
+    if (action === "move-down") moveCounterRow(index, 1);
+    if (action === "delete") deleteCounterRow(index);
   });
 }
 
-setup();
+function boot() {
+  workingCounters = [];
+  initialCounters = [];
+  currentPackage = null;
+
+  setupEvents();
+  renderCounterBuilder();
+}
+
+boot();
