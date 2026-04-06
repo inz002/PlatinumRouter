@@ -68,49 +68,35 @@
         <div class="panel">
           <button id="settingsToggle" class="btn full">⚙ Show Settings</button>
 
-          <div id="settingsPanel" class="settings">
-            <div class="fields">
-              <div class="field">
-                <label for="difficultySelect">Difficulty</label>
-                <select id="difficultySelect">
-                  <option value="Lethal">Lethal</option>
-                  <option value="Easy">Easy</option>
-                </select>
-              </div>
+          <div id="settingsPanel" class="settings" hidden>
+            <div class="eyebrow" style="margin-bottom:10px">Run Data</div>
 
-              <div class="field">
-                <label for="act1TargetMinutes">Act target minutes</label>
-                <input id="act1TargetMinutes" type="number" value="180" />
-              </div>
-
-              <div class="field">
-                <label for="remoteCode">Remote control code</label>
-                <input id="remoteCode" type="text" placeholder="Optional remote room code" />
-              </div>
-            </div>
-
-            <div class="row">
+            <div class="row" style="flex-wrap:wrap;gap:8px">
               <button id="exportTimesBtn" class="btn">⬇ Times</button>
+
               <label class="btn">
                 ⬆ Times
                 <input id="importTimesInput" type="file" accept="application/json" hidden />
               </label>
-              <button id="exportSplitsBtn" class="btn">⬇ Splits</button>
+
               <label class="btn">
                 ⬆ Splits
                 <input id="importSplitsInput" type="file" accept="application/json" hidden />
               </label>
+
               <button id="resetBtn" class="btn danger">↺ Reset</button>
             </div>
 
-            <div class="debugDock">
-              <div class="row">
+            <div class="debugDock" style="margin-top:14px">
+              <div class="eyebrow" style="margin-bottom:10px">Debug</div>
+
+              <div class="row" style="flex-wrap:wrap;gap:8px">
                 <button id="debugToggle" class="btn">🐞 Show Debug</button>
                 <button id="debugClear" class="btn">Clear Logs</button>
                 <button id="debugCopy" class="btn">Copy Snapshot</button>
               </div>
 
-              <div id="debugPanel" class="debugPanel">
+              <div id="debugPanel" class="debugPanel" hidden>
                 <div class="debugSection">
                   <div class="eyebrow">Status</div>
                   <div id="debugStatus"></div>
