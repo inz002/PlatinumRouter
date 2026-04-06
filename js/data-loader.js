@@ -25,7 +25,9 @@ function clone(value) {
 function normalizeMeta(meta = {}) {
   return {
     title: meta.title || "Ghost of Tsushima",
-    subtitle: meta.subtitle || "Speedrun Controller"
+    subtitle: meta.subtitle || "Speedrun Controller",
+    difficulty: meta.difficulty || meta.defaultDifficulty || "Lethal",
+    defaultDifficulty: meta.defaultDifficulty || meta.difficulty || "Lethal"
   };
 }
 
