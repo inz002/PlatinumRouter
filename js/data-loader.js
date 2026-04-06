@@ -115,20 +115,41 @@ function normalizeGameData(raw = {}) {
   };
 }
 
-async function resolveGameFolder(gameId) {
-  const games = await fetchJson(`${BASE_PATH}/games.json`, {});
-
-  if (typeof games === "object" && games !== null) {
-    if (games[gameId]?.folder) return games[gameId].folder;
-    if (typeof games[gameId] === "string") return games[gameId];
+function normalizeResolvedPath(pathValue, gameId) {
+  if (typeof pathValue !== "string" || !pathValue.trim()) {
+    return `${BASE_PATH}/${gameId}`;
   }
 
-  return gameId;
+  let path = pathValue.trim();
+
+  if (path.startsWith("./")) {
+    path = path.slice(2);
+  }
+
+  return `./${path}`;
+}
+
+async function resolveGameFolder(gameId) {
+  const manifest = await fetchJson(`${BASE_PATH}/games.json`, {
+    defaultGameId: "",
+    games: []
+  });
+
+  const games = Array.isArray(manifest?.games) ? manifest.games : [];
+
+  const match =
+    games.find((game) => game?.id === gameId) ||
+    games.find((game) => game?.id === manifest?.defaultGameId);
+
+  if (!match) {
+    return `${BASE_PATH}/${gameId}`;
+  }
+
+  return normalizeResolvedPath(match.path, match.id || gameId);
 }
 
 export async function loadGameData(gameId) {
-  const folder = await resolveGameFolder(gameId);
-  const root = `${BASE_PATH}/${folder}`;
+  const root = await resolveGameFolder(gameId);
 
   const [meta, counters, defaultSplits, phases, quotas] = await Promise.all([
     fetchJson(`${root}/meta.json`, {}),
