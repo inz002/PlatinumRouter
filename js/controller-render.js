@@ -36,45 +36,30 @@ export function createRenderController({ gameData, debug, getCurrentState }) {
   }
 
   function updateExtraUi(state) {
+    const routeTitle =
+      gameData?.meta?.title
+        ? `${gameData.meta.title} Platinum`
+        : "Ghost of Tsushima Platinum";
+
+    const routeDifficulty =
+      gameData?.meta?.difficulty ||
+      state?.settings?.difficulty ||
+      "Lethal";
+
     const runTitle = document.getElementById("runTitle");
     if (runTitle) {
-      runTitle.textContent = `Ghost of Tsushima Platinum ${state?.settings?.difficulty || "Lethal"}`;
+      runTitle.textContent = `${routeTitle} ${routeDifficulty}`;
     }
 
     const difficultyBadge = document.getElementById("difficultyBadge");
     if (difficultyBadge) {
-      const difficulty = state?.settings?.difficulty || "Lethal";
-      difficultyBadge.textContent = difficulty;
-      difficultyBadge.classList.toggle("lethal", difficulty === "Lethal");
+      difficultyBadge.textContent = routeDifficulty;
+      difficultyBadge.classList.toggle("lethal", routeDifficulty === "Lethal");
     }
 
     const pacePill = document.getElementById("pacePill");
     if (pacePill) {
       pacePill.textContent = computePaceText(state);
-    }
-
-    const difficultySelect = document.getElementById("difficultySelect");
-    if (difficultySelect) {
-      const nextValue = state?.settings?.difficulty || "Lethal";
-      if (difficultySelect.value !== nextValue) {
-        difficultySelect.value = nextValue;
-      }
-    }
-
-    const act1TargetMinutes = document.getElementById("act1TargetMinutes");
-    if (act1TargetMinutes) {
-      const nextValue = Number(state?.settings?.act1TargetMinutes || 180);
-      if (Number(act1TargetMinutes.value) !== nextValue) {
-        act1TargetMinutes.value = String(nextValue);
-      }
-    }
-
-    const remoteCode = document.getElementById("remoteCode");
-    if (remoteCode) {
-      const nextValue = state?.settings?.remoteCode || "";
-      if (remoteCode.value !== nextValue) {
-        remoteCode.value = nextValue;
-      }
     }
 
     const startPauseBtn = document.getElementById("startPauseBtn");
@@ -115,7 +100,7 @@ export function createRenderController({ gameData, debug, getCurrentState }) {
 
     const modePill = document.getElementById("modePill");
     if (modePill) {
-      modePill.textContent = state?.settings?.difficulty || "Lethal";
+      modePill.textContent = routeDifficulty;
     }
 
     const queuePill = document.getElementById("queuePill");
