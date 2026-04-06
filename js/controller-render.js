@@ -1,180 +1,183 @@
-// js/controller-core.js
+// js/controller-render.js
 
-import { clamp, normalizeSplits, getActivePhaseId } from "./split-logic.js";
+import { renderUI } from "./ui-render.js";
+import { computePaceText, getActivePhase } from "./controller-core.js";
 
-export const DEFAULT_SETTINGS = {
-  difficulty: "Lethal",
-  act1TargetMinutes: 180,
-  remoteCode: ""
-};
+export function createRenderController({ gameData, debug, getCurrentState }) {
+  function buildCounterDefsForUi() {
+    const result = {};
 
-export const DEFAULT_MISC = {
-  dirgeDone: false
-};
+    Object.entries(gameData?.counters || {}).forEach(([key, def]) => {
+      result[key] = {
+        ...def,
+        max: Number(gameData?.counters?.[key]?.max || 0)
+      };
+    });
 
-export function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
+    return result;
+  }
 
-export function formatMs(ms) {
-  const totalSeconds = Math.floor((ms || 0) / 1000);
-  const h = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
-  const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
-  const s = String(totalSeconds % 60).padStart(2, "0");
-  return `${h}:${m}:${s}`;
-}
+  function buildUiCounters(state) {
+    const result = {};
 
-export function normalizeCounterState(counterDefs, rawCounters = {}, rawTotals = {}) {
-  const counters = {};
-  const totals = {};
+    Object.entries(gameData?.counters || {}).forEach(([key, def]) => {
+      result[key] = {
+        label: def.label,
+        shortLabel: def.shortLabel,
+        queueLabel: def.queueLabel,
+        icon: def.icon,
+        max: Number(state?.totals?.[key] || def.max || 0),
+        value: Number(state?.counters?.[key]?.value || 0),
+        manualDelta: Number(state?.counters?.[key]?.manualDelta || 0)
+      };
+    });
 
-  Object.entries(counterDefs || {}).forEach(([key, def]) => {
-    const rawValue =
-      typeof rawCounters[key] === "object"
-        ? Number(rawCounters[key]?.value || 0)
-        : Number(rawCounters[key] || 0);
+    return result;
+  }
 
-    const rawManualDelta =
-      typeof rawCounters[key] === "object"
-        ? Number(rawCounters[key]?.manualDelta || 0)
-        : 0;
+  function updateExtraUi(state) {
+    const runTitle = document.getElementById("runTitle");
+    if (runTitle) {
+      runTitle.textContent = `Ghost of Tsushima Platinum ${state?.settings?.difficulty || "Lethal"}`;
+    }
 
-    const max = Number(rawTotals[key] || def.max || 0);
+    const difficultyBadge = document.getElementById("difficultyBadge");
+    if (difficultyBadge) {
+      const difficulty = state?.settings?.difficulty || "Lethal";
+      difficultyBadge.textContent = difficulty;
+      difficultyBadge.classList.toggle("lethal", difficulty === "Lethal");
+    }
 
-    counters[key] = {
-      value: Number.isFinite(rawValue) ? clamp(rawValue, 0, max) : 0,
-      manualDelta: Number.isFinite(rawManualDelta) ? rawManualDelta : 0
+    const pacePill = document.getElementById("pacePill");
+    if (pacePill) {
+      pacePill.textContent = computePaceText(state);
+    }
+
+    const difficultySelect = document.getElementById("difficultySelect");
+    if (difficultySelect) {
+      const nextValue = state?.settings?.difficulty || "Lethal";
+      if (difficultySelect.value !== nextValue) {
+        difficultySelect.value = nextValue;
+      }
+    }
+
+    const act1TargetMinutes = document.getElementById("act1TargetMinutes");
+    if (act1TargetMinutes) {
+      const nextValue = Number(state?.settings?.act1TargetMinutes || 180);
+      if (Number(act1TargetMinutes.value) !== nextValue) {
+        act1TargetMinutes.value = String(nextValue);
+      }
+    }
+
+    const remoteCode = document.getElementById("remoteCode");
+    if (remoteCode) {
+      const nextValue = state?.settings?.remoteCode || "";
+      if (remoteCode.value !== nextValue) {
+        remoteCode.value = nextValue;
+      }
+    }
+
+    const startPauseBtn = document.getElementById("startPauseBtn");
+    if (startPauseBtn) {
+      startPauseBtn.textContent = state?.timer?.running ? "⏸ Pause" : "▶ Start";
+    }
+
+    const settingsPanel = document.getElementById("settingsPanel");
+    const settingsToggle = document.getElementById("settingsToggle");
+    const settingsOpen = !!state?.ui?.settingsOpen;
+
+    if (settingsPanel) {
+      settingsPanel.classList.toggle("open", settingsOpen);
+      settingsPanel.hidden = !settingsOpen;
+      settingsPanel.style.display = settingsOpen ? "block" : "none";
+    }
+
+    if (settingsToggle) {
+      settingsToggle.textContent = settingsOpen ? "⚙ Hide Settings" : "⚙ Show Settings";
+      settingsToggle.setAttribute("aria-expanded", String(settingsOpen));
+    }
+
+    const dirgeCheckbox = document.getElementById("dirgeCheckbox");
+    if (dirgeCheckbox) {
+      dirgeCheckbox.checked = !!state?.misc?.dirgeDone;
+    }
+
+    const currentSplitLabel = document.getElementById("currentSplitLabel");
+    const currentSplit = state?.splits?.items?.[state?.splits?.currentIndex] || null;
+    if (currentSplitLabel) {
+      currentSplitLabel.textContent = currentSplit?.label || "Run complete";
+    }
+
+    const historyCount = document.getElementById("historyCount");
+    if (historyCount) {
+      historyCount.textContent = `${(state?.splits?.completed || []).length} splits logged`;
+    }
+
+    const modePill = document.getElementById("modePill");
+    if (modePill) {
+      modePill.textContent = state?.settings?.difficulty || "Lethal";
+    }
+
+    const queuePill = document.getElementById("queuePill");
+    if (queuePill) {
+      queuePill.textContent = `${(state?.splits?.items || []).length} total splits`;
+    }
+
+    const historySaved = document.getElementById("historySaved");
+    if (historySaved) {
+      historySaved.textContent = `${(state?.splits?.completed || []).length} saved`;
+    }
+
+    const advanceCurrentBtn = document.getElementById("advanceCurrentBtn");
+    if (advanceCurrentBtn) {
+      const hasCurrentSplit = !!currentSplit;
+      advanceCurrentBtn.disabled = !hasCurrentSplit;
+      advanceCurrentBtn.textContent = hasCurrentSplit
+        ? "▶ Complete Current Split"
+        : "Run Complete";
+    }
+  }
+
+  function render() {
+    const state = getCurrentState();
+
+    const uiState = {
+      elapsedMs: Number(state?.timer?.elapsed || 0),
+      counters: buildUiCounters(state),
+      splits: state?.splits?.items || [],
+      currentSplitIndex: Number(state?.splits?.currentIndex || 0),
+      settings: {
+        ...(state?.settings || {}),
+        __timerRunning: !!state?.timer?.running
+      },
+      miscChecks: {
+        dirge: !!state?.misc?.dirgeDone
+      },
+      history: state?.splits?.completed || [],
+      activePhaseId: state?.phase || getActivePhase(state, gameData)
     };
 
-    totals[key] = max;
-  });
+    renderUI({
+      state: uiState,
+      counters: buildCounterDefsForUi(),
+      phases: gameData?.phases || {},
+      meta: gameData?.meta || {},
+      quotas: gameData?.quotas || {}
+    });
 
-  return { counters, totals };
-}
+    updateExtraUi(state);
 
-export function buildInitialState(raw = {}, gameData, gameId) {
-  const normalized = normalizeCounterState(
-    gameData?.counters || {},
-    raw.counters || {},
-    raw.totals || {}
-  );
-
-  const rawSplitBlock = raw.splits || {};
-  const rawSplitItems = Array.isArray(rawSplitBlock.items)
-    ? rawSplitBlock.items
-    : Array.isArray(raw.splits)
-      ? raw.splits
-      : [];
-
-  const hasSavedSplits = Array.isArray(rawSplitItems) && rawSplitItems.length > 0;
-
-  const splits = normalizeSplits(
-    hasSavedSplits ? rawSplitItems : gameData?.defaultSplits || [],
-    gameData?.defaultSplits || []
-  );
-
-  const splitCount = splits.length;
-
-  const running = !!raw.timer?.running;
-  const elapsed = Math.max(0, Number(raw.timer?.elapsed || 0));
-  const startTime = running
-    ? Number(raw.timer?.startTime || Date.now() - elapsed)
-    : null;
-
-  const currentIndex = clamp(
-    Number(rawSplitBlock.currentIndex || 0),
-    0,
-    Math.max(0, splitCount)
-  );
-
-  const state = {
-    timer: {
-      startTime,
-      elapsed,
-      running
-    },
-
-    counters: normalized.counters,
-    totals: normalized.totals,
-
-    splits: {
-      currentIndex,
-      completed: Array.isArray(rawSplitBlock.completed) ? rawSplitBlock.completed : [],
-      items: splits
-    },
-
-    phase: raw.phase || "legacy_all",
-
-    settings: {
-      ...DEFAULT_SETTINGS,
-      ...(raw.settings || {})
-    },
-
-    misc: {
-      ...DEFAULT_MISC,
-      ...(raw.misc || {})
-    },
-
-    ui: {
-      settingsOpen: raw?.ui?.settingsOpen ?? false
-    },
-
-    gameId
-  };
-
-  state.phase = getActivePhase(state, gameData);
-
-  return state;
-}
-
-export function getActivePhase(state, gameData) {
-  const items = state.splits?.items || [];
-  const currentIndex = Number(state.splits?.currentIndex || 0);
-  return getActivePhaseId(items, currentIndex, gameData?.phases || {});
-}
-
-export function getCurrentStateFactory({ getState, gameData, gameId }) {
-  return function getCurrentState() {
-    return buildInitialState(getState(), gameData, gameId);
-  };
-}
-
-export function computePaceText(state) {
-  const actTargetMinutes = Number(state.settings?.act1TargetMinutes || 0);
-  if (!actTargetMinutes) return "No target";
-
-  const targetMs = actTargetMinutes * 60 * 1000;
-  const diff = Number(state.timer?.elapsed || 0) - targetMs;
-
-  if (Math.abs(diff) < 1000) return "On pace";
-  if (diff < 0) return `${formatMs(Math.abs(diff))} ahead`;
-  return `${formatMs(diff)} behind`;
-}
-
-export function buildHistoryEntry(state, splitIndex, split) {
-  const completed = state.splits?.completed || [];
-  const previous = completed[completed.length - 1];
-  const cumulativeMs = Number(state.timer?.elapsed || 0);
-  const previousCumulativeMs = Number(previous?.cumulativeMs || 0);
+    debug.setStatus("gameId", state?.gameId);
+    debug.setStatus("elapsedMs", state?.timer?.elapsed || 0);
+    debug.setStatus("running", !!state?.timer?.running);
+    debug.setStatus("currentSplitIndex", state?.splits?.currentIndex || 0);
+    debug.setStatus("splitCount", (state?.splits?.items || []).length);
+    debug.setStatus("activePhase", state?.phase || "legacy_all");
+    debug.setStatus("settingsOpen", !!state?.ui?.settingsOpen);
+    debug.setStatus("defaultSplitCount", (gameData?.defaultSplits || []).length);
+  }
 
   return {
-    splitIndex,
-    label: split.label || `Split ${splitIndex + 1}`,
-    cumulativeMs,
-    segmentMs: Math.max(0, cumulativeMs - previousCumulativeMs),
-    autoApplied: clone(split.auto || {}),
-    at: new Date().toISOString()
+    render
   };
-}
-
-export function applyAutoToCounters(state, gameData, autoMap = {}, direction = 1) {
-  Object.entries(autoMap || {}).forEach(([key, amount]) => {
-    if (!state.counters[key]) return;
-
-    const max = Number(state.totals?.[key] || gameData?.counters?.[key]?.max || 0);
-    const current = Number(state.counters[key]?.value || 0);
-    const next = clamp(current + Number(amount || 0) * direction, 0, max);
-
-    state.counters[key].value = next;
-  });
 }
