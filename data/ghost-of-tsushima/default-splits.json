@@ -14,11 +14,11 @@
     {
       "id": "golden-temple-runs",
       "label": "Golden Temple Runs",
-      "note": "Ride south to unlock Golden Summit, Hot Springs and Fox Den.\nAriake Bamboo, Forest Hot Springs, Fox, Shinto Shrine.\nFT Golden Summit Hot Springs and clear the Golden Summit Shrine.",
+      "note": "Ride south to unlock Golden Summit, 2x Hot Springs and Fox Den.\nAriake Bamboo, Forest Hot Springs, Fox, Shinto Shrine.\nFT Golden Summit Hot Springs and clear the Golden Summit Shrine.",
       "phaseId": "",
       "isPhaseStart": false,
       "auto": {
-        "hotsprings": 2,
+        "hotsprings": 3,
         "inari": 2,
         "bamboo": 1,
         "shrines": 2
@@ -41,13 +41,14 @@
     {
       "id": "northern-area-cleanup",
       "label": "Northern Area Cleanup",
-      "note": "Inari Shrine where mission ends, Hot Spring, bear by the river fighting with bandit.\nBeach Inari shrine between rocks.\nInari shrine between crevice.\nFT back to Yuna Inari shrine, then Haiku, then Temple run, then Hidden Altar.",
+      "note": "Inari Shrine where mission ends, Hot Spring, bear by the river fighting with bandit.\nBeach Inari shrine between rocks.\nInari shrine between crevice.\nFT back to Yuna Inari shrine, then Haiku, then Hidden Altar.\nShinto shrine comes later once we have a the bomb.",
       "phaseId": "",
       "isPhaseStart": false,
       "auto": {
-        "inari": 2,
+        "inari": 3,
         "hotsprings": 1,
-        "hiddenaltars": 1
+        "hiddenaltars": 1,
+        "haiku": 1
       }
     },
     {
@@ -67,7 +68,7 @@
     {
       "id": "ishikawa",
       "label": "Ishikawa",
-      "note": "Get the bow.\nAfter mission: Hot Spring, Shinto Shrine, 2 hidden altars.\nFT back to dojo, Hiyoshi 2 scrolls, Bamboo Strike, Hot Spring.",
+      "note": "Get the bow.\nAfter mission: Haiku, Hot Spring, Shinto Shrine, 2 hidden altars.\nFT back to dojo, Hiyoshi 2 scrolls, Bamboo Strike, Hot Spring.",
       "phaseId": "",
       "isPhaseStart": false,
       "auto": {
@@ -116,25 +117,40 @@
       }
     },
     {
-      "id": "ronin-2",
-      "label": "Ronin 2",
-      "note": "",
+      "id": "new-split-10",
+      "label": "Shinto Shrine North",
+      "note": "https://youtu.be/SPg3CVGrv3c?t=1216 - shortcut with bomb",
       "phaseId": "",
       "isPhaseStart": false,
       "auto": {
-        "inari": 1
+        "shrines": 1
+      }
+    },
+    {
+      "id": "ronin-2",
+      "label": "Ronin 2",
+      "note": "Haiku willage\nInari shrine west of  golden tree\nCricket at ryozo",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "inari": 1,
+        "haiku": 1,
+        "crickets": 1
       }
     },
     {
       "id": "komatsu",
       "label": "Komatsu",
-      "note": "",
+      "note": "Artefact - haiku - fox\ncricket after mission",
       "phaseId": "",
       "isPhaseStart": false,
       "auto": {
         "inari": 1,
         "bamboo": 1,
-        "haiku": 1
+        "haiku": 1,
+        "artifacts": 1,
+        "crickets": 1,
+        "records": 1
       }
     },
     {
@@ -143,7 +159,68 @@
       "note": "",
       "phaseId": "",
       "isPhaseStart": false,
-      "auto": {}
+      "auto": {
+        "records": 2,
+        "artifacts": 1
+      }
+    },
+    {
+      "id": "new-split-14-2",
+      "label": "Heavenly Strike",
+      "note": "https://youtu.be/SPg3CVGrv3c?t=1387 - horse jump branch shortcut on right\n\nBeach Inari + Stash",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "hotsprings": 1,
+        "inari": 3,
+        "haiku": 1,
+        "shrines": 1,
+        "hiddenaltars": 1
+      }
+    },
+    {
+      "id": "new-split-15-2",
+      "label": "Stoned dragon shrine",
+      "note": "no shortcut?",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "shrines": 1
+      }
+    },
+    {
+      "id": "new-split-16",
+      "label": "Winding mountain Shrine",
+      "note": "Fox Den inari shrine east after two big rocks",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "inari": 1,
+        "shrines": 1
+      }
+    },
+    {
+      "id": "new-split-17",
+      "label": "East Beach",
+      "note": "Inari  haiku inari",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "inari": 2,
+        "haiku": 1
+      }
+    },
+    {
+      "id": "new-split-18",
+      "label": "Azamo Bay",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "inari": 1,
+        "crickets": 1,
+        "bamboo": 1
+      }
     },
     {
       "id": "new-split-13",
@@ -156,7 +233,7 @@
     {
       "id": "act-1-finale",
       "label": "Act 1 Finale",
-      "note": "Ride with uncle, Ride with monk, Bamboo, Inari, Complete mission. Clear the Act 2 starting area Inari shrines, Hotsprings, Shinto.",
+      "note": "Push Yuna.\nRide with uncle, Ride with monk, Bamboo, Inari, Complete mission. Clear the Act 2 starting area Inari shrines(Garden is southwest from bridge), Hotsprings, Shinto.\nhttps://youtu.be/SPg3CVGrv3c?t=1048 - probably not stonks",
       "phaseId": "any_act2",
       "isPhaseStart": true,
       "auto": {
@@ -166,22 +243,6 @@
         "shrines": 1,
         "hotsprings": 1
       }
-    },
-    {
-      "id": "act-2",
-      "label": "Act 2",
-      "note": "",
-      "phaseId": "",
-      "isPhaseStart": false,
-      "auto": {}
-    },
-    {
-      "id": "new-split-15",
-      "label": "New Split 15",
-      "note": "",
-      "phaseId": "",
-      "isPhaseStart": false,
-      "auto": {}
     },
     {
       "id": "new-split-14",
@@ -194,8 +255,263 @@
         "haiku": 1,
         "shrines": 1,
         "hotsprings": 1,
-        "bamboo": 1
+        "bamboo": 1,
+        "trophies": 1
       }
+    },
+    {
+      "id": "new-split-22",
+      "label": "Wraith Dance Yarikawa",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "inari": 2,
+        "records": 3,
+        "trophies": 1,
+        "bamboo": 1,
+        "hotsprings": 1,
+        "monochrome": 1,
+        "shrines": 2
+      }
+    },
+    {
+      "id": "act-2",
+      "label": "Continue North",
+      "note": "hidden stash - fox shrine nw from golden tree.  west form hotsprings",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "shrines": 1,
+        "bamboo": 2,
+        "haiku": 1,
+        "hotsprings": 1,
+        "inari": 3
+      }
+    },
+    {
+      "id": "new-split-15",
+      "label": "Bamboo forest",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "hotsprings": 1,
+        "inari": 1
+      }
+    },
+    {
+      "id": "new-split-25-2",
+      "label": "mamushi",
+      "note": "stairs fox statue, crevice\nhotspring hidden stash\nsecond shrine, follow fox, not worth it.\nhaiku\nhazy cliff shrine\nfox next to mongols,\nomi monastery inari + sec stash\nfox north\notsuna bamboo",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "inari": 4,
+        "hotsprings": 1
+      }
+    },
+    {
+      "id": "new-split-25",
+      "label": "Family Armor and Poison",
+      "note": "After mission: Haiku, Fox",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "haiku": 1,
+        "bamboo": 1,
+        "records": 3
+      }
+    },
+    {
+      "id": "new-split-27-2",
+      "label": "Proud Do Not Delusion",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "haiku": 2,
+        "inari": 1
+      }
+    },
+    {
+      "id": "new-split-24",
+      "label": "Smoke in the Water, Fire in the Sky",
+      "note": "Get predator hides.",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {}
+    },
+    {
+      "id": "new-split-28-5",
+      "label": "TAKA",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "trophies": 2,
+        "hiddenaltars": 1
+      }
+    },
+    {
+      "id": "new-split-30",
+      "label": "CHECK STATS",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {}
+    },
+    {
+      "id": "new-split-28-4",
+      "label": "SIEGE",
+      "note": "",
+      "phaseId": "any_act3",
+      "isPhaseStart": false,
+      "auto": {
+        "trophies": 1
+      }
+    },
+    {
+      "id": "new-split-28-3",
+      "label": "Act 3 Start",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "cooper": 1
+      }
+    },
+    {
+      "id": "new-split-28-2",
+      "label": "North Swipe",
+      "note": "shrine rocks by the lake.\nsw rock hill",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "inari": 3,
+        "haiku": 1,
+        "shrines": 1
+      }
+    },
+    {
+      "id": "new-split-28",
+      "label": "South Fox",
+      "note": "End of the road sw.\nBamboo, haiku, fox straight north from haiku\nloyald friend ride south burning shit fox\nhotspring, shinto\nfox(south,slightwest), bamboo, cooper, hotsprings",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "inari": 4,
+        "haiku": 2,
+        "bamboo": 2,
+        "hotsprings": 2,
+        "shrines": 1,
+        "cooper": 1,
+        "trophies": 1
+      }
+    },
+    {
+      "id": "new-split-27",
+      "label": "Go WEST, there mongols there",
+      "note": "haiku next to house\nfox waterfall",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "inari": 3,
+        "haiku": 1,
+        "shrines": 1,
+        "hotsprings": 1,
+        "bamboo": 1,
+        "trophies": 3
+      }
+    },
+    {
+      "id": "new-split-36-2",
+      "label": "Sneak",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {}
+    },
+    {
+      "id": "new-split-36",
+      "label": "KHOTUN KHAAAN!",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "trophies": 1
+      }
+    },
+    {
+      "id": "new-split-35",
+      "label": "Great torture + Gifted",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "haiku": 1,
+        "trophies": 2
+      }
+    },
+    {
+      "id": "new-split-38",
+      "label": "NG+ Act 1",
+      "note": "Travelers rest, Yuna",
+      "phaseId": "ngp_act1",
+      "isPhaseStart": false,
+      "auto": {
+        "territories": 2
+      }
+    },
+    {
+      "id": "new-split-40-2",
+      "label": "Ishikawa",
+      "note": "Ishikawa, Have a nice fall\nIshikawa 2 \nIshikawa 3 - Record\nIshikawa 4\nMongol camp, south.\nhiyoshi pass\nUnlock camp right, go to masako",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "records": 1,
+        "sidetales": 5
+      }
+    },
+    {
+      "id": "new-split-41",
+      "label": "Masako Lighthouse",
+      "note": "After Henchman  - Mongol Camp",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "sidetales": 4,
+        "territories": 1
+      }
+    },
+    {
+      "id": "new-split-42",
+      "label": "Another lady",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "territories": 2
+      }
+    },
+    {
+      "id": "new-split-40",
+      "label": "NG+ Act 2",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {
+        "trophies": 1
+      }
+    },
+    {
+      "id": "new-split-39",
+      "label": "NG+ Act 3",
+      "note": "",
+      "phaseId": "",
+      "isPhaseStart": false,
+      "auto": {}
     }
   ]
 }
