@@ -132,14 +132,14 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 14px;
-  opacity: 0.95;
-  font-size: 13px;
+  min-width: 16px;
+  font-size: 15px;
   line-height: 1;
+  opacity: 0.95;
 }
 
 .chipText {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -259,10 +259,18 @@ body {
     min-height: 34px;
     font-size: 12px;
   }
-
-  .counterChip {
-    min-height: 30px;
-  }
+  
+.counterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
 
   .chipText {
     font-size: 11px;
