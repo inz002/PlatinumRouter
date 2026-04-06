@@ -151,11 +151,6 @@
       document.getElementById("progressChip").textContent = `${percent}%`;
 
       // CURRENT SPLIT
-      const currentSplit =
-        state?.splits?.items?.[state?.splits?.currentIndex];
-
-      document.getElementById("currentSplit").textContent =
-        currentSplit?.label || "Run Complete";
 
       // DIFFICULTY
       document.getElementById("difficultyChip").textContent =
