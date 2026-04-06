@@ -1,3 +1,5 @@
+// js/acts-editor.js
+
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -7,469 +9,570 @@ function escapeHtml(value) {
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
-function buildDefaultPhase(phaseId) {
+function safeObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function safeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function downloadJson(filename, payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: "application/json"
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+
+  setTimeout(() => URL.revokeObjectURL(url), 250);
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function normalizePhase(phaseId, phase = {}, counterDefs = {}) {
+  const visibleCounters = Array.isArray(phase.visibleCounters)
+    ? phase.visibleCounters
+    : Array.isArray(phase.visible)
+      ? phase.visible
+      : Array.isArray(phase.objectives)
+        ? phase.objectives
+        : [];
+
+  const filteredVisible = visibleCounters.filter((key) => counterDefs[key]);
+
   return {
-    label: phaseId,
-    note: "",
-    visible: []
+    id: phaseId || "",
+    label: phase.label || phaseId || "",
+    description: phase.description || "",
+    note: phase.note || "",
+    objectiveNote: phase.objectiveNote || phase.currentNote || "",
+    visibleCounters: filteredVisible
   };
 }
 
-function buildDefaultQuota(phaseId) {
-  return {
-    label: phaseId,
-    targets: {}
-  };
+function normalizeQuotas(quotas = {}, counterDefs = {}) {
+  const result = {};
+
+  Object.entries(safeObject(quotas)).forEach(([key, value]) => {
+    const n = Number(value);
+    if (!counterDefs[key]) return;
+    if (!Number.isFinite(n) || n <= 0) return;
+    result[key] = n;
+  });
+
+  return result;
+}
+
+function getPhaseIds(phases) {
+  return Object.keys(safeObject(phases));
+}
+
+function buildPhaseListHtml(phases, selectedPhaseId) {
+  const phaseIds = getPhaseIds(phases);
+
+  if (!phaseIds.length) {
+    return `
+      <div class="card">
+        <div class="mid">No phases yet.</div>
+        <div class="subtitle" style="margin-top:8px">Add a phase to begin.</div>
+      </div>
+    `;
+  }
+
+  return phaseIds.map((phaseId) => {
+    const phase = phases[phaseId] || {};
+    const active = phaseId === selectedPhaseId ? "primary" : "";
+    return `
+      <button
+        type="button"
+        class="btn full ${active}"
+        data-phase-id="${escapeHtml(phaseId)}"
+        style="margin-bottom:8px;text-align:left"
+      >
+        <div class="mid">${escapeHtml(phase.label || phaseId)}</div>
+        <div class="subtitle" style="margin-top:4px">${escapeHtml(phaseId)}</div>
+      </button>
+    `;
+  }).join("");
+}
+
+function buildCounterCheckboxes(counterDefs, selectedKeys = []) {
+  const selectedSet = new Set(safeArray(selectedKeys));
+
+  return Object.entries(safeObject(counterDefs)).map(([key, def]) => {
+    const checked = selectedSet.has(key) ? "checked" : "";
+    const label = def?.label || key;
+    const icon = def?.icon ? `${escapeHtml(def.icon)} ` : "";
+
+    return `
+      <label class="row" style="justify-content:flex-start;gap:8px;cursor:pointer;margin-bottom:8px">
+        <input type="checkbox" data-visible-key="${escapeHtml(key)}" ${checked} />
+        <span>${icon}${escapeHtml(label)}</span>
+      </label>
+    `;
+  }).join("");
+}
+
+function buildQuotaInputs(counterDefs, quotas = {}) {
+  return Object.entries(safeObject(counterDefs)).map(([key, def]) => {
+    const label = def?.label || key;
+    const value = Number(quotas?.[key] || 0);
+
+    return `
+      <label class="field">
+        <span>${escapeHtml(label)}</span>
+        <input type="number" step="1" min="0" data-quota-key="${escapeHtml(key)}" value="${value}" />
+      </label>
+    `;
+  }).join("");
+}
+
+function buildFormHtml(phaseId, phase, quotas, counterDefs) {
+  if (!phaseId) {
+    return `
+      <div class="editorCard">
+        <div class="mid">No phase selected.</div>
+        <div class="subtitle" style="margin-top:8px">Add or select a phase to edit it.</div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="editorCard">
+      <div class="row between" style="margin-bottom:12px;gap:8px;align-items:flex-start">
+        <div>
+          <div class="eyebrow">Phase</div>
+          <div class="mid">${escapeHtml(phase.label || phaseId)}</div>
+        </div>
+
+        <button type="button" class="btn danger" id="deletePhaseBtn">Delete Phase</button>
+      </div>
+
+      <div class="fields">
+        <label class="field">
+          <span>Phase ID</span>
+          <input type="text" id="phaseIdInput" value="${escapeHtml(phaseId)}" />
+        </label>
+
+        <label class="field">
+          <span>Label</span>
+          <input type="text" id="phaseLabelInput" value="${escapeHtml(phase.label || "")}" />
+        </label>
+      </div>
+
+      <div class="fields">
+        <label class="field" style="grid-column:1 / -1">
+          <span>Description</span>
+          <textarea id="phaseDescriptionInput" rows="3">${escapeHtml(phase.description || "")}</textarea>
+        </label>
+      </div>
+
+      <div class="fields">
+        <label class="field" style="grid-column:1 / -1">
+          <span>Phase Note</span>
+          <textarea id="phaseNoteInput" rows="3">${escapeHtml(phase.note || "")}</textarea>
+        </label>
+      </div>
+
+      <div class="fields">
+        <label class="field" style="grid-column:1 / -1">
+          <span>Current Objective Note</span>
+          <textarea id="phaseObjectiveNoteInput" rows="3">${escapeHtml(phase.objectiveNote || "")}</textarea>
+        </label>
+      </div>
+
+      <div style="margin-top:18px">
+        <div class="eyebrow" style="margin-bottom:10px">Visible Objectives</div>
+        <div class="card">
+          ${buildCounterCheckboxes(counterDefs, phase.visibleCounters || [])}
+        </div>
+      </div>
+
+      <div style="margin-top:18px">
+        <div class="eyebrow" style="margin-bottom:10px">Quota Targets</div>
+        <div class="fields">
+          ${buildQuotaInputs(counterDefs, quotas || {})}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 export function createActsEditor({
-  overlayEl,
+  overlayEl = null,
   phaseListEl,
   formEl,
-  addBtn,
-  closeBtn,
-  saveBtn,
-  resetBtn,
-  exportBtn,
-  importInput,
-  copyBtn,
+  addBtn = null,
+  closeBtn = null,
+  saveBtn = null,
+  resetBtn = null,
+  exportBtn = null,
+  importInput = null,
+  copyBtn = null,
   getPhases,
   getQuotas,
   getCounterDefs,
   setPhases,
   setQuotas,
-  onAfterSave
+  onAfterSave = null
 }) {
-  const state = {
-    draftPhases: {},
-    draftQuotas: {},
-    selectedPhaseId: null
-  };
-
-  function open() {
-    state.draftPhases = clone(getPhases() || {});
-    state.draftQuotas = clone(getQuotas() || {});
-    const phaseIds = getSortedPhaseIds();
-    state.selectedPhaseId = phaseIds[0] || null;
-    render();
-    overlayEl.classList.add("open");
+  if (!phaseListEl || !formEl) {
+    throw new Error("createActsEditor: phaseListEl and formEl are required");
   }
 
-  function close() {
-    overlayEl.classList.remove("open");
+  let workingPhases = {};
+  let workingQuotas = {};
+  let initialPhases = {};
+  let initialQuotas = {};
+  let selectedPhaseId = "";
+
+  function getCounterDefsSafe() {
+    return safeObject(getCounterDefs?.());
   }
 
-  function reset() {
-    state.draftPhases = clone(getPhases() || {});
-    state.draftQuotas = clone(getQuotas() || {});
-    const phaseIds = getSortedPhaseIds();
-    state.selectedPhaseId = phaseIds.includes(state.selectedPhaseId)
-      ? state.selectedPhaseId
-      : phaseIds[0] || null;
-    render();
-  }
+  function readSource() {
+    const counterDefs = getCounterDefsSafe();
+    const sourcePhases = safeObject(getPhases?.());
+    const sourceQuotas = safeObject(getQuotas?.());
 
-  function save() {
-    setPhases(clone(state.draftPhases));
-    setQuotas(clone(state.draftQuotas));
-    close();
-    if (typeof onAfterSave === "function") onAfterSave();
-  }
-
-  function exportDraft() {
-    const payload = {
-      phases: state.draftPhases,
-      quotas: state.draftQuotas,
-      exportedAt: new Date().toISOString(),
-      source: "acts-editor"
-    };
-
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json"
+    const phases = {};
+    Object.entries(sourcePhases).forEach(([phaseId, phase]) => {
+      phases[phaseId] = normalizePhase(phaseId, phase, counterDefs);
     });
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `acts-config-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-      a.remove();
-    }, 200);
-  }
-
-  async function copyDraft() {
-    const payload = {
-      phases: state.draftPhases,
-      quotas: state.draftQuotas,
-      exportedAt: new Date().toISOString(),
-      source: "acts-editor"
-    };
-
-    try {
-      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-      alert("Act config copied.");
-    } catch (error) {
-      console.error(error);
-      alert("Clipboard blocked. Use export instead.");
-    }
-  }
-
-  function importDraft(file) {
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(String(reader.result));
-
-        const nextPhases =
-          parsed?.phases && typeof parsed.phases === "object"
-            ? parsed.phases
-            : null;
-
-        const nextQuotas =
-          parsed?.quotas && typeof parsed.quotas === "object"
-            ? parsed.quotas
-            : null;
-
-        if (!nextPhases && !nextQuotas) {
-          throw new Error("Imported file has no phases or quotas object.");
-        }
-
-        if (nextPhases) {
-          state.draftPhases = clone(nextPhases);
-        }
-
-        if (nextQuotas) {
-          state.draftQuotas = clone(nextQuotas);
-        }
-
-        const phaseIds = getSortedPhaseIds();
-        state.selectedPhaseId = phaseIds[0] || null;
-        render();
-      } catch (error) {
-        console.error(error);
-        alert("Could not import acts JSON");
-      }
-    };
-
-    reader.readAsText(file);
-  }
-
-  function addPhase() {
-    const baseId = `new_phase_${getSortedPhaseIds().length + 1}`;
-    let phaseId = baseId;
-    let n = 2;
-
-    while (state.draftPhases[phaseId] || state.draftQuotas[phaseId]) {
-      phaseId = `${baseId}_${n}`;
-      n += 1;
-    }
-
-    state.draftPhases[phaseId] = buildDefaultPhase(phaseId);
-    state.draftQuotas[phaseId] = buildDefaultQuota(phaseId);
-    state.selectedPhaseId = phaseId;
-    render();
-  }
-
-  function removePhase(phaseId) {
-    if (!phaseId) return;
-
-    delete state.draftPhases[phaseId];
-    delete state.draftQuotas[phaseId];
-
-    const phaseIds = getSortedPhaseIds();
-    state.selectedPhaseId = phaseIds[0] || null;
-    render();
-  }
-
-  function renamePhaseId(oldId, nextIdRaw) {
-    const nextId = String(nextIdRaw || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9_]+/g, "_")
-      .replace(/^_+|_+$/g, "");
-
-    if (!oldId || !nextId || oldId === nextId) return;
-    if (state.draftPhases[nextId] || state.draftQuotas[nextId]) return;
-
-    const nextPhases = {};
-    const nextQuotas = {};
-
-    Object.keys(state.draftPhases).forEach((key) => {
-      nextPhases[key === oldId ? nextId : key] = state.draftPhases[key];
+    const quotas = {};
+    Object.entries(sourceQuotas).forEach(([phaseId, value]) => {
+      quotas[phaseId] = normalizeQuotas(value, counterDefs);
     });
 
-    Object.keys(state.draftQuotas).forEach((key) => {
-      nextQuotas[key === oldId ? nextId : key] = state.draftQuotas[key];
-    });
-
-    state.draftPhases = nextPhases;
-    state.draftQuotas = nextQuotas;
-    state.selectedPhaseId = nextId;
-    render();
+    return { phases, quotas };
   }
 
-  function setPhaseField(phaseId, field, value) {
-    ensurePhase(phaseId);
-    state.draftPhases[phaseId][field] = value;
-  }
-
-  function toggleVisibleCounter(phaseId, counterKey) {
-    ensurePhase(phaseId);
-    const current = Array.isArray(state.draftPhases[phaseId].visible)
-      ? [...state.draftPhases[phaseId].visible]
-      : [];
-
-    const index = current.indexOf(counterKey);
-    if (index >= 0) {
-      current.splice(index, 1);
-    } else {
-      current.push(counterKey);
-    }
-
-    state.draftPhases[phaseId].visible = current;
-  }
-
-  function setQuotaLabel(phaseId, value) {
-    ensureQuota(phaseId);
-    state.draftQuotas[phaseId].label = value;
-  }
-
-  function setQuotaTarget(phaseId, counterKey, value) {
-    ensureQuota(phaseId);
-
-    const numeric = Math.max(0, Number(value || 0));
-    if (!state.draftQuotas[phaseId].targets) {
-      state.draftQuotas[phaseId].targets = {};
-    }
-
-    if (!numeric) {
-      delete state.draftQuotas[phaseId].targets[counterKey];
-    } else {
-      state.draftQuotas[phaseId].targets[counterKey] = numeric;
-    }
-  }
-
-  function ensurePhase(phaseId) {
-    if (!state.draftPhases[phaseId]) {
-      state.draftPhases[phaseId] = buildDefaultPhase(phaseId);
-    }
-  }
-
-  function ensureQuota(phaseId) {
-    if (!state.draftQuotas[phaseId]) {
-      state.draftQuotas[phaseId] = buildDefaultQuota(phaseId);
-    }
-  }
-
-  function getSortedPhaseIds() {
-    return Array.from(
-      new Set([
-        ...Object.keys(state.draftPhases || {}),
-        ...Object.keys(state.draftQuotas || {})
-      ])
-    ).sort();
-  }
-
-  function renderPhaseList() {
-    phaseListEl.innerHTML = "";
-    const phaseIds = getSortedPhaseIds();
+  function ensureSelectedPhase() {
+    const phaseIds = getPhaseIds(workingPhases);
 
     if (!phaseIds.length) {
-      phaseListEl.innerHTML = `<div class="subtitle">No phases yet.</div>`;
+      selectedPhaseId = "";
       return;
     }
 
-    phaseIds.forEach((phaseId) => {
-      const phase = state.draftPhases[phaseId] || buildDefaultPhase(phaseId);
-      const quota = state.draftQuotas[phaseId] || buildDefaultQuota(phaseId);
-      const visibleCount = Array.isArray(phase.visible) ? phase.visible.length : 0;
-      const targetCount = Object.keys(quota.targets || {}).length;
-      const active = phaseId === state.selectedPhaseId;
-
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `split ${active ? "active" : ""}`;
-      button.innerHTML = `
-        <div>🧭</div>
-        <div>
-          <div>${escapeHtml(phase.label || phaseId)}</div>
-          <div class="splitSub">${escapeHtml(phaseId)} · ${visibleCount} visible · ${targetCount} targets</div>
-        </div>
-        <div>›</div>
-      `;
-
-      button.addEventListener("click", () => {
-        state.selectedPhaseId = phaseId;
-        render();
-      });
-
-      phaseListEl.appendChild(button);
-    });
-  }
-
-  function renderForm() {
-    formEl.innerHTML = "";
-
-    const phaseId = state.selectedPhaseId;
-    if (!phaseId) {
-      formEl.innerHTML = `<div class="subtitle">Select or add a phase.</div>`;
-      return;
+    if (!selectedPhaseId || !workingPhases[selectedPhaseId]) {
+      selectedPhaseId = phaseIds[0];
     }
-
-    ensurePhase(phaseId);
-    ensureQuota(phaseId);
-
-    const phase = state.draftPhases[phaseId];
-    const quota = state.draftQuotas[phaseId];
-    const counterDefs = getCounterDefs() || {};
-
-    const visibleSet = new Set(phase.visible || []);
-
-    const visibleFields = Object.entries(counterDefs)
-      .map(
-        ([key, def]) => `
-          <label class="miniChip" style="justify-content:flex-start">
-            <input type="checkbox" data-visible-key="${escapeHtml(key)}" ${
-              visibleSet.has(key) ? "checked" : ""
-            } />
-            <span>${def.icon} ${escapeHtml(def.label)}</span>
-          </label>
-        `
-      )
-      .join("");
-
-    const quotaFields = Object.entries(counterDefs)
-      .map(
-        ([key, def]) => `
-          <div class="field">
-            <label>${def.icon} ${escapeHtml(def.label)}</label>
-            <input
-              type="number"
-              min="0"
-              data-target-key="${escapeHtml(key)}"
-              value="${quota.targets?.[key] ?? 0}"
-            />
-          </div>
-        `
-      )
-      .join("");
-
-    formEl.innerHTML = `
-      <div class="editorCard">
-        <div class="row between" style="margin-bottom:10px">
-          <div class="eyebrow">Phase Configuration</div>
-          <button type="button" class="btn danger" id="actsRemovePhaseBtn">Remove Phase</button>
-        </div>
-
-        <div class="editorTop">
-          <div class="field">
-            <label>Phase ID</label>
-            <input type="text" id="actsPhaseIdInput" value="${escapeHtml(phaseId)}" />
-          </div>
-          <div class="field">
-            <label>Phase Label</label>
-            <input type="text" id="actsPhaseLabelInput" value="${escapeHtml(phase.label || "")}" />
-          </div>
-        </div>
-
-        <div class="field" style="margin-bottom:10px">
-          <label>Phase Note</label>
-          <textarea id="actsPhaseNoteInput" style="min-height:90px;resize:vertical">${escapeHtml(
-            phase.note || ""
-          )}</textarea>
-        </div>
-
-        <div class="field" style="margin-bottom:10px">
-          <label>Quota Label</label>
-          <input type="text" id="actsQuotaLabelInput" value="${escapeHtml(quota.label || phase.label || phaseId)}" />
-        </div>
-
-        <div class="field" style="margin-bottom:10px">
-          <label>Visible Objectives</label>
-          <div class="visibleList">${visibleFields}</div>
-        </div>
-
-        <div class="field">
-          <label>Quota Targets</label>
-          <div class="editorCounters">${quotaFields}</div>
-        </div>
-      </div>
-    `;
-
-    const removeBtn = document.getElementById("actsRemovePhaseBtn");
-    const phaseIdInput = document.getElementById("actsPhaseIdInput");
-    const phaseLabelInput = document.getElementById("actsPhaseLabelInput");
-    const phaseNoteInput = document.getElementById("actsPhaseNoteInput");
-    const quotaLabelInput = document.getElementById("actsQuotaLabelInput");
-
-    removeBtn?.addEventListener("click", () => removePhase(phaseId));
-
-    phaseIdInput?.addEventListener("change", (e) => {
-      renamePhaseId(phaseId, e.target.value);
-    });
-
-    phaseLabelInput?.addEventListener("input", (e) => {
-      setPhaseField(phaseId, "label", e.target.value);
-      renderPhaseList();
-    });
-
-    phaseNoteInput?.addEventListener("input", (e) => {
-      setPhaseField(phaseId, "note", e.target.value);
-    });
-
-    quotaLabelInput?.addEventListener("input", (e) => {
-      setQuotaLabel(phaseId, e.target.value);
-      renderPhaseList();
-    });
-
-    formEl.querySelectorAll("input[data-visible-key]").forEach((input) => {
-      input.addEventListener("change", () => {
-        toggleVisibleCounter(phaseId, input.dataset.visibleKey);
-      });
-    });
-
-    formEl.querySelectorAll("input[data-target-key]").forEach((input) => {
-      input.addEventListener("input", () => {
-        setQuotaTarget(phaseId, input.dataset.targetKey, input.value);
-        renderPhaseList();
-      });
-    });
   }
 
   function render() {
-    renderPhaseList();
-    renderForm();
+    ensureSelectedPhase();
+
+    phaseListEl.innerHTML = buildPhaseListHtml(workingPhases, selectedPhaseId);
+
+    const phase = selectedPhaseId ? workingPhases[selectedPhaseId] : null;
+    const quotas = selectedPhaseId ? workingQuotas[selectedPhaseId] || {} : {};
+    const counterDefs = getCounterDefsSafe();
+
+    formEl.innerHTML = buildFormHtml(selectedPhaseId, phase || {}, quotas, counterDefs);
+  }
+
+  function syncFromSource() {
+    const { phases, quotas } = readSource();
+
+    initialPhases = clone(phases);
+    initialQuotas = clone(quotas);
+    workingPhases = clone(phases);
+    workingQuotas = clone(quotas);
+
+    ensureSelectedPhase();
+    render();
+  }
+
+  function collectCurrentFormIntoState() {
+    if (!selectedPhaseId || !workingPhases[selectedPhaseId]) return;
+
+    const counterDefs = getCounterDefsSafe();
+
+    const phaseIdInput = formEl.querySelector("#phaseIdInput");
+    const phaseLabelInput = formEl.querySelector("#phaseLabelInput");
+    const phaseDescriptionInput = formEl.querySelector("#phaseDescriptionInput");
+    const phaseNoteInput = formEl.querySelector("#phaseNoteInput");
+    const phaseObjectiveNoteInput = formEl.querySelector("#phaseObjectiveNoteInput");
+
+    const nextPhaseId = phaseIdInput?.value?.trim() || selectedPhaseId;
+    const nextLabel = phaseLabelInput?.value?.trim() || nextPhaseId;
+    const nextDescription = phaseDescriptionInput?.value || "";
+    const nextNote = phaseNoteInput?.value || "";
+    const nextObjectiveNote = phaseObjectiveNoteInput?.value || "";
+
+    const visibleCounters = [];
+    formEl.querySelectorAll("[data-visible-key]").forEach((checkbox) => {
+      if (!checkbox.checked) return;
+      const key = checkbox.dataset.visibleKey;
+      if (!key || !counterDefs[key]) return;
+      visibleCounters.push(key);
+    });
+
+    const nextQuotas = {};
+    formEl.querySelectorAll("[data-quota-key]").forEach((input) => {
+      const key = input.dataset.quotaKey;
+      const n = Number(input.value || 0);
+      if (!key || !counterDefs[key]) return;
+      if (!Number.isFinite(n) || n <= 0) return;
+      nextQuotas[key] = n;
+    });
+
+    const nextPhase = normalizePhase(nextPhaseId, {
+      label: nextLabel,
+      description: nextDescription,
+      note: nextNote,
+      objectiveNote: nextObjectiveNote,
+      visibleCounters
+    }, counterDefs);
+
+    if (nextPhaseId !== selectedPhaseId) {
+      delete workingPhases[selectedPhaseId];
+      delete workingQuotas[selectedPhaseId];
+      selectedPhaseId = nextPhaseId;
+    }
+
+    workingPhases[selectedPhaseId] = nextPhase;
+    workingQuotas[selectedPhaseId] = nextQuotas;
+  }
+
+  function addPhase() {
+    collectCurrentFormIntoState();
+
+    const baseId = "new_phase";
+    let nextId = baseId;
+    let counter = 1;
+
+    while (workingPhases[nextId]) {
+      nextId = `${baseId}_${counter}`;
+      counter += 1;
+    }
+
+    workingPhases[nextId] = normalizePhase(nextId, {
+      label: `New Phase ${counter}`,
+      description: "",
+      note: "",
+      objectiveNote: "",
+      visibleCounters: []
+    }, getCounterDefsSafe());
+
+    workingQuotas[nextId] = {};
+    selectedPhaseId = nextId;
+    render();
+  }
+
+  function deleteSelectedPhase() {
+    if (!selectedPhaseId || !workingPhases[selectedPhaseId]) return;
+
+    delete workingPhases[selectedPhaseId];
+    delete workingQuotas[selectedPhaseId];
+
+    const remaining = getPhaseIds(workingPhases);
+    selectedPhaseId = remaining[0] || "";
+    render();
+  }
+
+  function reset() {
+    workingPhases = clone(initialPhases);
+    workingQuotas = clone(initialQuotas);
+    ensureSelectedPhase();
+    render();
+  }
+
+  function buildExportPayload() {
+    collectCurrentFormIntoState();
+
+    const phases = {};
+    Object.entries(workingPhases).forEach(([phaseId, phase]) => {
+      phases[phaseId] = {
+        label: phase.label,
+        description: phase.description,
+        note: phase.note,
+        objectiveNote: phase.objectiveNote,
+        visible: safeArray(phase.visibleCounters)
+      };
+    });
+
+    const quotas = {};
+    Object.entries(workingQuotas).forEach(([phaseId, targets]) => {
+      quotas[phaseId] = {
+        label: workingPhases[phaseId]?.label || phaseId,
+        targets: clone(targets || {})
+      };
+    });
+
+    return {
+      phases,
+      quotas,
+      exportedAt: new Date().toISOString()
+    };
+  }
+
+  function save() {
+    collectCurrentFormIntoState();
+
+    const nextPhases = {};
+    Object.entries(workingPhases).forEach(([phaseId, phase]) => {
+      nextPhases[phaseId] = {
+        label: phase.label,
+        description: phase.description,
+        note: phase.note,
+        objectiveNote: phase.objectiveNote,
+        visibleCounters: safeArray(phase.visibleCounters),
+        objectives: safeArray(phase.visibleCounters)
+      };
+    });
+
+    const nextQuotas = {};
+    Object.entries(workingQuotas).forEach(([phaseId, targets]) => {
+      nextQuotas[phaseId] = clone(targets || {});
+    });
+
+    setPhases?.(nextPhases);
+    setQuotas?.(nextQuotas);
+
+    initialPhases = clone(workingPhases);
+    initialQuotas = clone(workingQuotas);
+
+    render();
+    onAfterSave?.();
+  }
+
+  function exportJson() {
+    downloadJson("phases-backup.json", buildExportPayload());
+  }
+
+  async function copyJson() {
+    const ok = await copyText(JSON.stringify(buildExportPayload(), null, 2));
+    if (!ok) {
+      console.warn("Could not copy phase backup");
+    }
+  }
+
+  async function importJson(file) {
+    try {
+      const parsed = JSON.parse(await file.text());
+      const counterDefs = getCounterDefsSafe();
+
+      const parsedPhases =
+        parsed && typeof parsed === "object" && parsed.phases && typeof parsed.phases === "object"
+          ? parsed.phases
+          : {};
+
+      const parsedQuotas =
+        parsed && typeof parsed === "object" && parsed.quotas && typeof parsed.quotas === "object"
+          ? parsed.quotas
+          : {};
+
+      const nextPhases = {};
+      Object.entries(parsedPhases).forEach(([phaseId, phase]) => {
+        nextPhases[phaseId] = normalizePhase(phaseId, phase, counterDefs);
+      });
+
+      const nextQuotas = {};
+      Object.entries(parsedQuotas).forEach(([phaseId, value]) => {
+        const targets =
+          value && typeof value === "object" && value.targets && typeof value.targets === "object"
+            ? value.targets
+            : value;
+        nextQuotas[phaseId] = normalizeQuotas(targets, counterDefs);
+      });
+
+      workingPhases = nextPhases;
+      workingQuotas = nextQuotas;
+      ensureSelectedPhase();
+      render();
+    } catch (error) {
+      console.error("Failed to import phases JSON", error);
+      alert("Could not import phases JSON");
+    }
+  }
+
+  function open() {
+    syncFromSource();
+    if (overlayEl) {
+      overlayEl.classList.add("open");
+      overlayEl.style.display = "block";
+    }
+  }
+
+  function close() {
+    if (overlayEl) {
+      overlayEl.classList.remove("open");
+      overlayEl.style.display = "none";
+    }
   }
 
   addBtn?.addEventListener("click", addPhase);
   closeBtn?.addEventListener("click", close);
   saveBtn?.addEventListener("click", save);
   resetBtn?.addEventListener("click", reset);
-  exportBtn?.addEventListener("click", exportDraft);
-  copyBtn?.addEventListener("click", copyDraft);
+  exportBtn?.addEventListener("click", exportJson);
+  copyBtn?.addEventListener("click", copyJson);
 
-  importInput?.addEventListener("change", (e) => {
-    const file = e.target.files?.[0];
-    if (file) importDraft(file);
-    e.target.value = "";
+  importInput?.addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      await importJson(file);
+    }
+    event.target.value = "";
   });
 
-  overlayEl?.addEventListener("click", (e) => {
-    if (e.target === overlayEl) close();
+  overlayEl?.addEventListener("click", (event) => {
+    if (event.target === overlayEl) {
+      close();
+    }
   });
+
+  phaseListEl.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-phase-id]");
+    if (!button) return;
+
+    collectCurrentFormIntoState();
+    selectedPhaseId = button.dataset.phaseId || "";
+    render();
+  });
+
+  formEl.addEventListener("input", (event) => {
+    if (event.target.id === "phaseLabelInput") {
+      const current = formEl.querySelector(".mid");
+      if (current) {
+        current.textContent = event.target.value.trim() || selectedPhaseId || "Phase";
+      }
+    }
+  });
+
+  formEl.addEventListener("click", (event) => {
+    const deleteBtn = event.target.closest("#deletePhaseBtn");
+    if (!deleteBtn) return;
+    deleteSelectedPhase();
+  });
+
+  syncFromSource();
 
   return {
     open,
     close,
-    render
+    save,
+    reset,
+    addPhase,
+    exportJson,
+    copyJson
   };
 }
