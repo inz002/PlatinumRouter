@@ -224,15 +224,6 @@ export function createActionController({ gameData, debug, getCurrentState }) {
     }
   }
 
-  function exportSplits() {
-    const state = getCurrentState();
-
-    downloadJson("splits.json", {
-      splits: state.splits?.items || [],
-      exportedAt: new Date().toISOString()
-    });
-  }
-
   async function importSplits(file) {
     try {
       const parsed = await readFileAsJson(file);
@@ -294,30 +285,6 @@ export function createActionController({ gameData, debug, getCurrentState }) {
     document.getElementById("advanceCurrentBtn")?.addEventListener("click", completeSplit);
     document.getElementById("settingsToggle")?.addEventListener("click", toggleSettings);
 
-    document.getElementById("difficultySelect")?.addEventListener("change", (event) => {
-      updateState((raw) => {
-        const state = buildInitialState(raw, gameData, getCurrentState().gameId);
-        state.settings.difficulty = event.target.value || "Lethal";
-        return state;
-      });
-    });
-
-    document.getElementById("act1TargetMinutes")?.addEventListener("change", (event) => {
-      updateState((raw) => {
-        const state = buildInitialState(raw, gameData, getCurrentState().gameId);
-        state.settings.act1TargetMinutes = Math.max(0, Number(event.target.value || 0));
-        return state;
-      });
-    });
-
-    document.getElementById("remoteCode")?.addEventListener("input", (event) => {
-      updateState((raw) => {
-        const state = buildInitialState(raw, gameData, getCurrentState().gameId);
-        state.settings.remoteCode = event.target.value || "";
-        return state;
-      });
-    });
-
     document.getElementById("dirgeCheckbox")?.addEventListener("change", (event) => {
       updateState((raw) => {
         const state = buildInitialState(raw, gameData, getCurrentState().gameId);
@@ -327,7 +294,6 @@ export function createActionController({ gameData, debug, getCurrentState }) {
     });
 
     document.getElementById("exportTimesBtn")?.addEventListener("click", exportTimes);
-    document.getElementById("exportSplitsBtn")?.addEventListener("click", exportSplits);
     document.getElementById("resetBtn")?.addEventListener("click", resetRun);
 
     document.getElementById("importTimesInput")?.addEventListener("change", async (event) => {
@@ -389,10 +355,6 @@ export function createActionController({ gameData, debug, getCurrentState }) {
         debug.log("Split editor saved");
       }
     });
-
-    document.getElementById("openSplitEditorBtn")?.addEventListener("click", () => {
-      splitEditorApi?.open?.();
-    });
   }
 
   function setupActsEditor() {
@@ -426,10 +388,6 @@ export function createActionController({ gameData, debug, getCurrentState }) {
       onAfterSave: () => {
         debug.log("Acts editor saved");
       }
-    });
-
-    document.getElementById("openActsEditorBtn")?.addEventListener("click", () => {
-      actsEditorApi?.open?.();
     });
   }
 
