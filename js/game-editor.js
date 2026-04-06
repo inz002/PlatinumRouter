@@ -27,8 +27,7 @@ function normalizeCounterKey(value) {
     .trim()
     .toLowerCase()
     .replace(/['"]/g, "")
-    .replace(/[^a-z0-9]+/g, "")
-    .replace(/^-+|-+$/g, "");
+    .replace(/[^a-z0-9]+/g, "");
 }
 
 function safeArray(value) {
@@ -154,8 +153,12 @@ function getFormValues() {
   };
 }
 
+function getGridEl() {
+  return document.getElementById("counterBuilderGrid");
+}
+
 function refreshCounterHeaderTitles() {
-  const gridEl = document.getElementById("counterBuilderGrid");
+  const gridEl = getGridEl();
   if (!gridEl) return;
 
   gridEl.querySelectorAll("[data-counter-row]").forEach((row, index) => {
@@ -177,10 +180,14 @@ function refreshCounterHeaderTitles() {
 }
 
 function collectCountersFromDom() {
-  const gridEl = document.getElementById("counterBuilderGrid");
-  if (!gridEl) return [];
+  const gridEl = getGridEl();
+  if (!gridEl) return clone(workingCounters);
 
   const rows = Array.from(gridEl.querySelectorAll("[data-counter-row]"));
+
+  if (!rows.length) {
+    return clone(workingCounters);
+  }
 
   workingCounters = rows.map((row, index) => {
     return normalizeCounterRow({
@@ -198,7 +205,7 @@ function collectCountersFromDom() {
 function buildCountersJson(rows) {
   const result = {};
 
-  rows.forEach((row, index) => {
+  safeArray(rows).forEach((row, index) => {
     const item = normalizeCounterRow(row, index);
     if (!item.key) return;
 
@@ -261,34 +268,34 @@ function buildDefaultSplitsJson(defaultPhaseId) {
   };
 }
 
-function buildPackage({ gameId, title, subtitle, difficulty, defaultPhaseId, defaultPhaseLabel }, rows) {
+function buildPackage(metaValues, rows) {
   const countersJson = buildCountersJson(rows);
   const counterKeys = Object.keys(countersJson);
 
   return {
     gamesJson: {
-      defaultGameId: gameId,
+      defaultGameId: metaValues.gameId,
       games: [
-        buildGamesJsonEntry(gameId, title)
+        buildGamesJsonEntry(metaValues.gameId, metaValues.title)
       ]
     },
 
-    gameEntry: buildGamesJsonEntry(gameId, title),
+    gameEntry: buildGamesJsonEntry(metaValues.gameId, metaValues.title),
 
-    metaJson: buildMetaJson(title, subtitle, difficulty),
+    metaJson: buildMetaJson(metaValues.title, metaValues.subtitle, metaValues.difficulty),
 
     countersJson,
 
-    phasesJson: buildPhasesJson(defaultPhaseId, defaultPhaseLabel, counterKeys),
+    phasesJson: buildPhasesJson(metaValues.defaultPhaseId, metaValues.defaultPhaseLabel, counterKeys),
 
-    quotasJson: buildQuotasJson(defaultPhaseId),
+    quotasJson: buildQuotasJson(metaValues.defaultPhaseId),
 
-    defaultSplitsJson: buildDefaultSplitsJson(defaultPhaseId)
+    defaultSplitsJson: buildDefaultSplitsJson(metaValues.defaultPhaseId)
   };
 }
 
 function renderCounterBuilder() {
-  const gridEl = document.getElementById("counterBuilderGrid");
+  const gridEl = getGridEl();
   if (!gridEl) return;
 
   if (!workingCounters.length) {
@@ -311,10 +318,7 @@ function renderCounterBuilder() {
 }
 
 function renderLiveCountersPreview() {
-  const rows = document.querySelectorAll("[data-counter-row]").length
-    ? collectCountersFromDom()
-    : workingCounters;
-
+  const rows = collectCountersFromDom();
   setText("countersJsonOutput", prettyJson(buildCountersJson(rows)));
 }
 
@@ -377,7 +381,7 @@ function validateInput(values, rows) {
     throw new Error("Add at least one counter.");
   }
 
-  const keys = rows.map((row) => normalizeCounterRow(row).key).filter(Boolean);
+  const keys = rows.map((row, index) => normalizeCounterRow(row, index).key).filter(Boolean);
   const unique = new Set(keys);
 
   if (keys.length !== unique.size) {
@@ -402,13 +406,14 @@ function generate() {
 function addCounter() {
   collectCountersFromDom();
 
+  const nextIndex = workingCounters.length;
   workingCounters.push(normalizeCounterRow({
-    key: `counter${workingCounters.length + 1}`,
-    label: `Counter ${workingCounters.length + 1}`,
+    key: `counter${nextIndex + 1}`,
+    label: `Counter ${nextIndex + 1}`,
     icon: "",
     max: 0,
     act1: 0
-  }, workingCounters.length));
+  }, nextIndex));
 
   renderCounterBuilder();
 }
@@ -484,25 +489,32 @@ function loadExample() {
 }
 
 function setupEvents() {
-  const gridEl = document.getElementById("counterBuilderGrid");
+  const addCounterBtn = document.getElementById("addCounterBtn");
+  const resetCountersBtn = document.getElementById("resetCountersBtn");
+  const loadExampleBtn = document.getElementById("loadExampleBtn");
+  const generateBtn = document.getElementById("generateBtn");
+  const copyGamesBtn = document.getElementById("copyGamesBtn");
+  const copyPackageBtn = document.getElementById("copyPackageBtn");
+  const downloadPackageBtn = document.getElementById("downloadPackageBtn");
+  const gridEl = getGridEl();
 
-  document.getElementById("loadExampleBtn")?.addEventListener("click", loadExample);
-  document.getElementById("addCounterBtn")?.addEventListener("click", addCounter);
-  document.getElementById("resetCountersBtn")?.addEventListener("click", resetCounters);
-  document.getElementById("generateBtn")?.addEventListener("click", generate);
+  addCounterBtn?.addEventListener("click", addCounter);
+  resetCountersBtn?.addEventListener("click", resetCounters);
+  loadExampleBtn?.addEventListener("click", loadExample);
+  generateBtn?.addEventListener("click", generate);
 
-  document.getElementById("copyGamesBtn")?.addEventListener("click", async () => {
+  copyGamesBtn?.addEventListener("click", async () => {
     if (!currentPackage) return;
     await copyText(prettyJson(currentPackage.gamesJson));
   });
 
-  document.getElementById("copyPackageBtn")?.addEventListener("click", async () => {
+  copyPackageBtn?.addEventListener("click", async () => {
     if (!currentPackage) return;
     const values = getFormValues();
     await copyText(buildPackageText(currentPackage, values.gameId));
   });
 
-  document.getElementById("downloadPackageBtn")?.addEventListener("click", () => {
+  downloadPackageBtn?.addEventListener("click", () => {
     if (!currentPackage) return;
     const values = getFormValues();
     const bundle = buildZiplessBundle(currentPackage, values.gameId);
