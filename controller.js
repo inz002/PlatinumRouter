@@ -78,7 +78,14 @@ function buildInitialState(raw = {}) {
     raw.totals || {}
   );
 
-  const splits = normalizeSplits(raw.splits, gameData?.defaultSplits || []);
+  const rawSplitBlock = raw.splits || {};
+  const rawSplitItems = Array.isArray(rawSplitBlock.items)
+    ? rawSplitBlock.items
+    : Array.isArray(raw.splits)
+      ? raw.splits
+      : [];
+
+  const splits = normalizeSplits(rawSplitItems, gameData?.defaultSplits || []);
   const splitCount = splits.length;
 
   const running = !!raw.timer?.running;
@@ -86,6 +93,12 @@ function buildInitialState(raw = {}) {
   const startTime = running
     ? Number(raw.timer?.startTime || Date.now() - elapsed)
     : null;
+
+  const currentIndex = clamp(
+    Number(rawSplitBlock.currentIndex || 0),
+    0,
+    Math.max(0, splitCount)
+  );
 
   return {
     timer: {
@@ -98,8 +111,8 @@ function buildInitialState(raw = {}) {
     totals: normalized.totals,
 
     splits: {
-      currentIndex: clamp(Number(raw.splits?.currentIndex || 0), 0, splitCount),
-      completed: Array.isArray(raw.splits?.completed) ? raw.splits.completed : [],
+      currentIndex,
+      completed: Array.isArray(rawSplitBlock.completed) ? rawSplitBlock.completed : [],
       items: splits
     },
 
@@ -163,6 +176,12 @@ function updateExtraUi(state) {
     runTitle.textContent = `Ghost of Tsushima Platinum ${state.settings?.difficulty || "Lethal"}`;
   }
 
+  const difficultyBadge = document.getElementById("difficultyBadge");
+  if (difficultyBadge) {
+    difficultyBadge.textContent = state.settings?.difficulty || "Lethal";
+    difficultyBadge.classList.toggle("lethal", (state.settings?.difficulty || "Lethal") === "Lethal");
+  }
+
   const pacePill = document.getElementById("pacePill");
   if (pacePill) {
     pacePill.textContent = computePaceText(state);
@@ -194,6 +213,7 @@ function updateExtraUi(state) {
 
   if (settingsPanel) {
     settingsPanel.classList.toggle("open", settingsOpen);
+    settingsPanel.style.display = settingsOpen ? "block" : "none";
   }
 
   if (settingsToggle) {
@@ -203,6 +223,32 @@ function updateExtraUi(state) {
   const dirgeCheckbox = document.getElementById("dirgeCheckbox");
   if (dirgeCheckbox) {
     dirgeCheckbox.checked = !!state.misc?.dirgeDone;
+  }
+
+  const currentSplitLabel = document.getElementById("currentSplitLabel");
+  const currentSplit = state.splits?.items?.[state.splits?.currentIndex] || null;
+  if (currentSplitLabel) {
+    currentSplitLabel.textContent = currentSplit?.label || "Run complete";
+  }
+
+  const historyCount = document.getElementById("historyCount");
+  if (historyCount) {
+    historyCount.textContent = `${(state.splits?.completed || []).length} splits logged`;
+  }
+
+  const modePill = document.getElementById("modePill");
+  if (modePill) {
+    modePill.textContent = state.settings?.difficulty || "Lethal";
+  }
+
+  const queuePill = document.getElementById("queuePill");
+  if (queuePill) {
+    queuePill.textContent = `${(state.splits?.items || []).length} total splits`;
+  }
+
+  const historySaved = document.getElementById("historySaved");
+  if (historySaved) {
+    historySaved.textContent = `${(state.splits?.completed || []).length} saved`;
   }
 }
 
@@ -222,7 +268,9 @@ function render() {
     },
     miscChecks: {
       dirge: !!state.misc?.dirgeDone
-    }
+    },
+    history: state.splits?.completed || [],
+    activePhaseId: state.phase || getActivePhase(state)
   };
 
   renderUI({
@@ -263,6 +311,8 @@ function buildUiCounters(state) {
   Object.entries(gameData?.counters || {}).forEach(([key, def]) => {
     result[key] = {
       label: def.label,
+      shortLabel: def.shortLabel,
+      queueLabel: def.queueLabel,
       icon: def.icon,
       max: Number(state.totals?.[key] || def.max || 0),
       value: Number(state.counters?.[key]?.value || 0),
@@ -552,6 +602,8 @@ function resetRun() {
     state.settings = clone(current.settings || DEFAULT_SETTINGS);
     state.ui.settingsOpen = !!current.ui?.settingsOpen;
     state.splits.items = normalizeSplits(undefined, gameData?.defaultSplits || []);
+    state.splits.currentIndex = 0;
+    state.splits.completed = [];
     state.phase = getActivePhase(state);
     return state;
   });
@@ -624,9 +676,14 @@ function bindStaticEvents() {
 }
 
 function setupSplitEditor() {
+  const overlayEl = document.getElementById("splitEditorOverlay");
+  const gridEl = document.getElementById("splitEditorGrid");
+
+  if (!overlayEl || !gridEl) return;
+
   splitEditorApi = createSplitEditor({
-    overlayEl: document.getElementById("splitEditorOverlay"),
-    gridEl: document.getElementById("splitEditorGrid"),
+    overlayEl,
+    gridEl,
     addBtn: document.getElementById("addSplitEditorBtn"),
     resetBtn: document.getElementById("resetSplitEditorBtn"),
     closeBtn: document.getElementById("closeSplitEditorBtn"),
@@ -655,15 +712,21 @@ function setupSplitEditor() {
   });
 
   document.getElementById("openSplitEditorBtn")?.addEventListener("click", () => {
-    splitEditorApi?.open();
+    splitEditorApi?.open?.();
   });
 }
 
 function setupActsEditor() {
+  const overlayEl = document.getElementById("actsEditorOverlay");
+  const phaseListEl = document.getElementById("actsEditorPhaseList");
+  const formEl = document.getElementById("actsEditorForm");
+
+  if (!overlayEl || !phaseListEl || !formEl) return;
+
   actsEditorApi = createActsEditor({
-    overlayEl: document.getElementById("actsEditorOverlay"),
-    phaseListEl: document.getElementById("actsEditorPhaseList"),
-    formEl: document.getElementById("actsEditorForm"),
+    overlayEl,
+    phaseListEl,
+    formEl,
     addBtn: document.getElementById("addActsEditorBtn"),
     closeBtn: document.getElementById("closeActsEditorBtn"),
     saveBtn: document.getElementById("saveActsEditorBtn"),
@@ -688,7 +751,7 @@ function setupActsEditor() {
   });
 
   document.getElementById("openActsEditorBtn")?.addEventListener("click", () => {
-    actsEditorApi?.open();
+    actsEditorApi?.open?.();
   });
 }
 
@@ -709,4 +772,37 @@ async function boot() {
   const initial = buildInitialState(getState());
 
   setWholeState(initial);
-  syncPhas
+  syncPhaseToState();
+
+  bindStaticEvents();
+  setupSplitEditor();
+  setupActsEditor();
+  setupSubscriptions();
+
+  debug.setSnapshotBuilder(() => ({
+    gameData,
+    state: getCurrentState()
+  }));
+
+  const state = getCurrentState();
+  if (state.timer?.running) {
+    ensureTimerLoop();
+  }
+
+  render();
+
+  debug.log("Controller booted", {
+    counters: Object.keys(gameData?.counters || {}).length,
+    phases: Object.keys(gameData?.phases || {}).length,
+    splits: (state.splits?.items || []).length
+  });
+}
+
+boot().catch((error) => {
+  debug.error("Controller boot failed", {
+    message: error.message,
+    stack: error.stack
+  });
+
+  console.error(error);
+});
