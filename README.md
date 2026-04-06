@@ -68,3 +68,14 @@ Stored in localStorage.
 - Separate editor pages
 - Multi-game support
 - Cloud sync (optional, not priority)
+
+## Important Layout Decision
+
+`overlay.html` stays in the project root on purpose.
+
+Reason:
+- It is a core runtime page, just like `index.html`
+- It should stay visually and structurally tied to the main routing tool
+- Keeping it in root reduces the chance of accidental refactors breaking overlay paths or shared logic
+
+This is intentional and should not be "cleaned up" by moving it into a subfolder.
