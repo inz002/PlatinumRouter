@@ -34,10 +34,11 @@ function getSplitAutoSummary(split, counterDefs) {
     const n = Number(amount || 0);
     if (!n) return;
 
-    const label = counterDefs?.[key]?.shortLabel
-      || counterDefs?.[key]?.queueLabel
-      || counterDefs?.[key]?.label
-      || key;
+    const label =
+      counterDefs?.[key]?.shortLabel ||
+      counterDefs?.[key]?.queueLabel ||
+      counterDefs?.[key]?.label ||
+      key;
 
     parts.push(`${n} ${label.toLowerCase()}`);
   });
@@ -75,13 +76,15 @@ function getVisibleCounterKeysForPhase(activePhaseId, phases, counters) {
   return Object.keys(counters || {});
 }
 
-function getPhaseInfoFromCurrentSplit(splits, currentSplitIndex, phases) {
+function getPhaseInfoFromCurrentSplit(splits, currentSplitIndex, phases, explicitPhaseId) {
   const currentSplit = getCurrentSplit(splits, currentSplitIndex);
 
-  const phaseId = currentSplit?.phase
-    || currentSplit?.phaseId
-    || currentSplit?.act
-    || "legacy_all";
+  const phaseId =
+    explicitPhaseId ||
+    currentSplit?.phase ||
+    currentSplit?.phaseId ||
+    currentSplit?.act ||
+    "legacy_all";
 
   const phase = phases?.[phaseId] || null;
 
@@ -114,64 +117,72 @@ function getSubsetProgress(counters, keys) {
   return percent(current, total);
 }
 
-function getProgressBarHtml(progress) {
-  return `
-    <div class="mini-progress">
-      <div class="mini-progress-fill" style="width:${progress}%"></div>
-    </div>
-  `;
-}
-
 function renderTimer(state) {
-  const timerValue = document.getElementById("timerValue");
+  const timerValue = document.getElementById("timer");
   if (timerValue) {
     timerValue.textContent = formatMs(state?.elapsedMs || 0);
-  }
-
-  const timerCard = document.getElementById("timerCard");
-  if (timerCard) {
-    timerCard.classList.toggle("running", !!state?.settings?.__timerRunning);
   }
 }
 
 function renderCurrentSplit(state, counterDefs) {
   const currentSplit = getCurrentSplit(state.splits, state.currentSplitIndex);
 
-  const currentSplitTitle = document.getElementById("currentSplitTitle");
-  const currentSplitMeta = document.getElementById("currentSplitMeta");
-  const currentSplitTags = document.getElementById("currentSplitTags");
+  const currentSplitLabel = document.getElementById("currentSplitLabel");
+  const historyCount = document.getElementById("historyCount");
+  const modePill = document.getElementById("modePill");
 
-  if (!currentSplit) {
-    if (currentSplitTitle) currentSplitTitle.textContent = "Run complete";
-    if (currentSplitMeta) currentSplitMeta.textContent = `${state.splits.length} splits logged`;
-    if (currentSplitTags) {
-      currentSplitTags.innerHTML = `
-        <span class="split-tag">Complete</span>
-        <span class="split-tag">${escapeHtml(state.settings?.difficulty || "Lethal")}</span>
-      `;
+  if (currentSplitLabel) {
+    currentSplitLabel.textContent = currentSplit?.label || "Run complete";
+  }
+
+  if (historyCount) {
+    historyCount.textContent = `${(state.history || []).length} splits logged`;
+  }
+
+  if (modePill) {
+    modePill.textContent = state.settings?.difficulty || "Lethal";
+  }
+
+  const currentObjectiveText = document.getElementById("currentObjectiveText");
+  if (currentObjectiveText) {
+    if (currentSplit?.note) {
+      currentObjectiveText.textContent = currentSplit.note;
+    } else {
+      currentObjectiveText.textContent = "No note for this split yet.";
     }
-    return;
   }
 
-  if (currentSplitTitle) {
-    currentSplitTitle.textContent = currentSplit.label || "Current Split";
+  const historyList = document.getElementById("historyList");
+  const historySaved = document.getElementById("historySaved");
+
+  if (historySaved) {
+    historySaved.textContent = `${(state.history || []).length} saved`;
   }
 
-  if (currentSplitMeta) {
-    const autoSummary = getSplitAutoSummary(currentSplit, counterDefs);
-    currentSplitMeta.textContent = autoSummary || "No auto progress on this split";
-  }
+  if (historyList) {
+    const history = Array.isArray(state.history) ? state.history : [];
 
-  if (currentSplitTags) {
-    const tags = [];
-
-    if (currentSplit.phase || currentSplit.phaseId) {
-      tags.push(`<span class="split-tag">${escapeHtml(currentSplit.phase || currentSplit.phaseId)}</span>`);
+    if (!history.length) {
+      historyList.innerHTML = `<div class="subtitle">No completed splits yet.</div>`;
+    } else {
+      historyList.innerHTML = history
+        .slice()
+        .reverse()
+        .map((entry) => {
+          return `
+            <div class="card" style="margin-bottom:8px">
+              <div class="row between" style="gap:8px">
+                <div class="mid">${escapeHtml(entry.label || "Split")}</div>
+                <div class="pill">${formatMs(entry.segmentMs || 0)}</div>
+              </div>
+              <div class="subtitle" style="margin-top:6px">
+                Total: ${formatMs(entry.cumulativeMs || 0)}
+              </div>
+            </div>
+          `;
+        })
+        .join("");
     }
-
-    tags.push(`<span class="split-tag">${escapeHtml(state.settings?.difficulty || "Lethal")}</span>`);
-
-    currentSplitTags.innerHTML = tags.join("");
   }
 }
 
@@ -179,123 +190,112 @@ function renderPhasePanel(state, phases, counterDefs, quotas) {
   const { activePhaseId, activePhase } = getPhaseInfoFromCurrentSplit(
     state.splits,
     state.currentSplitIndex,
-    phases
+    phases,
+    state.activePhaseId
   );
 
   const visibleKeys = getVisibleCounterKeysForPhase(activePhaseId, phases, state.counters);
   const phaseProgress = getSubsetProgress(state.counters, visibleKeys);
 
-  const phaseHeaderLabel = document.getElementById("phaseHeaderLabel");
-  const phaseHeaderProgress = document.getElementById("phaseHeaderProgress");
-  const activeObjectiveTitle = document.getElementById("activeObjectiveTitle");
-  const activeObjectiveDescription = document.getElementById("activeObjectiveDescription");
-  const activeObjectivePills = document.getElementById("activeObjectivePills");
-  const currentObjectiveNote = document.getElementById("currentObjectiveNote");
+  const activePhaseName = document.getElementById("activePhaseName");
+  const activePhaseNote = document.getElementById("activePhaseNote");
+  const visibleObjectives = document.getElementById("visibleObjectives");
 
-  if (phaseHeaderLabel) {
-    phaseHeaderLabel.textContent = activePhase?.label || activePhaseId || "Current Phase";
+  const act1QuotaLabel = document.getElementById("actQuotaLabel");
+  const act1SummaryValue = document.getElementById("act1SummaryValue");
+  const act1SummaryBar = document.getElementById("act1SummaryBar");
+  const act1QuotaTitle = document.getElementById("act1QuotaTitle");
+  const act1QuotaText = document.getElementById("act1QuotaText");
+
+  if (activePhaseName) {
+    activePhaseName.textContent = activePhase?.label || activePhaseId || "Legacy All";
   }
 
-  if (phaseHeaderProgress) {
-    const quotaEntries = Object.entries(quotas?.[activePhaseId] || {});
-    const quotaTarget = quotaEntries.reduce((sum, [, value]) => sum + Number(value || 0), 0);
-    const quotaDone = quotaEntries.reduce((sum, [key, value]) => {
-      const current = Number(state.counters?.[key]?.value || 0);
-      return sum + Math.min(current, Number(value || 0));
-    }, 0);
+  if (activePhaseNote) {
+    activePhaseNote.textContent =
+      activePhase?.description ||
+      activePhase?.note ||
+      "No phase note.";
+  }
 
-    if (quotaTarget > 0) {
-      phaseHeaderProgress.textContent = `${quotaDone}/${quotaTarget}`;
+  if (visibleObjectives) {
+    visibleObjectives.innerHTML = visibleKeys
+      .map((key) => {
+        const def = counterDefs?.[key] || {};
+        const label = def.label || key;
+        const icon = def.icon ? `${escapeHtml(def.icon)} ` : "";
+
+        return `<span class="pill">${icon}${escapeHtml(label)}</span>`;
+      })
+      .join("");
+  }
+
+  if (act1QuotaLabel) {
+    act1QuotaLabel.textContent = activePhase?.label || activePhaseId || "Current Phase";
+  }
+
+  if (act1SummaryValue) {
+    act1SummaryValue.textContent = `${phaseProgress}%`;
+  }
+
+  if (act1SummaryBar) {
+    act1SummaryBar.style.width = `${phaseProgress}%`;
+  }
+
+  if (act1QuotaTitle) {
+    act1QuotaTitle.textContent = `${activePhase?.label || activePhaseId || "Current Phase"} Quota`;
+  }
+
+  if (act1QuotaText) {
+    const quotaEntries = Object.entries(quotas?.[activePhaseId] || {});
+
+    if (!quotaEntries.length) {
+      act1QuotaText.textContent = "No quota targets for this phase";
     } else {
-      phaseHeaderProgress.textContent = `${phaseProgress}%`;
+      act1QuotaText.textContent = quotaEntries
+        .map(([key, value]) => {
+          const def = counterDefs?.[key] || {};
+          const label = def.shortLabel || def.queueLabel || def.label || key;
+          const current = Number(state.counters?.[key]?.value || 0);
+          return `${label}: ${Math.min(current, Number(value || 0))}/${Number(value || 0)}`;
+        })
+        .join(" • ");
     }
   }
-
-  if (activeObjectiveTitle) {
-    activeObjectiveTitle.textContent = activePhase?.label || activePhaseId || "Current Objective Set";
-  }
-
-  if (activeObjectiveDescription) {
-    activeObjectiveDescription.textContent =
-      activePhase?.description
-      || activePhase?.note
-      || "No description for this phase yet.";
-  }
-
-  if (currentObjectiveNote) {
-    currentObjectiveNote.textContent =
-      activePhase?.objectiveNote
-      || activePhase?.currentNote
-      || activePhase?.note
-      || "No note for this split yet.";
-  }
-
-  if (activeObjectivePills) {
-    activeObjectivePills.innerHTML = visibleKeys.map((key) => {
-      const def = counterDefs?.[key] || {};
-      const label = def.label || key;
-      const icon = def.icon ? `<span class="objective-pill-icon">${escapeHtml(def.icon)}</span>` : "";
-      return `
-        <span class="objective-pill">
-          ${icon}
-          <span>${escapeHtml(label)}</span>
-        </span>
-      `;
-    }).join("");
-  }
-}
-
-function renderMiscChecklist(state) {
-  const miscChecklistContent = document.getElementById("miscChecklistContent");
-  if (!miscChecklistContent) return;
-
-  const dirgeDone = !!state.miscChecks?.dirge;
-
-  miscChecklistContent.innerHTML = `
-    <label class="misc-check-row">
-      <input type="checkbox" id="dirgeCheckboxProxy" ${dirgeDone ? "checked" : ""} disabled />
-      <div class="misc-check-copy">
-        <div class="misc-check-title">🎵 Dirge of the Fallen</div>
-        <div class="misc-check-note">Monochrome and Cooper are tracked as counters. Dirge is a one-time checkbox.</div>
-      </div>
-    </label>
-  `;
 }
 
 function renderTotalsGrid(state, counterDefs) {
-  const totalsGrid = document.getElementById("trackedTotalsGrid");
-  if (!totalsGrid) return;
+  const progressGrid = document.getElementById("progressGrid");
+  if (!progressGrid) return;
 
   const entries = Object.entries(state.counters || {});
 
-  totalsGrid.innerHTML = entries.map(([key, counter]) => {
-    const def = counterDefs?.[key] || {};
-    const label = def.label || key;
-    const icon = def.icon || "";
-    const value = Number(counter?.value || 0);
-    const max = Number(counter?.max || 0);
-    const progress = percent(value, max);
+  progressGrid.innerHTML = entries
+    .map(([key, counter]) => {
+      const def = counterDefs?.[key] || {};
+      const label = def.label || key;
+      const icon = def.icon || "";
+      const value = Number(counter?.value || 0);
+      const max = Number(counter?.max || 0);
+      const progress = percent(value, max);
 
-    return `
-      <div class="counter-card" data-counter-card="${escapeHtml(key)}">
-        <div class="counter-card-header">
-          <div class="counter-card-label">${escapeHtml(label)}</div>
-        </div>
+      return `
+        <div class="card">
+          <div class="eyebrow">${escapeHtml(label)}</div>
+          <div class="row between" style="margin-top:10px;gap:8px">
+            <button class="btn" data-counter-key="${escapeHtml(key)}" data-delta="-1" type="button">−</button>
 
-        <div class="counter-card-controls">
-          <button class="counter-btn" data-counter-key="${escapeHtml(key)}" data-delta="-1" type="button">−</button>
+            <div style="text-align:center;flex:1">
+              <div class="mid">${icon ? `${escapeHtml(icon)} ` : ""}${value}/${max}</div>
+              <div class="subtitle" style="margin-top:4px">${progress}%</div>
+            </div>
 
-          <div class="counter-card-main">
-            <div class="counter-card-icon">${escapeHtml(icon)}</div>
-            <div class="counter-card-value">${value}/${max}</div>
-            <div class="counter-card-percent">${progress}%</div>
+            <button class="btn" data-counter-key="${escapeHtml(key)}" data-delta="1" type="button">+</button>
           </div>
-
-          <button class="counter-btn" data-counter-key="${escapeHtml(key)}" data-delta="1" type="button">+</button>
         </div>
-      </div>
-    `;
-  }).join("");
+      `;
+    })
+    .join("");
 }
 
 function renderOverallBoxes(state, phases) {
@@ -304,7 +304,8 @@ function renderOverallBoxes(state, phases) {
   const { activePhaseId } = getPhaseInfoFromCurrentSplit(
     state.splits,
     state.currentSplitIndex,
-    phases
+    phases,
+    state.activePhaseId
   );
 
   const visibleKeys = getVisibleCounterKeysForPhase(activePhaseId, phases, state.counters);
@@ -313,62 +314,69 @@ function renderOverallBoxes(state, phases) {
   const overallPercent = document.getElementById("overallPercent");
   const overallBar = document.getElementById("overallBar");
 
-  const actPercent = document.getElementById("actPercent");
-  const actBar = document.getElementById("actBar");
+  const actPercent = document.getElementById("act1SummaryValue");
+  const actBar = document.getElementById("act1SummaryBar");
 
   if (overallPercent) overallPercent.textContent = `${overallProgress}%`;
-  if (overallBar) overallBar.innerHTML = getProgressBarHtml(overallProgress);
+  if (overallBar) overallBar.style.width = `${overallProgress}%`;
 
   if (actPercent) actPercent.textContent = `${phaseProgress}%`;
-  if (actBar) actBar.innerHTML = getProgressBarHtml(phaseProgress);
+  if (actBar) actBar.style.width = `${phaseProgress}%`;
 }
 
 function renderSplitQueue(state, counterDefs) {
-  const splitQueue = document.getElementById("splitQueue");
-  const splitQueueCount = document.getElementById("splitQueueCount");
+  const splitButtons = document.getElementById("splitButtons");
+  const queuePill = document.getElementById("queuePill");
 
-  if (!splitQueue) return;
+  if (!splitButtons) return;
 
-  if (splitQueueCount) {
-    splitQueueCount.textContent = `${state.splits.length} total splits`;
+  if (queuePill) {
+    queuePill.textContent = `${state.splits.length} total splits`;
   }
 
-  splitQueue.innerHTML = (state.splits || []).map((split, index) => {
-    const status = getSplitStatus(index, state.currentSplitIndex);
-    const autoSummary = getSplitAutoSummary(split, counterDefs);
+  splitButtons.innerHTML = (state.splits || [])
+    .map((split, index) => {
+      const status = getSplitStatus(index, state.currentSplitIndex);
+      const autoSummary = getSplitAutoSummary(split, counterDefs);
 
-    return `
-      <button
-        class="split-queue-item ${status}"
-        type="button"
-        data-split-index="${index}"
-        ${status !== "current" ? "disabled" : ""}
-      >
-        <div class="split-queue-dot"></div>
+      const disabled = status !== "current" ? "disabled" : "";
+      const opacity = status === "done" ? "0.6" : "1";
 
-        <div class="split-queue-copy">
-          <div class="split-queue-title">${escapeHtml(split.label || `Split ${index + 1}`)}</div>
-          <div class="split-queue-meta">${escapeHtml(autoSummary || "No tracked objectives")}</div>
-        </div>
-
-        <div class="split-queue-arrow">›</div>
-      </button>
-    `;
-  }).join("");
+      return `
+        <button
+          class="btn full"
+          type="button"
+          data-split-index="${index}"
+          ${disabled}
+          style="margin-bottom:8px;opacity:${opacity};text-align:left"
+        >
+          <div class="row between" style="align-items:flex-start;gap:8px">
+            <div>
+              <div class="mid">${escapeHtml(split.label || `Split ${index + 1}`)}</div>
+              <div class="subtitle" style="margin-top:4px">
+                ${escapeHtml(autoSummary || "No tracked objectives")}
+              </div>
+            </div>
+            <div class="subtitle">›</div>
+          </div>
+        </button>
+      `;
+    })
+    .join("");
 }
 
 function renderHiddenInputs(state) {
-  const hiddenDirge = document.getElementById("dirgeCheckbox");
-  if (hiddenDirge) {
-    hiddenDirge.checked = !!state.miscChecks?.dirge;
+  const dirgeCheckbox = document.getElementById("dirgeCheckbox");
+  if (dirgeCheckbox) {
+    dirgeCheckbox.checked = !!state.miscChecks?.dirge;
   }
 }
 
 function renderDifficultyPill(state) {
-  const difficultyPill = document.getElementById("difficultyPill");
-  if (!difficultyPill) return;
+  const difficultyBadge = document.getElementById("difficultyBadge");
+  if (!difficultyBadge) return;
 
-  difficultyPill.textContent = state.settings?.difficulty || "Lethal";
+  difficultyBadge.textContent = state.settings?.difficulty || "Lethal";
 }
 
 function renderTimerButtonState(isRunning) {
@@ -385,22 +393,24 @@ export function renderUI({ state, counters, phases, meta, quotas }) {
     splits: Array.isArray(state?.splits) ? state.splits : [],
     currentSplitIndex: Number(state?.currentSplitIndex || 0),
     settings: state?.settings || {},
-    miscChecks: state?.miscChecks || {}
+    miscChecks: state?.miscChecks || {},
+    history: Array.isArray(state?.history) ? state.history : [],
+    activePhaseId: state?.activePhaseId || null
   };
 
   renderTimer(safeState);
   renderDifficultyPill(safeState);
-  renderCurrentSplit(safeState, counters);
+  renderCurrentSplit(safeState, counters || {});
   renderPhasePanel(safeState, phases || {}, counters || {}, quotas || {});
-  renderMiscChecklist(safeState);
   renderTotalsGrid(safeState, counters || {});
   renderOverallBoxes(safeState, phases || {});
   renderSplitQueue(safeState, counters || {});
   renderHiddenInputs(safeState);
   renderTimerButtonState(!!safeState.settings?.__timerRunning);
 
-  const subtitle = document.getElementById("runSubtitle");
+  const subtitle = document.querySelector(".top .subtitle");
   if (subtitle) {
-    subtitle.textContent = meta?.subtitle || "Main controller with phase-based objective visibility.";
+    subtitle.textContent =
+      meta?.subtitle || "Main controller with phase-based objective visibility.";
   }
 }
