@@ -85,7 +85,11 @@ function buildInitialState(raw = {}) {
       ? raw.splits
       : [];
 
-  const splits = normalizeSplits(rawSplitItems, gameData?.defaultSplits || []);
+  const hasSavedSplits = Array.isArray(rawSplitItems) && rawSplitItems.length > 0;
+  const splits = normalizeSplits(
+  hasSavedSplits ? rawSplitItems : gameData?.defaultSplits || [],
+  gameData?.defaultSplits || []
+);
   const splitCount = splits.length;
 
   const running = !!raw.timer?.running;
