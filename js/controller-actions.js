@@ -259,6 +259,61 @@ export function createActionController({ gameData, debug, getCurrentState }) {
     }
   }
 
+  function parseTimeStringToMs(value) {
+    const raw = String(value || "").trim();
+    const match = raw.match(/^(\d{1,3}):([0-5]\d):([0-5]\d)$/);
+
+    if (!match) return null;
+
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = Number(match[3]);
+
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes) || !Number.isFinite(seconds)) {
+      return null;
+    }
+
+    return ((hours * 60 * 60) + (minutes * 60) + seconds) * 1000;
+  }
+
+  function setTimerElapsed(nextElapsedMs) {
+    updateState((raw) => {
+      const state = buildInitialState(raw, gameData, getCurrentState().gameId);
+      const elapsed = Math.max(0, Number(nextElapsedMs || 0));
+
+      state.timer.elapsed = elapsed;
+
+      if (state.timer.running) {
+        state.timer.startTime = Date.now() - elapsed;
+      } else {
+        state.timer.startTime = null;
+      }
+
+      return state;
+    });
+  }
+
+  function applyPracticeStartTime() {
+    const input = document.getElementById("practiceStartTimeInput");
+    const parsedMs = parseTimeStringToMs(input?.value);
+
+    if (parsedMs == null) {
+      alert("Use HH:MM:SS format, for example 07:00:00");
+      return;
+    }
+
+    setTimerElapsed(parsedMs);
+  }
+
+  function resetPracticeStartTime() {
+    const input = document.getElementById("practiceStartTimeInput");
+    if (input) {
+      input.value = "00:00:00";
+    }
+
+    setTimerElapsed(0);
+  }
+
   function resetRun() {
     if (!window.confirm("Reset timer, counters, and split progress?")) return;
 
@@ -277,6 +332,11 @@ export function createActionController({ gameData, debug, getCurrentState }) {
       state.phase = getActivePhase(state, gameData);
       return state;
     });
+
+    const input = document.getElementById("practiceStartTimeInput");
+    if (input) {
+      input.value = "00:00:00";
+    }
   }
 
   function bindStaticEvents() {
@@ -295,6 +355,16 @@ export function createActionController({ gameData, debug, getCurrentState }) {
 
     document.getElementById("exportTimesBtn")?.addEventListener("click", exportTimes);
     document.getElementById("resetBtn")?.addEventListener("click", resetRun);
+
+    document.getElementById("setStartTimeBtn")?.addEventListener("click", applyPracticeStartTime);
+    document.getElementById("resetStartTimeBtn")?.addEventListener("click", resetPracticeStartTime);
+
+    document.getElementById("practiceStartTimeInput")?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyPracticeStartTime();
+      }
+    });
 
     document.getElementById("importTimesInput")?.addEventListener("change", async (event) => {
       const file = event.target.files?.[0];
