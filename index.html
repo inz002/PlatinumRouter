@@ -8,35 +8,48 @@
   <link rel="stylesheet" href="./styles/layout.css" />
   <link rel="stylesheet" href="./styles/components.css" />
   <link rel="stylesheet" href="./styles/controller.css" />
-  
 </head>
 <body>
   <div class="app">
+    <div class="top">
+      <div>
+        <div class="eyebrow">Run Control Overlay</div>
+        <div class="title">Ghost of Tsushima Platinum Lethal</div>
+        <div class="subtitle">Speedrun Controller</div>
+      </div>
+
       <div id="difficultyBadge" class="badge lethal">Lethal</div>
     </div>
 
     <div class="layout">
       <div class="stack">
-        <div class="panel">
+        <div class="panel" id="timerCard">
           <div class="timerBox">
             <div class="timerLabel">⏱️ Run Timer</div>
             <div id="timer" class="timer">00:00:00</div>
-            <div class="row" style="justify-content:center;margin-top:12px">
+
+            <div class="row" style="justify-content:center;margin-top:12px;gap:8px;">
               <button id="startPauseBtn" class="btn primary">▶ Start</button>
               <button id="undoBtn" class="btn">↶ Undo</button>
             </div>
           </div>
         </div>
 
-        <div class="panel">
+        <div class="panel" id="currentSplitCard">
           <div class="card">
             <div class="eyebrow">Current Split</div>
             <div id="currentSplitLabel" class="mid" style="margin-top:6px">No split</div>
-            <div class="row" style="margin-top:8px">
+
+            <div class="row" style="margin-top:8px;gap:8px;">
               <div id="historyCount" class="pill">0 splits logged</div>
               <div id="modePill" class="pill">Lethal</div>
             </div>
-            <button id="advanceCurrentBtn" class="btn primary full" style="margin-top:12px">
+
+            <button
+              id="advanceCurrentBtn"
+              class="btn primary full"
+              style="margin-top:12px"
+            >
               ▶ Complete Current Split
             </button>
           </div>
@@ -44,19 +57,23 @@
 
         <div class="panel">
           <div class="compact">
-            <div class="card statCard">
+            <div class="card statCard" id="overallCard">
               <div class="eyebrow">Overall</div>
               <div id="overallPercent" class="big">0%</div>
-              <div class="bar"><span id="overallBar" style="width:0%"></span></div>
+              <div class="bar">
+                <span id="overallBar" style="width:0%"></span>
+              </div>
             </div>
-            <div class="card statCard">
+
+            <div class="card statCard" id="phaseProgressCard">
               <div class="eyebrow" id="actQuotaLabel">Act 1</div>
               <div id="act1SummaryValue" class="big">0%</div>
               <div class="bar">
                 <span id="act1SummaryBar" style="width:0%;background:var(--blue)"></span>
               </div>
             </div>
-            <div class="card statCard">
+
+            <div class="card statCard" id="paceCard">
               <div class="eyebrow">Pace</div>
               <div id="pacePill" class="mid" style="margin-top:6px">On fresh air</div>
             </div>
@@ -123,10 +140,15 @@
 
               <div class="card">
                 <div class="eyebrow">Misc Checklist</div>
-                <label class="row" style="margin-top:10px;justify-content:flex-start;gap:8px;cursor:pointer">
+
+                <label
+                  class="row"
+                  style="margin-top:10px;justify-content:flex-start;gap:8px;cursor:pointer"
+                >
                   <input id="dirgeCheckbox" type="checkbox" />
                   <span>🎵 Dirge of the Fallen</span>
                 </label>
+
                 <div class="subtitle" style="margin-top:10px;color:white">
                   Monochrome and Cooper are tracked as counters. Dirge is a one-time checkbox.
                 </div>
@@ -142,7 +164,9 @@
 
             <div class="objectiveNote">
               <div class="eyebrow">Current Objective Note</div>
-              <div id="currentObjectiveText" class="objectiveText">No note for this split yet.</div>
+              <div id="currentObjectiveText" class="objectiveText">
+                No note for this split yet.
+              </div>
             </div>
 
             <div class="eyebrow" style="margin-top:10px">Tracked Totals</div>
@@ -155,6 +179,7 @@
                 <div class="mid">Split Queue</div>
                 <div class="subtitle">Only current split is clickable.</div>
               </div>
+
               <div id="queuePill" class="pill">0 total splits</div>
             </div>
 
@@ -166,7 +191,9 @@
                   <div class="eyebrow">Split History</div>
                   <div id="historySaved" class="subtitle">0 saved</div>
                 </div>
+
                 <div id="historyList" class="history" style="margin-top:8px"></div>
+
                 <div class="subtitle" style="margin-top:10px">
                   Undo reverses the latest split and its auto-progress.
                 </div>
@@ -181,7 +208,7 @@
       <div class="row between" style="gap:12px;flex-wrap:wrap">
         <div>
           <div class="eyebrow">Navigation</div>
-          <div class="subtitle">Open the overlay or the new editor pages.</div>
+          <div class="subtitle">Open the overlay or the editor pages.</div>
         </div>
 
         <div class="row" style="gap:8px;flex-wrap:wrap">
@@ -191,71 +218,6 @@
         </div>
       </div>
     </footer>
-
-    <div id="splitEditorOverlay" class="overlayModal">
-      <div class="editor">
-        <div class="editorHead">
-          <div>
-            <h2 style="margin:0">Split Editor</h2>
-            <div class="subtitle">
-              Edit split names, notes, phase starts, and auto-progress values.
-            </div>
-          </div>
-          <div class="row">
-            <button id="addSplitEditorBtn" class="btn">＋ Add Split</button>
-            <button id="downloadSplitBackupBtn" class="btn">⬇ Download Split Backup</button>
-            <button id="copySplitBackupBtn" class="btn">📋 Copy Split Backup</button>
-            <button id="resetSplitEditorBtn" class="btn">Reset</button>
-            <button id="closeSplitEditorBtn" class="btn">Close</button>
-          </div>
-        </div>
-
-        <div id="splitEditorGrid" class="editorGrid"></div>
-
-        <div class="editorHead" style="border-top:1px solid var(--border);border-bottom:0;top:auto;bottom:0">
-          <div class="subtitle">Old split JSON stays compatible because phase fields are optional.</div>
-          <button id="saveSplitEditorBtn" class="btn primary">Save Split Setup</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="actsEditorOverlay" class="overlayModal">
-      <div class="editor">
-        <div class="editorHead">
-          <div>
-            <h2 style="margin:0">Acts Editor</h2>
-            <div class="subtitle">
-              Edit phase labels, notes, visible objectives, and quota targets.
-            </div>
-          </div>
-          <div class="row">
-            <button id="addActsEditorBtn" class="btn">＋ Add Phase</button>
-            <button id="exportActsEditorBtn" class="btn">⬇ Export Acts</button>
-            <label class="btn">
-              ⬆ Import Acts
-              <input id="importActsEditorInput" type="file" accept="application/json" hidden />
-            </label>
-            <button id="copyActsEditorBtn" class="btn">📋 Copy Acts</button>
-            <button id="resetActsEditorBtn" class="btn">Reset</button>
-            <button id="closeActsEditorBtn" class="btn">Close</button>
-          </div>
-        </div>
-
-        <div class="editorGrid" style="grid-template-columns: 320px 1fr;">
-          <div class="editorCard">
-            <div class="eyebrow" style="margin-bottom:10px">Phases</div>
-            <div id="actsEditorPhaseList" class="splitList"></div>
-          </div>
-
-          <div id="actsEditorForm"></div>
-        </div>
-
-        <div class="editorHead" style="border-top:1px solid var(--border);border-bottom:0;top:auto;bottom:0">
-          <div class="subtitle">Phase visibility and quotas are edited together here.</div>
-          <button id="saveActsEditorBtn" class="btn primary">Save Acts Setup</button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <script type="module" src="./controller.js"></script>
