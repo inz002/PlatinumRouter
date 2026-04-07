@@ -1,24 +1,23 @@
 .app {
   width: 100%;
   max-width: 100%;
-  padding: 6px;
+  padding: 8px;
 }
 
 .top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  padding: 6px 2px 10px 2px;
+  gap: 18px;
+  padding: 4px 2px 10px 2px;
 }
 
 .panel {
-  margin-top: 10px;
+  margin-top: 12px;
   padding: 14px;
-  border-radius: 24px;
+  border-radius: var(--radius-xl);
   background:
-    linear-gradient(90deg, rgba(17, 34, 78, 0.22) 0%, rgba(6, 12, 30, 0.16) 100%),
-    rgba(5, 10, 24, 0.72);
+    linear-gradient(180deg, rgba(13, 24, 49, 0.92) 0%, rgba(8, 17, 34, 0.96) 100%);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-1);
 }
