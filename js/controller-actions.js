@@ -1,8 +1,6 @@
 // js/controller-actions.js
 
 import { updateState, resetState } from "./storage.js";
-import { createSplitEditor } from "./split-editor.js";
-import { createActsEditor } from "./acts-editor.js";
 import {
   buildInitialState,
   clone,
@@ -15,8 +13,6 @@ import { clamp, normalizeSplits } from "./split-logic.js";
 
 export function createActionController({ gameData, debug, getCurrentState }) {
   let timerInterval = null;
-  let splitEditorApi = null;
-  let actsEditorApi = null;
 
   function setWholeState(nextState) {
     updateState(() => buildInitialState(nextState, gameData, getCurrentState().gameId));
@@ -390,84 +386,11 @@ export function createActionController({ gameData, debug, getCurrentState }) {
     });
   }
 
-  function setupSplitEditor() {
-    const overlayEl = document.getElementById("splitEditorOverlay");
-    const gridEl = document.getElementById("splitEditorGrid");
-
-    if (!overlayEl || !gridEl) return;
-
-    splitEditorApi = createSplitEditor({
-      overlayEl,
-      gridEl,
-      addBtn: document.getElementById("addSplitEditorBtn"),
-      resetBtn: document.getElementById("resetSplitEditorBtn"),
-      closeBtn: document.getElementById("closeSplitEditorBtn"),
-      saveBtn: document.getElementById("saveSplitEditorBtn"),
-      downloadBtn: document.getElementById("downloadSplitBackupBtn"),
-      copyBtn: document.getElementById("copySplitBackupBtn"),
-      getSplits: () => clone(getCurrentState().splits?.items || []),
-      setSplits: (splits) => {
-        updateState((raw) => {
-          const state = buildInitialState(raw, gameData, getCurrentState().gameId);
-          state.splits.items = normalizeSplits(splits, gameData?.defaultSplits || []);
-          state.splits.currentIndex = clamp(
-            Number(state.splits.currentIndex || 0),
-            0,
-            state.splits.items.length
-          );
-          state.phase = getActivePhase(state, gameData);
-          return state;
-        });
-      },
-      getPhases: () => clone(gameData?.phases || {}),
-      getCounterDefs: () => gameData?.counters || {},
-      onAfterSave: () => {
-        debug.log("Split editor saved");
-      }
-    });
-  }
-
-  function setupActsEditor() {
-    const overlayEl = document.getElementById("actsEditorOverlay");
-    const phaseListEl = document.getElementById("actsEditorPhaseList");
-    const formEl = document.getElementById("actsEditorForm");
-
-    if (!overlayEl || !phaseListEl || !formEl) return;
-
-    actsEditorApi = createActsEditor({
-      overlayEl,
-      phaseListEl,
-      formEl,
-      addBtn: document.getElementById("addActsEditorBtn"),
-      closeBtn: document.getElementById("closeActsEditorBtn"),
-      saveBtn: document.getElementById("saveActsEditorBtn"),
-      resetBtn: document.getElementById("resetActsEditorBtn"),
-      exportBtn: document.getElementById("exportActsEditorBtn"),
-      importInput: document.getElementById("importActsEditorInput"),
-      copyBtn: document.getElementById("copyActsEditorBtn"),
-      getPhases: () => clone(gameData?.phases || {}),
-      getQuotas: () => clone(gameData?.quotas || {}),
-      getCounterDefs: () => gameData?.counters || {},
-      setPhases: (phases) => {
-        gameData.phases = clone(phases || {});
-        syncPhaseToState();
-      },
-      setQuotas: (quotas) => {
-        gameData.quotas = clone(quotas || {});
-      },
-      onAfterSave: () => {
-        debug.log("Acts editor saved");
-      }
-    });
-  }
-
   return {
     setWholeState,
     syncPhaseToState,
     ensureTimerLoop,
     stopTimerLoop,
-    bindStaticEvents,
-    setupSplitEditor,
-    setupActsEditor
+    bindStaticEvents
   };
 }
