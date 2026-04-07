@@ -1,0 +1,225 @@
+/* =========================
+   CONTROLLER LOOK PASS
+   ========================= */
+
+.top .title {
+  margin-bottom: 4px;
+}
+
+.top .subtitle {
+  font-size: 14px;
+}
+
+#difficultyBadge {
+  align-self: flex-start;
+}
+
+/* Timer card */
+#timerCard,
+.timerCard,
+#runTimerCard {
+  padding: 18px;
+}
+
+#timer {
+  font-family: var(--font-mono);
+  font-size: 46px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--green);
+  margin-top: 8px;
+  margin-bottom: 16px;
+}
+
+#startPauseBtn,
+#undoBtn {
+  min-width: 96px;
+}
+
+#startPauseBtn {
+  background: var(--green);
+  color: #04110a;
+  border-color: rgba(57, 217, 138, 0.42);
+}
+
+#undoBtn {
+  background: #1a2c57;
+}
+
+/* Current split block */
+#currentSplitCard,
+.currentSplitCard {
+  padding: 18px;
+}
+
+#currentSplitLabel {
+  font-size: 18px;
+  line-height: 1.15;
+  font-weight: 900;
+  margin-top: 2px;
+  margin-bottom: 12px;
+}
+
+#historyCount,
+#modePill {
+  margin-right: 6px;
+}
+
+#advanceCurrentBtn {
+  min-height: 42px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 900;
+  background: var(--green);
+  color: #04110a;
+  border-color: rgba(57, 217, 138, 0.42);
+}
+
+/* Progress cards row */
+#overallCard,
+#phaseProgressCard,
+#paceCard {
+  min-height: 118px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+#overallPercent,
+#act1SummaryValue {
+  font-size: 32px;
+  line-height: 1;
+  font-weight: 900;
+  margin-top: 4px;
+}
+
+#pacePill,
+#paceValue {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--text);
+  margin-top: 6px;
+}
+
+/* progress bars */
+.progressBar,
+.barTrack,
+#overallBarTrack,
+#act1SummaryTrack {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: #08101f;
+  border: 1px solid var(--border-soft);
+  overflow: hidden;
+}
+
+.progressFill,
+.barFill,
+#overallBar,
+#act1SummaryBar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2fd47a 0%, #49de9b 100%);
+}
+
+/* Settings / run data / debug */
+#settingsToggle {
+  width: 100%;
+  justify-content: center;
+}
+
+#settingsPanel {
+  padding-top: 2px;
+}
+
+#settingsPanel .eyebrow {
+  margin-bottom: 8px;
+}
+
+#settingsPanel .row {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Quota / objective area */
+#act1QuotaTitle,
+#activePhaseName {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+#act1QuotaText {
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 800;
+  color: var(--text);
+}
+
+#activePhaseNote,
+#currentObjectiveText {
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text-soft);
+}
+
+/* objective pills */
+#visibleObjectives {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+#visibleObjectives .pill {
+  min-height: 32px;
+  padding: 0 12px;
+  background: #122247;
+  border-color: var(--border);
+  font-size: 12px;
+}
+
+/* Misc checklist */
+#dirgeCheckbox {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+}
+
+/* Make panels feel less floaty, more structured */
+.panel + .panel {
+  margin-top: 12px;
+}
+
+/* Better spacing on headings inside panels */
+.panel .eyebrow + .mid,
+.panel .eyebrow + .title {
+  margin-top: 2px;
+}
+
+/* smaller utility cards inside controller if they exist */
+.panel .card {
+  background: #081121;
+}
+
+/* mobile / narrower */
+@media (max-width: 900px) {
+  #timer {
+    font-size: 38px;
+  }
+
+  #overallPercent,
+  #act1SummaryValue {
+    font-size: 28px;
+  }
+
+  #advanceCurrentBtn {
+    min-height: 40px;
+    font-size: 13px;
+  }
+}
