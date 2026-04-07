@@ -1,31 +1,30 @@
 :root {
-  --bg-0: #050814;
-  --bg-1: #081126;
-  --bg-2: #0d1833;
-  --bg-3: #132247;
+  --bg-page: #07101f;
+  --bg-page-2: #0a1730;
+  --bg-panel: #091327;
+  --bg-panel-2: #0c1831;
+  --bg-card: #081121;
+  --bg-card-2: #0b1730;
+  --bg-input: #040b17;
 
-  --surface-0: rgba(7, 12, 26, 0.82);
-  --surface-1: rgba(11, 18, 37, 0.9);
-  --surface-2: rgba(17, 30, 66, 0.78);
-  --surface-3: rgba(24, 40, 82, 0.72);
+  --border-soft: rgba(110, 148, 220, 0.14);
+  --border: rgba(110, 148, 220, 0.22);
+  --border-strong: rgba(110, 148, 220, 0.34);
 
-  --border-soft: rgba(120, 160, 255, 0.12);
-  --border: rgba(120, 160, 255, 0.18);
-  --border-strong: rgba(120, 160, 255, 0.28);
+  --text: #f5f8ff;
+  --text-soft: rgba(245, 248, 255, 0.86);
+  --text-muted: rgba(184, 200, 228, 0.68);
 
-  --text: #f4f8ff;
-  --text-soft: rgba(244, 248, 255, 0.82);
-  --text-muted: rgba(183, 200, 232, 0.72);
-
+  --accent: #77a8ff;
+  --accent-soft: rgba(119, 168, 255, 0.16);
   --green: #39d98a;
-  --green-strong: #2ee67b;
-  --red: #ff5e7e;
-  --red-strong: #ff4b6e;
-  --gold: #f0c96a;
-  --blue: #77a8ff;
+  --green-strong: #28d17a;
+  --red: #ff5f7d;
+  --red-strong: #e84b69;
+  --gold: #f0c86a;
 
-  --shadow-1: 0 8px 24px rgba(0, 0, 0, 0.28);
-  --shadow-2: 0 12px 40px rgba(0, 0, 0, 0.34);
+  --shadow-1: 0 8px 18px rgba(0, 0, 0, 0.22);
+  --shadow-2: 0 12px 30px rgba(0, 0, 0, 0.28);
 
   --radius-sm: 10px;
   --radius-md: 14px;
@@ -53,8 +52,7 @@ body {
   padding: 0;
   min-height: 100%;
   background:
-    radial-gradient(circle at top left, rgba(22, 56, 128, 0.28), transparent 28%),
-    linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 100%);
+    linear-gradient(180deg, #0b1b39 0%, #07101f 22%, #050b16 100%);
   color: var(--text);
   font-family: var(--font-ui);
 }
@@ -79,11 +77,12 @@ input,
 select,
 textarea {
   width: 100%;
+  min-height: 38px;
   color: var(--text);
-  background: rgba(3, 8, 20, 0.9);
+  background: var(--bg-input);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
-  padding: 10px 12px;
+  padding: 9px 11px;
   outline: none;
   transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
 }
@@ -92,7 +91,7 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--border-strong);
-  box-shadow: 0 0 0 3px rgba(119, 168, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(119, 168, 255, 0.08);
 }
 
 textarea {
