@@ -41,6 +41,10 @@ function normalizeSplit(split = {}, index = 0) {
   };
 }
 
+function makeSplitId(index) {
+  return `split_${Date.now()}_${index}_${Math.floor(Math.random() * 10000)}`;
+}
+
 function downloadJson(filename, payload) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
     type: "application/json"
@@ -100,25 +104,49 @@ function buildPhaseOptions(phases, selected) {
   `;
 }
 
+function buildAutoSummary(split, counterDefs) {
+  const auto = normalizeAuto(split?.auto || {});
+  const entries = Object.entries(auto);
+
+  if (!entries.length) {
+    return "No auto progress";
+  }
+
+  return entries
+    .map(([key, value]) => {
+      const label =
+        counterDefs?.[key]?.shortLabel ||
+        counterDefs?.[key]?.queueLabel ||
+        counterDefs?.[key]?.label ||
+        key;
+      return `${label}: ${value}`;
+    })
+    .join(" • ");
+}
+
 function buildRowHtml(split, index, phases, counterDefs) {
   const normalized = normalizeSplit(split, index);
+  const autoCount = Object.keys(normalized.auto || {}).length;
+  const autoSummary = buildAutoSummary(normalized, counterDefs);
 
   return `
-    <div class="editorCard" data-split-row="${index}">
-      <div class="row between" style="margin-bottom:12px;gap:8px;align-items:flex-start">
+    <div class="editorCard" data-split-row="${index}" style="padding:12px 12px 10px 12px;">
+      <div class="row between" style="margin-bottom:10px;gap:8px;align-items:flex-start;flex-wrap:wrap;">
         <div>
           <div class="eyebrow">Split ${index + 1}</div>
           <div class="mid">${escapeHtml(normalized.label || `Split ${index + 1}`)}</div>
         </div>
 
-        <div class="row" style="gap:8px;flex-wrap:wrap">
-          <button type="button" class="btn" data-row-action="move-up">↑</button>
-          <button type="button" class="btn" data-row-action="move-down">↓</button>
+        <div class="row" style="gap:6px;flex-wrap:wrap;">
+          <button type="button" class="btn" data-row-action="insert-above" title="Insert split above">＋↑</button>
+          <button type="button" class="btn" data-row-action="insert-below" title="Insert split below">＋↓</button>
+          <button type="button" class="btn" data-row-action="move-up" title="Move up">↑</button>
+          <button type="button" class="btn" data-row-action="move-down" title="Move down">↓</button>
           <button type="button" class="btn danger" data-row-action="delete">Delete</button>
         </div>
       </div>
 
-      <div class="fields">
+      <div class="fields" style="margin-bottom:10px;">
         <label class="field">
           <span>Label</span>
           <input type="text" data-field="label" value="${escapeHtml(normalized.label)}" />
@@ -132,19 +160,26 @@ function buildRowHtml(split, index, phases, counterDefs) {
         </label>
       </div>
 
-      <div class="fields">
+      <div class="fields" style="margin-bottom:10px;">
         <label class="field" style="grid-column:1 / -1">
           <span>Note</span>
-          <textarea data-field="note" rows="3">${escapeHtml(normalized.note)}</textarea>
+          <textarea data-field="note" rows="2" style="min-height:58px;">${escapeHtml(normalized.note)}</textarea>
         </label>
       </div>
 
-      <div style="margin-top:14px">
-        <div class="eyebrow" style="margin-bottom:10px">Auto Progress</div>
-        <div class="fields">
+      <details class="splitAutoDetails">
+        <summary class="row between" style="cursor:pointer;gap:8px;list-style:none;">
+          <div>
+            <div class="eyebrow" style="margin-bottom:4px;">Auto Progress</div>
+            <div class="subtitle">${escapeHtml(autoSummary)}</div>
+          </div>
+          <div class="pill">${autoCount} active</div>
+        </summary>
+
+        <div class="fields" style="margin-top:10px;">
           ${buildAutoFields(counterDefs, normalized.auto)}
         </div>
-      </div>
+      </details>
     </div>
   `;
 }
@@ -251,16 +286,34 @@ export function createSplitEditor({
     return clone(workingSplits);
   }
 
-  function addEmptyRow() {
-    collectFromDom();
-
-    workingSplits.push(normalizeSplit({
-      id: `split_${Date.now()}`,
-      label: `Split ${workingSplits.length + 1}`,
+  function buildEmptySplit(index) {
+    return normalizeSplit({
+      id: makeSplitId(index),
+      label: `Split ${index + 1}`,
       phase: "",
       note: "",
       auto: {}
-    }, workingSplits.length));
+    }, index);
+  }
+
+  function addEmptyRow() {
+    collectFromDom();
+
+    workingSplits.push(buildEmptySplit(workingSplits.length));
+    render();
+  }
+
+  function insertRowAt(index) {
+    collectFromDom();
+
+    const insertIndex = Math.max(0, Math.min(index, workingSplits.length));
+    const next = [...workingSplits];
+    next.splice(insertIndex, 0, buildEmptySplit(insertIndex));
+
+    workingSplits = next.map((split, i) => normalizeSplit({
+      ...split,
+      id: split.id || makeSplitId(i)
+    }, i));
 
     render();
   }
@@ -375,6 +428,8 @@ export function createSplitEditor({
     const index = Number(row.dataset.splitRow || 0);
     const action = button.dataset.rowAction;
 
+    if (action === "insert-above") insertRowAt(index);
+    if (action === "insert-below") insertRowAt(index + 1);
     if (action === "move-up") moveRow(index, -1);
     if (action === "move-down") moveRow(index, 1);
     if (action === "delete") deleteRow(index);
