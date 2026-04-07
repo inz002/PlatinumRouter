@@ -14,7 +14,7 @@
     <div class="top">
       <div>
         <div class="eyebrow">Run Control Overlay</div>
-        <div class="title">Ghost of Tsushima Platinum Lethal</div>
+        <div id="runTitle" class="title">Ghost of Tsushima Platinum Lethal</div>
         <div class="subtitle">Speedrun Controller</div>
       </div>
 
@@ -45,11 +45,7 @@
               <div id="modePill" class="pill">Lethal</div>
             </div>
 
-            <button
-              id="advanceCurrentBtn"
-              class="btn primary full"
-              style="margin-top:12px"
-            >
+            <button id="advanceCurrentBtn" class="btn primary full" style="margin-top:12px">
               ▶ Complete Current Split
             </button>
           </div>
@@ -102,6 +98,26 @@
               <button id="resetBtn" class="btn danger">↺ Reset</button>
             </div>
 
+            <div class="card" style="margin-top:14px;">
+              <div class="eyebrow">Practice Timer Start</div>
+              <div class="subtitle" style="margin-top:6px;">
+                Set a custom elapsed time for practice runs or pace testing. Format: HH:MM:SS
+              </div>
+
+              <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap;">
+                <input
+                  id="practiceStartTimeInput"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="07:00:00"
+                  value="00:00:00"
+                  style="max-width:180px;"
+                />
+                <button id="setStartTimeBtn" class="btn">Set Time</button>
+                <button id="resetStartTimeBtn" class="btn">Reset to 00:00:00</button>
+              </div>
+            </div>
+
             <div class="debugDock" style="margin-top:14px">
               <div class="eyebrow" style="margin-bottom:10px">Debug</div>
 
@@ -141,10 +157,7 @@
               <div class="card">
                 <div class="eyebrow">Misc Checklist</div>
 
-                <label
-                  class="row"
-                  style="margin-top:10px;justify-content:flex-start;gap:8px;cursor:pointer"
-                >
+                <label class="row" style="margin-top:10px;justify-content:flex-start;gap:8px;cursor:pointer">
                   <input id="dirgeCheckbox" type="checkbox" />
                   <span>🎵 Dirge of the Fallen</span>
                 </label>
@@ -164,9 +177,7 @@
 
             <div class="objectiveNote">
               <div class="eyebrow">Current Objective Note</div>
-              <div id="currentObjectiveText" class="objectiveText">
-                No note for this split yet.
-              </div>
+              <div id="currentObjectiveText" class="objectiveText">No note for this split yet.</div>
             </div>
 
             <div class="eyebrow" style="margin-top:10px">Tracked Totals</div>
@@ -179,7 +190,6 @@
                 <div class="mid">Split Queue</div>
                 <div class="subtitle">Only current split is clickable.</div>
               </div>
-
               <div id="queuePill" class="pill">0 total splits</div>
             </div>
 
@@ -191,9 +201,7 @@
                   <div class="eyebrow">Split History</div>
                   <div id="historySaved" class="subtitle">0 saved</div>
                 </div>
-
                 <div id="historyList" class="history" style="margin-top:8px"></div>
-
                 <div class="subtitle" style="margin-top:10px">
                   Undo reverses the latest split and its auto-progress.
                 </div>
